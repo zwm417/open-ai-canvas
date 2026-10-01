@@ -1,0 +1,50 @@
+{
+  "apiVersion": "yingce.plugin/v1",
+  "id": "opc-plugin-image-oriental",
+  "name": "国风国潮与历史文创",
+  "version": "1.0.0",
+  "description": "提供朝代服饰考究、非遗工艺纹样（螺钿/掐丝/刺绣）特写、古典水墨金石与新中式美学的专业生成技能。",
+  "author": "opc-Copilot",
+  "surfaces": ["fullscreen", "settings"],
+  "permissions": [
+    "generation.run",
+    "media.read",
+    "ai.text"
+  ],
+  "trusted": true,
+  "runtime": { "backend": "trusted-backend", "web": "declarative" },
+  "contributes": {
+    "workbenchCategories": [
+      {
+        "id": "oriental",
+        "name": "国风",
+        "icon": "oriental",
+        "order": 5
+      }
+    ],
+    "workbenchSkills": [
+      {
+        "id": "dynasty-costume",
+        "categoryId": "oriental",
+        "name": "朝代服饰考究",
+        "subtitle": "唐宋明正统形制与纹样复刻",
+        "description": "严格遵循齐胸襦裙、道袍、贴里等历史服制细节，还原丝织、暗纹与传统发髻。",
+        "isRecommended": true
+      },
+      {
+        "id": "intangible-craft",
+        "categoryId": "oriental",
+        "name": "非遗工艺特写",
+        "subtitle": "掐丝珐琅、螺钿镶嵌与苏绣微距",
+        "description": "微距展现传统手工艺的金属光泽、丝线反光与立体温润材质。"
+      },
+      {
+        "id": "ink-wash-scroll",
+        "categoryId": "oriental",
+        "name": "古典水墨长卷",
+        "subtitle": "青绿山水与金碧水墨晕染",
+        "description": "融合宣纸肌理、留白意境与矿物颜料沉淀，呈现千峰竞秀的宋代山水风骨。"
+      }
+    ]
+  }
+}

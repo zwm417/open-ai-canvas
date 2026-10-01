@@ -1,0 +1,855 @@
+{
+  "version": "1.0",
+  "description": "OPC Media-Lab 核心隐式围栏基准清单（防上游更新覆盖与二开丢失）",
+  "updatedAt": "2026-09-29T10:29:52+08:00",
+  "totalFences": 248,
+  "fences": {
+    "adapter:auto-derive-tier-price-configured": [
+      "backend/internal/app/channel_models.go"
+    ],
+    "adapter:brand-identity": [
+      "backend/internal/app/protocol_registry.go"
+    ],
+    "adapter:channel-model-fetch-adaptive": [
+      "backend/internal/app/channel_model_catalog.go"
+    ],
+    "adapter:creation-assistant-alias-const": [
+      "backend/internal/service/aliases_consts.go"
+    ],
+    "adapter:creation-assistant-app-policy": [
+      "backend/internal/app/plugin_management.go"
+    ],
+    "adapter:creation-assistant-policy": [
+      "backend/internal/app/plugin_management.go"
+    ],
+    "adapter:cross-platform-disk-space": [
+      "backend/internal/hostupdate/disk_space_posix.go",
+      "backend/internal/hostupdate/disk_space_windows.go"
+    ],
+    "adapter:custom_relay_tun_fake_ip": [
+      "backend/internal/outbound/outbound.go"
+    ],
+    "adapter:custom-agent-guidance": [
+      "backend/internal/app/cloud_agent_policy.go"
+    ],
+    "adapter:custom-agent-nodes": [
+      "backend/internal/canvas/capability/builtin.go"
+    ],
+    "adapter:custom-agent-nodes-test": [
+      "backend/internal/app/cloud_agent_contract_test.go"
+    ],
+    "adapter:feature-credits": [
+      "backend/internal/app/feature_credits.go",
+      "backend/internal/handler/finance.go",
+      "backend/internal/repository/finance.go",
+      "backend/internal/service/aliases_types.go"
+    ],
+    "adapter:generation_logs_schema": [
+      "backend/internal/database/migrations.go"
+    ],
+    "adapter:generation-log-bridge": [
+      "backend/internal/app/canvas_bridge.go"
+    ],
+    "adapter:generation-log-model": [
+      "backend/internal/model/models_generation_log.go"
+    ],
+    "adapter:generation-log-repository": [
+      "backend/internal/repository/repository.go"
+    ],
+    "adapter:generation-log-routes": [
+      "backend/internal/handler/user_data.go"
+    ],
+    "adapter:generation-log-schema": [
+      "backend/cmd/migrate-sqlite-postgres/main.go",
+      "backend/internal/database/schema.go"
+    ],
+    "adapter:generation-log-service": [
+      "backend/internal/canvas/user_data.go"
+    ],
+    "adapter:local_channel_and_private_upstreams": [
+      "scripts/start-local.ps1"
+    ],
+    "adapter:model-smart-router": [
+      "backend/internal/app/logical_models.go",
+      "backend/internal/app/model_catalog.go",
+      "backend/internal/service/aliases_consts.go"
+    ],
+    "adapter:pure-go-sqlite": [
+      "backend/internal/app/admin_channel_test.go",
+      "backend/internal/database/creation_migration_test.go",
+      "backend/internal/database/database.go"
+    ],
+    "adapter:resilient-has-valid-price": [
+      "backend/internal/app/price_validation.go"
+    ],
+    "adapter:resilient-tier-price-validation": [
+      "backend/internal/app/model_catalog.go"
+    ],
+    "adapter:resource-precheck-deduplication": [
+      "backend/internal/app/resource_test.go",
+      "backend/internal/app/resource.go",
+      "backend/internal/handler/resource_upload_session.go",
+      "backend/internal/handler/user_data.go"
+    ],
+    "adapter:runtime-data-isolation": [
+      "scripts/start-local.ps1"
+    ],
+    "adapter:skill-package-metadata-bound": [
+      "backend/internal/skills/skill_packages.go"
+    ],
+    "adapter:smart-model-router": [
+      "backend/internal/app/model_router.go"
+    ],
+    "adapter:storage-s3-timeout": [
+      "backend/internal/storage/s3.go"
+    ],
+    "adapter:video-reverse-alias-const": [
+      "backend/internal/service/aliases_consts.go"
+    ],
+    "adapter:video-reverse-app-policy": [
+      "backend/internal/app/plugin_management.go"
+    ],
+    "adapter:video-reverse-policy": [
+      "backend/internal/app/plugin_management.go"
+    ],
+    "feature:admin-ant-dropdown-popover-zindex": [
+      "web/src/pages/admin/theme/admin-ant-theme.ts"
+    ],
+    "feature:admin-channel-model-batch": [
+      "web/src/pages/admin/components/channel-model-manager.tsx"
+    ],
+    "feature:admin-plugin-enhancements": [
+      "web/src/pages/admin/plugins/plugins-page.tsx",
+      "web/src/pages/admin/theme/admin-chrome.css",
+      "web/src/pages/plugins/plugins.css",
+      "web/src/services/api/plugins.ts"
+    ],
+    "feature:admin-row-action-active-state": [
+      "web/src/styles/admin-ui.css"
+    ],
+    "feature:admin-row-actions-dropdown": [
+      "web/src/pages/admin/components/admin-ui.tsx"
+    ],
+    "feature:admin-system-performance": [
+      "web/src/styles/admin-ui.css"
+    ],
+    "feature:ant-dropdown-popover-zindex": [
+      "web/src/lib/app-theme.ts"
+    ],
+    "feature:ant-dropdown-popover-zindex-skin": [
+      "web/src/lib/app-theme.ts"
+    ],
+    "feature:ant-message-notification-dark-contrast": [
+      "web/src/lib/app-theme.ts",
+      "web/src/styles/globals.css"
+    ],
+    "feature:ant-popup-zindex-defense": [
+      "web/src/styles/globals.css"
+    ],
+    "feature:ant-tag-inline-align": [
+      "web/src/styles/globals.css"
+    ],
+    "feature:ant-tag-neutral-surface": [
+      "web/src/styles/globals.css"
+    ],
+    "feature:ant-tag-theme-tokens-components": [
+      "web/src/lib/app-theme.ts"
+    ],
+    "feature:asset-deduplication": [
+      "web/src/lib/asset-fingerprint.ts",
+      "web/src/pages/assets/asset-batch-upload-modal.tsx",
+      "web/src/pages/assets/index.tsx",
+      "web/src/pages/canvas/use-canvas-upload.ts",
+      "web/src/services/file-storage.ts",
+      "web/src/services/image-storage.ts",
+      "web/src/stores/use-asset-store.ts"
+    ],
+    "feature:assets-page-dropdown": [
+      "web/src/pages/assets/index.tsx"
+    ],
+    "feature:audio-multimodal-support": [
+      "web/src/services/api/image-contracts.ts",
+      "web/src/services/api/image-protocols.ts"
+    ],
+    "feature:auth-contrast-defense": [
+      "web/src/styles/globals.css"
+    ],
+    "feature:backend-video-task": [
+      "web/src/services/api/video-contracts.ts",
+      "web/src/services/api/video.ts"
+    ],
+    "feature:batch-table-auto-height": [
+      "web/src/components/canvas/canvas-batch-table-node.tsx"
+    ],
+    "feature:batch-table-auto-height-handler": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:batch-table-auto-height-reset": [
+      "web/src/components/canvas/canvas-batch-table-node.tsx"
+    ],
+    "feature:batch-table-generation-type": [
+      "web/src/pages/canvas/use-canvas-batch-table.ts"
+    ],
+    "feature:batch-table-mention-preview": [
+      "web/src/components/canvas/canvas-batch-table-node.tsx"
+    ],
+    "feature:batch-table-min-size": [
+      "web/src/lib/canvas/node-registry/definitions/builtin-nodes.tsx"
+    ],
+    "feature:batch-table-scroll-container": [
+      "web/src/components/canvas/canvas-batch-table-node.tsx"
+    ],
+    "feature:batch-table-slot-canvas-picker": [
+      "web/src/components/canvas/canvas-batch-table-node.tsx",
+      "web/src/extensions/standard-batch-table/components/standard-batch-table-node.tsx"
+    ],
+    "feature:batch-table-slot-connection": [
+      "web/src/pages/canvas/project.tsx",
+      "web/src/pages/canvas/use-canvas-connection-controller.ts",
+      "web/src/styles/globals.css"
+    ],
+    "feature:batch-table-slot-keyboard-guard": [
+      "web/src/pages/canvas/use-canvas-keyboard.ts"
+    ],
+    "feature:batch-table-slot-operations": [
+      "web/src/components/canvas/canvas-batch-table-node.tsx",
+      "web/src/extensions/standard-batch-table/components/standard-batch-table-node.tsx",
+      "web/src/lib/canvas/canvas-batch-table.ts",
+      "web/src/pages/canvas/project.tsx",
+      "web/src/pages/canvas/use-canvas-batch-table.ts"
+    ],
+    "feature:brand-identity": [
+      "web/src/components/model-protocol-browser.tsx",
+      "web/src/services/api/plugin-catalog.ts"
+    ],
+    "feature:brand-mark-surface": [
+      "web/src/styles/globals.css"
+    ],
+    "feature:canvas_image_settings_popover": [
+      "web/src/components/canvas/canvas-image-settings-popover.tsx"
+    ],
+    "feature:canvas_video_settings_popover": [
+      "web/src/components/canvas/canvas-video-settings-popover.tsx"
+    ],
+    "feature:canvas-batch-generation": [
+      "web/src/pages/canvas/canvas-image-generation-executor.ts"
+    ],
+    "feature:canvas-batch-table-cell-actions": [
+      "web/src/components/canvas/canvas-batch-table-node.tsx"
+    ],
+    "feature:canvas-dialogs-lazy-mount": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:canvas-dock-adaptive-surface": [
+      "web/src/lib/canvas/canvas-aceternity-style.ts",
+      "web/src/styles/globals.css"
+    ],
+    "feature:canvas-image-eager-render": [
+      "web/src/components/canvas/canvas-node-content.tsx"
+    ],
+    "feature:canvas-interactive-controls-guard": [
+      "web/src/components/canvas/canvas-node.tsx"
+    ],
+    "feature:canvas-library-instant-cache": [
+      "web/src/pages/canvas/index.tsx"
+    ],
+    "feature:canvas-local-fallback": [
+      "web/src/pages/canvas/use-canvas-project-lifecycle.ts",
+      "web/src/services/user-data-sync.ts"
+    ],
+    "feature:canvas-node-copy-to-slot": [
+      "web/src/pages/canvas/use-canvas-node-operations.ts"
+    ],
+    "feature:canvas-node-graph-downstream-actions": [
+      "web/src/components/canvas/canvas-node-graph-context.ts",
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:canvas-resource-mention-enhanced-search": [
+      "web/src/components/canvas/canvas-resource-mention-textarea.tsx"
+    ],
+    "feature:canvas-resource-mention-textarea-flex-expand": [
+      "web/src/components/canvas/canvas-resource-mention-textarea.tsx"
+    ],
+    "feature:canvas-task-recovery-exemption": [
+      "web/src/pages/canvas/use-canvas-generation.ts"
+    ],
+    "feature:canvas-video-keyboard-delete": [
+      "web/src/pages/canvas/canvas-project-world-layers.tsx",
+      "web/src/pages/canvas/project.tsx",
+      "web/src/pages/canvas/use-canvas-keyboard.ts"
+    ],
+    "feature:canvas-wheel-zoom": [
+      "web/src/components/canvas/infinite-canvas.tsx"
+    ],
+    "feature:celadon-dropdown-menu": [
+      "web/src/components/ui/base/dropdown-menu/dropdown-menu.tsx",
+      "web/src/components/ui/base/dropdown-menu/index.ts"
+    ],
+    "feature:channel-model-completion-save": [
+      "web/src/pages/settings/channel-video-pricing.tsx"
+    ],
+    "feature:channel-model-fetch-fallback": [
+      "web/src/services/api/image-models.ts"
+    ],
+    "feature:channel-model-manual-entry": [
+      "web/src/pages/admin/components/channel-model-manager.tsx"
+    ],
+    "feature:channel-video-duration-resolution": [
+      "web/src/lib/model-capabilities.ts"
+    ],
+    "feature:connection-menu-pinning": [
+      "web/src/components/canvas/canvas-workspace-overlays.tsx",
+      "web/src/pages/canvas/use-canvas-connection-controller.ts"
+    ],
+    "feature:creation_assistant_model_picker": [
+      "web/src/pages/creation-assistant/index.tsx"
+    ],
+    "feature:creation_assistant_original_logic": [
+      "web/src/services/creation-assistant-analysis.ts"
+    ],
+    "feature:creation-assistant-builtin": [
+      "web/src/lib/plugins/builtin/index.ts"
+    ],
+    "feature:creation-assistant-create-menu": [
+      "web/src/lib/canvas/tool-registry/definitions/add-node-menu-tools.tsx"
+    ],
+    "feature:creation-assistant-menu-import": [
+      "web/src/lib/canvas/tool-registry/definitions/add-node-menu-tools.tsx"
+    ],
+    "feature:creation-assistant-metadata": [
+      "web/src/types/canvas.ts"
+    ],
+    "feature:creation-assistant-nodes": [
+      "web/src/components/canvas/canvas-node-content.tsx"
+    ],
+    "feature:creation-assistant-nodes-render": [
+      "web/src/components/canvas/canvas-node-content.tsx"
+    ],
+    "feature:creation-assistant-official-app-id": [
+      "web/src/lib/plugins/official-applications.ts"
+    ],
+    "feature:creation-assistant-route": [
+      "web/src/router.tsx"
+    ],
+    "feature:creation-assistant-route-entry": [
+      "web/src/router.tsx"
+    ],
+    "feature:creation-nodes-prompt-panel-mode": [
+      "web/src/components/canvas/canvas-node-prompt-panel.tsx"
+    ],
+    "feature:creation-workspace-dropdown": [
+      "web/src/pages/create/creation-workspace.tsx"
+    ],
+    "feature:creative_inspirations": [
+      "web/src/components/prompts/aesthetic-blueprint-card.tsx",
+      "web/src/components/prompts/inspiration-cache.ts",
+      "web/src/components/prompts/inspiration-card-image.tsx",
+      "web/src/components/prompts/inspiration-lightbox-modal.tsx",
+      "web/src/pages/prompts/index.tsx",
+      "web/src/pages/prompts/prompt-canvas-helper.ts",
+      "web/src/pages/prompts/prompt-data.ts",
+      "web/src/styles/workspace-product.css"
+    ],
+    "feature:creative-agent-cards-dropdown": [
+      "web/src/components/creation/creative-agent-cards.tsx"
+    ],
+    "feature:creative-agent-plan-popover": [
+      "web/src/components/creation/creative-agent-cards.tsx"
+    ],
+    "feature:creative-asset-table-builtin": [
+      "web/src/lib/plugins/builtin/index.ts"
+    ],
+    "feature:creative-asset-table-connection-import": [
+      "web/src/pages/canvas/use-canvas-connection-controller.ts"
+    ],
+    "feature:creative-asset-table-content-import": [
+      "web/src/components/canvas/canvas-node-content.tsx"
+    ],
+    "feature:creative-asset-table-create-dialog-guard": [
+      "web/src/pages/canvas/use-canvas-node-operations.ts"
+    ],
+    "feature:creative-asset-table-create-import": [
+      "web/src/lib/canvas/tool-registry/definitions/add-node-menu-tools.tsx"
+    ],
+    "feature:creative-asset-table-create-menu": [
+      "web/src/lib/canvas/tool-registry/definitions/add-node-menu-tools.tsx"
+    ],
+    "feature:creative-asset-table-handlers": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:creative-asset-table-has-custom": [
+      "web/src/components/canvas/canvas-node-content.tsx"
+    ],
+    "feature:creative-asset-table-node-import": [
+      "web/src/components/canvas/canvas-node.tsx"
+    ],
+    "feature:creative-asset-table-operations-import": [
+      "web/src/pages/canvas/use-canvas-node-operations.ts"
+    ],
+    "feature:creative-asset-table-project-import": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:creative-asset-table-render": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:creative-asset-table-shared-import": [
+      "web/src/pages/canvas/shared.tsx"
+    ],
+    "feature:creative-asset-table-shared-render": [
+      "web/src/pages/canvas/shared.tsx"
+    ],
+    "feature:creative-batch-empty-slot-ready": [
+      "web/src/lib/canvas/canvas-batch-table.ts"
+    ],
+    "feature:creative-storyboard-table-builtin": [
+      "web/src/lib/plugins/builtin/index.ts"
+    ],
+    "feature:creative-storyboard-table-connection-import": [
+      "web/src/pages/canvas/use-canvas-connection-controller.ts"
+    ],
+    "feature:creative-storyboard-table-content-import": [
+      "web/src/components/canvas/canvas-node-content.tsx"
+    ],
+    "feature:creative-storyboard-table-create-dialog-guard": [
+      "web/src/pages/canvas/use-canvas-node-operations.ts"
+    ],
+    "feature:creative-storyboard-table-create-import": [
+      "web/src/lib/canvas/tool-registry/definitions/add-node-menu-tools.tsx"
+    ],
+    "feature:creative-storyboard-table-create-menu": [
+      "web/src/lib/canvas/tool-registry/definitions/add-node-menu-tools.tsx"
+    ],
+    "feature:creative-storyboard-table-has-custom": [
+      "web/src/components/canvas/canvas-node-content.tsx"
+    ],
+    "feature:creative-storyboard-table-node-import": [
+      "web/src/components/canvas/canvas-node.tsx"
+    ],
+    "feature:creative-storyboard-table-operations-import": [
+      "web/src/pages/canvas/use-canvas-node-operations.ts"
+    ],
+    "feature:creative-storyboard-table-project-import": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:creative-storyboard-table-render": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:creative-storyboard-table-shared-import": [
+      "web/src/pages/canvas/shared.tsx"
+    ],
+    "feature:creative-tables-auto-slot": [
+      "web/src/pages/canvas/use-canvas-connection-controller.ts"
+    ],
+    "feature:creative-tables-auto-sync": [
+      "web/src/pages/canvas/use-canvas-connection-controller.ts"
+    ],
+    "feature:creative-tables-connection-policy": [
+      "web/src/lib/canvas/canvas-connection-policy.ts"
+    ],
+    "feature:creative-tables-connection-policy-import": [
+      "web/src/lib/canvas/canvas-connection-policy.ts"
+    ],
+    "feature:creative-voice-table-builtin": [
+      "web/src/lib/plugins/builtin/index.ts"
+    ],
+    "feature:creative-voice-table-connection-import": [
+      "web/src/pages/canvas/use-canvas-connection-controller.ts"
+    ],
+    "feature:creative-voice-table-content-import": [
+      "web/src/components/canvas/canvas-node-content.tsx"
+    ],
+    "feature:creative-voice-table-create-dialog-guard": [
+      "web/src/pages/canvas/use-canvas-node-operations.ts"
+    ],
+    "feature:creative-voice-table-create-import": [
+      "web/src/lib/canvas/tool-registry/definitions/add-node-menu-tools.tsx"
+    ],
+    "feature:creative-voice-table-create-menu": [
+      "web/src/lib/canvas/tool-registry/definitions/add-node-menu-tools.tsx"
+    ],
+    "feature:creative-voice-table-dialog-guard": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:creative-voice-table-handlers": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:creative-voice-table-has-custom": [
+      "web/src/components/canvas/canvas-node-content.tsx"
+    ],
+    "feature:creative-voice-table-node-import": [
+      "web/src/components/canvas/canvas-node.tsx"
+    ],
+    "feature:creative-voice-table-operations-import": [
+      "web/src/pages/canvas/use-canvas-node-operations.ts"
+    ],
+    "feature:creative-voice-table-project-import": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:creative-voice-table-render": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:creative-voice-table-shared-import": [
+      "web/src/pages/canvas/shared.tsx"
+    ],
+    "feature:creative-voice-table-shared-render": [
+      "web/src/pages/canvas/shared.tsx"
+    ],
+    "feature:custom_channel_relay": [
+      "web/src/services/api/channel-transport.ts",
+      "web/src/services/api/custom-channel-relay.ts",
+      "web/src/services/api/image-streaming.ts"
+    ],
+    "feature:custom-node-connection": [
+      "web/src/pages/canvas/use-canvas-connection-controller.ts"
+    ],
+    "feature:custom-node-context": [
+      "web/src/lib/canvas/canvas-agent-context.ts"
+    ],
+    "feature:custom-node-execution": [
+      "web/src/pages/canvas/use-canvas-generation-executor.ts"
+    ],
+    "feature:custom-official-application-plugins-const": [
+      "web/src/lib/plugins/official-applications.ts"
+    ],
+    "feature:custom-official-application-plugins-set": [
+      "web/src/lib/plugins/official-applications.ts"
+    ],
+    "feature:custom-workflow-kinds": [
+      "web/src/lib/canvas/canvas-agent-workflow.ts"
+    ],
+    "feature:dark-icon-tokens": [
+      "web/src/styles/globals.css"
+    ],
+    "feature:dark-project-library-tokens": [
+      "web/src/styles/globals.css"
+    ],
+    "feature:deduplicate-add-node-menu-commands": [
+      "web/src/lib/canvas/tool-registry/tool-registry.ts"
+    ],
+    "feature:desktop-local-channel": [
+      "web/src/lib/desktop-local-channel.ts",
+      "web/src/pages/settings/channel-settings-pane.tsx",
+      "web/src/stores/use-config-store.ts",
+      "web/src/stores/use-user-store.ts"
+    ],
+    "feature:desktop-local-channel-validation": [
+      "web/src/pages/settings/channel-settings-pane.tsx"
+    ],
+    "feature:desktop-media-save": [
+      "web/src/components/canvas/nodes/media-conversion-node.tsx",
+      "web/src/lib/canvas/canvas-generation-task-sync.ts",
+      "web/src/services/browser-download.ts"
+    ],
+    "feature:desktop-native-ffmpeg-audio": [
+      "web/src/lib/canvas/canvas-video-segment.ts"
+    ],
+    "feature:desktop-native-ffmpeg-dispatch": [
+      "web/src/lib/canvas/canvas-video-segment.ts"
+    ],
+    "feature:desktop-native-ffmpeg-job": [
+      "web/src/lib/canvas/canvas-video-segment.ts"
+    ],
+    "feature:desktop-theme-listener": [
+      "web/src/stores/use-theme-store.ts"
+    ],
+    "feature:desktop-theme-sync": [
+      "web/src/stores/use-theme-store.ts"
+    ],
+    "feature:dual-plugin-api-version": [
+      "web/src/lib/plugins/plugin-registry.ts"
+    ],
+    "feature:extended-workspace-route-loaders": [
+      "web/src/lib/workspace-route-modules.ts"
+    ],
+    "feature:feature-credits": [
+      "web/src/components/feature-credit-badge.tsx",
+      "web/src/hooks/use-feature-credit.ts",
+      "web/src/pages/admin/admin-route-pages.tsx",
+      "web/src/pages/admin/components/credit-operations-panel.tsx",
+      "web/src/pages/admin/components/feature-credits-panel.tsx",
+      "web/src/services/api/feature-credits.ts"
+    ],
+    "feature:gemini-endpoint-normalization": [
+      "web/src/services/api/image-transport.ts"
+    ],
+    "feature:generation-logs-api": [
+      "web/src/services/api/user-data.ts"
+    ],
+    "feature:generation-logs-sync": [
+      "web/src/services/user-data-sync.ts"
+    ],
+    "feature:hypit": [
+      "web/src/components/canvas/canvas-node-action-context.ts",
+      "web/src/extensions/opc-infinite/components/creative-master-slots-bar.tsx",
+      "web/src/extensions/opc-infinite/components/creative-storyboard-cards.tsx",
+      "web/src/extensions/opc-infinite/media/video-decomposition/desktop-ffmpeg-sampler.ts",
+      "web/src/extensions/opc-infinite/prompts/hypit-director-prompts.ts",
+      "web/src/extensions/opc-infinite/services/local-asr-transcriber.ts",
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:image_workbench": [
+      "web/src/pages/image/index.tsx",
+      "web/src/stores/use-image-workbench-store.ts"
+    ],
+    "feature:image_workbench_skills": [
+      "web/src/extensions/image-workbench-skills/components/skill-upload-slots.tsx",
+      "web/src/extensions/image-workbench-skills/hooks/use-workbench-slots-state.ts"
+    ],
+    "feature:image-size-presets": [
+      "web/src/components/image-settings-panel.tsx",
+      "web/src/components/model-capability-editor.tsx",
+      "web/src/lib/model-capabilities.ts",
+      "web/src/lib/model-selection.ts",
+      "web/src/services/api/image-validation.ts"
+    ],
+    "feature:image-workbench-skills": [
+      "web/src/components/layout/workspace-sidebar-nav.tsx",
+      "web/src/lib/image-reference-prompt.ts",
+      "web/src/lib/plugins/plugin-types.ts"
+    ],
+    "feature:instant-local-persistence": [
+      "web/src/pages/canvas/use-canvas-upload.ts"
+    ],
+    "feature:legacy-frontend-models-deprecation": [
+      "web/src/pages/admin/components/admin-shell.tsx",
+      "web/src/pages/admin/components/feature-availability-panel.tsx",
+      "web/src/pages/admin/logical-models/logical-models-page.tsx"
+    ],
+    "feature:legacy-frontend-models-deprecation-banner": [
+      "web/src/pages/admin/logical-models/logical-models-page.tsx"
+    ],
+    "feature:library-icon-tokens": [
+      "web/src/styles/globals.css"
+    ],
+    "feature:model-capability-resolver": [
+      "web/src/stores/use-config-store.ts"
+    ],
+    "feature:model-smart-router": [
+      "web/src/pages/admin/channels/channels-page.tsx",
+      "web/src/pages/admin/components/admin-shell.tsx",
+      "web/src/pages/admin/components/channel-model-editor.tsx",
+      "web/src/pages/admin/model-router/components/channel-model-acquisition-panel.tsx",
+      "web/src/pages/admin/model-router/components/group-associated-channels-modal.tsx",
+      "web/src/pages/admin/model-router/components/model-edit-modal.tsx",
+      "web/src/pages/admin/model-router/components/model-matrix-grid.tsx",
+      "web/src/pages/admin/model-router/components/parameter-canvas-and-routing.tsx",
+      "web/src/pages/admin/model-router/mock-data.ts",
+      "web/src/pages/admin/model-router/model-router-adapter.ts",
+      "web/src/pages/admin/model-router/model-router-page.tsx",
+      "web/src/pages/admin/model-router/model-router-store.ts",
+      "web/src/pages/admin/model-router/utils/real-connectivity-tester.ts",
+      "web/src/pages/admin/model-router/utils/routing-engine.ts",
+      "web/src/router.tsx"
+    ],
+    "feature:multi-user-scope": [
+      "web/src/lib/user-scope.ts"
+    ],
+    "feature:network-error-friendly-message": [
+      "web/src/services/api/request.ts"
+    ],
+    "feature:plugin-canvas-node-default-metadata": [
+      "web/src/lib/plugins/plugin-types.ts"
+    ],
+    "feature:preserve-local-preview": [
+      "web/src/components/canvas/canvas-file-upload-content.tsx",
+      "web/src/pages/canvas/use-canvas-upload.ts",
+      "web/src/services/api/resources.ts",
+      "web/src/services/canvas-asset-repair.ts",
+      "web/src/services/file-storage.ts",
+      "web/src/services/image-storage.ts",
+      "web/src/services/user-data-sync.ts"
+    ],
+    "feature:project-card-fallback": [
+      "web/src/components/canvas/canvas-project-card.tsx"
+    ],
+    "feature:prompt-library-nav": [
+      "web/src/components/layout/workspace-sidebar-nav.tsx",
+      "web/src/constant/navigation-tools.ts"
+    ],
+    "feature:prompt-library-route": [
+      "web/src/router.tsx"
+    ],
+    "feature:prompt-library-route-entry": [
+      "web/src/router.tsx"
+    ],
+    "feature:remote-user-data-phase": [
+      "web/src/stores/use-sync-progress-store.ts"
+    ],
+    "feature:request-generation-options": [
+      "web/src/pages/creation-assistant/index.tsx",
+      "web/src/services/api/image-contracts.ts",
+      "web/src/services/api/image.ts"
+    ],
+    "feature:resilient-model-catalog-hydration": [
+      "web/src/lib/user-session.ts"
+    ],
+    "feature:resilient-model-catalog-parsing": [
+      "web/src/lib/user-session.ts"
+    ],
+    "feature:resilient-model-picker-open": [
+      "web/src/components/model-picker.tsx"
+    ],
+    "feature:resilient-model-picker-popover": [
+      "web/src/components/model-picker.tsx"
+    ],
+    "feature:resilient-system-model-filtering": [
+      "web/src/lib/user-session.ts"
+    ],
+    "feature:resilient-system-model-price": [
+      "web/src/stores/use-config-store.ts"
+    ],
+    "feature:shiki-resilient-loader": [
+      "web/src/components/ai/ai-message-code-block.tsx"
+    ],
+    "feature:smart-model-router-capabilities": [
+      "web/src/pages/admin/logical-models/model-routing-capabilities.tsx"
+    ],
+    "feature:standard-batch-table-connection-import": [
+      "web/src/pages/canvas/use-canvas-connection-controller.ts"
+    ],
+    "feature:standard-batch-table-content-import": [
+      "web/src/components/canvas/canvas-node-content.tsx"
+    ],
+    "feature:standard-batch-table-create-dialog-guard": [
+      "web/src/pages/canvas/use-canvas-node-operations.ts"
+    ],
+    "feature:standard-batch-table-dialog-guard": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:standard-batch-table-handle-snap": [
+      "web/src/lib/canvas/canvas-batch-table.ts"
+    ],
+    "feature:standard-batch-table-handle-support": [
+      "web/src/lib/canvas/canvas-batch-table.ts"
+    ],
+    "feature:standard-batch-table-has-custom": [
+      "web/src/components/canvas/canvas-node-content.tsx"
+    ],
+    "feature:standard-batch-table-node-import": [
+      "web/src/components/canvas/canvas-node.tsx"
+    ],
+    "feature:standard-batch-table-operations-import": [
+      "web/src/pages/canvas/use-canvas-node-operations.ts"
+    ],
+    "feature:standard-batch-table-project-import": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:standard-batch-table-render": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:standard-batch-table-shared-import": [
+      "web/src/pages/canvas/shared.tsx"
+    ],
+    "feature:standard-batch-table-shared-render": [
+      "web/src/pages/canvas/shared.tsx"
+    ],
+    "feature:storyboard-batch-generation": [
+      "web/src/lib/canvas/canvas-batch-table.ts"
+    ],
+    "feature:storyboard-batch-image-filter": [
+      "web/src/pages/canvas/use-canvas-batch-table.ts"
+    ],
+    "feature:storyboard-batch-table-video-actions": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:storyboard-clean-reference-columns": [
+      "web/src/components/canvas/canvas-batch-table-node.tsx"
+    ],
+    "feature:storyboard-mention-enriched-references": [
+      "web/src/components/canvas/canvas-batch-table-node.tsx"
+    ],
+    "feature:storyboard-slot-dynamic-resolution": [
+      "web/src/components/canvas/canvas-batch-table-node.tsx"
+    ],
+    "feature:storyboard-stacked-asset-cell": [
+      "web/src/components/canvas/canvas-batch-table-node.tsx"
+    ],
+    "feature:storyboard-video-controls-guard": [
+      "web/src/components/canvas/canvas-batch-table-node.tsx"
+    ],
+    "feature:strip-prompt-bracket-metadata": [
+      "web/src/lib/canvas/canvas-batch-table.ts"
+    ],
+    "feature:system-proxy-base-url": [
+      "web/src/stores/use-config-store.ts"
+    ],
+    "feature:task-local-deletion": [
+      "web/src/pages/tasks/index.tsx"
+    ],
+    "feature:users-panel-column-settings": [
+      "web/src/pages/admin/users/users-panel.tsx"
+    ],
+    "feature:video_workbench": [
+      "web/src/pages/video/index.tsx"
+    ],
+    "feature:video-hover-preview-sync": [
+      "web/src/components/canvas/canvas-node-content.tsx",
+      "web/src/lib/canvas/canvas-media-preview.ts",
+      "web/src/lib/canvas/canvas-video-hover-preview.ts"
+    ],
+    "feature:video-reverse-builtin": [
+      "web/src/lib/plugins/builtin/index.ts"
+    ],
+    "feature:video-reverse-create-dialog-guard": [
+      "web/src/pages/canvas/use-canvas-node-operations.ts"
+    ],
+    "feature:video-reverse-create-import": [
+      "web/src/lib/canvas/tool-registry/definitions/add-node-menu-tools.tsx"
+    ],
+    "feature:video-reverse-create-menu": [
+      "web/src/lib/canvas/tool-registry/definitions/add-node-menu-tools.tsx"
+    ],
+    "feature:video-reverse-duplicate-dialog-guard": [
+      "web/src/pages/canvas/use-canvas-node-operations.ts"
+    ],
+    "feature:video-reverse-metadata": [
+      "web/src/types/canvas.ts"
+    ],
+    "feature:video-reverse-node": [
+      "web/src/components/canvas/canvas-node-content.tsx"
+    ],
+    "feature:video-reverse-official-app-id": [
+      "web/src/lib/plugins/official-applications.ts"
+    ],
+    "feature:video-reverse-operations-import": [
+      "web/src/pages/canvas/use-canvas-node-operations.ts"
+    ],
+    "feature:video-reverse-panel-guard": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:video-reverse-project-import": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:video-reverse-render": [
+      "web/src/components/canvas/canvas-node-content.tsx"
+    ],
+    "feature:video-workbench-skills": [
+      "web/src/components/layout/workspace-sidebar-nav.tsx"
+    ],
+    "feature:window-location-guard": [
+      "web/src/services/diagnostics/client-diagnostics.ts"
+    ],
+    "feature:workbench-navigation": [
+      "web/src/constant/navigation-tools.ts"
+    ],
+    "feature:workbench-optimistic-upload": [
+      "web/src/stores/use-video-workbench-store.ts",
+      "web/src/types/image.ts",
+      "web/src/types/media.ts"
+    ],
+    "feature:workbench-sidebar-items": [
+      "web/src/components/layout/workspace-sidebar-nav.tsx"
+    ],
+    "feature:workspace-account-menu-popover": [
+      "web/src/components/layout/workspace-account-menu.tsx"
+    ],
+    "feature:workspace-profile-popover": [
+      "web/src/components/layout/workspace-sidebar-nav.tsx"
+    ],
+    "feature:zero-overhead-local-cache": [
+      "web/src/components/cached-resource-image.tsx",
+      "web/src/services/file-storage.ts",
+      "web/src/services/image-storage.ts"
+    ]
+  }
+}

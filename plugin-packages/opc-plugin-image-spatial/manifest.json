@@ -1,0 +1,72 @@
+{
+  "apiVersion": "yingce.plugin/v1",
+  "id": "opc-plugin-image-spatial",
+  "name": "空间装修与家居建材",
+  "version": "1.0.0",
+  "description": "提供毛坯旧房改精装、空间昼夜光影切换、家具白底入室搭配、面料木色换款、地墙砖铺贴实景与建材微距特写的空间视觉全案技能。",
+  "author": "opc-Copilot",
+  "surfaces": ["fullscreen", "settings"],
+  "permissions": [
+    "generation.run",
+    "media.read",
+    "ai.text"
+  ],
+  "trusted": true,
+  "runtime": { "backend": "trusted-backend", "web": "declarative" },
+  "contributes": {
+    "workbenchCategories": [
+      {
+        "id": "spatial",
+        "name": "空间",
+        "icon": "home",
+        "order": 5
+      }
+    ],
+    "workbenchSkills": [
+      {
+        "id": "bare-to-renovated",
+        "categoryId": "spatial",
+        "name": "毛坯房改精装",
+        "subtitle": "毛坯与破旧空间焕新渲染",
+        "description": "保留原始建筑承重梁柱与门窗采光透视，一键渲染为北欧/奶油风/现代极简等硬装落地实景。",
+        "isRecommended": true
+      },
+      {
+        "id": "day-night-lighting",
+        "categoryId": "spatial",
+        "name": "昼夜光影切换",
+        "subtitle": "自然日光与氛围暖光转换",
+        "description": "将白天充足采光空间转换为夜间重点照明、氛围灯带与沉浸式夜景透视。"
+      },
+      {
+        "id": "furniture-in-situ",
+        "categoryId": "spatial",
+        "name": "家具白底入室",
+        "subtitle": "单品家具自动融入样板间",
+        "description": "将单品白底沙发、餐桌椅按准确比例与投影透视嵌入风格契合的客厅或餐厅环境。",
+        "isRecommended": true
+      },
+      {
+        "id": "finish-swap",
+        "categoryId": "spatial",
+        "name": "面料木色换款",
+        "subtitle": "换皮、换布、换木纹不改造型",
+        "description": "以原家具骨架为基准，定向替换包裹面料、皮革纹理或木饰面漆色。"
+      },
+      {
+        "id": "tile-flooring",
+        "categoryId": "spatial",
+        "name": "地墙砖全屋铺贴",
+        "subtitle": "单片建材大面积铺设实景效果",
+        "description": "上传单片瓷砖或木地板样块，自适应按密缝/工字拼铺设并渲染全屋光影倒影。"
+      },
+      {
+        "id": "material-macro-texture",
+        "categoryId": "spatial",
+        "name": "材质微距特写",
+        "subtitle": "岩板/大理石/微水泥质感大片",
+        "description": "工业级侧光擦过材质表面，微距呈现岩板结晶、木材导管与拉丝金属真实触感。"
+      }
+    ]
+  }
+}

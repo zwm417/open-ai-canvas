@@ -1,0 +1,34 @@
+{
+  "apiVersion": "yingce.plugin/v1",
+  "id": "video-reverse",
+  "name": "视频反推",
+  "version": "1.0.0",
+  "description": "基于浏览器本地硬件抽帧与多模态 VLM 视觉大模型，对参考视频进行工业级逐秒分镜拆解、镜头运镜分析与台词复刻。",
+  "author": "opc-Copilot",
+  "surfaces": ["node"],
+  "permissions": [
+    "canvas.read",
+    "canvas.write",
+    "media.read",
+    "ai.text"
+  ],
+  "trusted": true,
+  "runtime": { "backend": "trusted-backend", "web": "declarative" },
+  "contributes": {
+    "canvasNodes": [
+      {
+        "id": "video-reverse:analyzer",
+        "label": "视频反推",
+        "defaultTitle": "视频反推",
+        "defaultSize": { "width": 460, "height": 320 },
+        "schema": {
+          "type": "object",
+          "properties": {
+            "videoReverse": { "type": "object" }
+          }
+        },
+        "renderer": "declarative"
+      }
+    ]
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "apiVersion": "yingce.plugin/v1",
+  "id": "opc-plugin-image-portrait",
+  "name": "人像写真与数字模特",
+  "version": "1.0.0",
+  "description": "提供脸部三视图、人物四视图、模特换脸、人脸融合、人物真实质感与自然美颜修图的人像全场景创作技能。",
+  "author": "opc-Copilot",
+  "surfaces": ["fullscreen", "settings"],
+  "permissions": [
+    "generation.run",
+    "media.read",
+    "ai.text"
+  ],
+  "trusted": true,
+  "runtime": { "backend": "trusted-backend", "web": "declarative" },
+  "contributes": {
+    "workbenchCategories": [
+      {
+        "id": "portrait",
+        "name": "人物",
+        "icon": "user",
+        "order": 1
+      },
+      {
+        "id": "enhance",
+        "name": "增强",
+        "icon": "wand-2",
+        "order": 7
+      }
+    ],
+    "workbenchSkills": [
+      {
+        "id": "face-3views",
+        "categoryId": "portrait",
+        "name": "脸部三视图",
+        "subtitle": "生成正脸、侧脸、半侧脸参考",
+        "description": "基于单张人脸参考图，生成严谨对齐的正脸、90度正侧脸与45度半侧脸三合一参考图。",
+        "isRecommended": true
+      },
+      {
+        "id": "character-4views",
+        "categoryId": "portrait",
+        "name": "人物四视图",
+        "subtitle": "生成全身三视角与脸部特写",
+        "description": "提供正面全身、侧面全身、背面全身与面部高清特写，用于统一角色立绘与影视连续性。"
+      },
+      {
+        "id": "face-swap",
+        "categoryId": "portrait",
+        "name": "模特换脸",
+        "subtitle": "一键替换面部与发型",
+        "description": "高保真将目标面孔与发型置换入模特身体，骨骼姿态、皮肤色调与环境光影自适应贴合。",
+        "isRecommended": true
+      },
+      {
+        "id": "face-fusion",
+        "categoryId": "portrait",
+        "name": "人脸融合",
+        "subtitle": "融合两张人脸生成全新虚拟头像资产",
+        "description": "智能计算并融合两张面部的五官比例、年龄特征与骨骼结构，生成全新的高颜值数字面孔。"
+      },
+      {
+        "id": "character-realism",
+        "categoryId": "enhance",
+        "name": "人物真人感",
+        "subtitle": "AI虚拟人添加真实感",
+        "description": "消除 AI 人像的塑料感、假面光泽与睫毛僵硬，还原毛孔纹理、皮肤血色与真实眼神光。"
+      },
+      {
+        "id": "image-refinement",
+        "categoryId": "enhance",
+        "name": "图片精修",
+        "subtitle": "修复画质、光影和清晰度",
+        "description": "智能修补画面模糊噪点、瑕疵与平庸光影，重塑棚拍级通透质感与锐利细节。",
+        "isRecommended": true
+      }
+    ]
+  }
+}

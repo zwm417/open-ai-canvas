@@ -1,0 +1,50 @@
+{
+  "apiVersion": "yingce.plugin/v1",
+  "id": "opc-plugin-image-cinema",
+  "name": "影视短剧与分镜叙事",
+  "version": "1.0.0",
+  "description": "提供角色一致性入景、戏剧冲突故事叙事帧、电影级2.39:1画幅构图与视听叙事关键帧技能。",
+  "author": "opc-Copilot",
+  "surfaces": ["fullscreen", "settings"],
+  "permissions": [
+    "generation.run",
+    "media.read",
+    "ai.text"
+  ],
+  "trusted": true,
+  "runtime": { "backend": "trusted-backend", "web": "declarative" },
+  "contributes": {
+    "workbenchCategories": [
+      {
+        "id": "cinema",
+        "name": "影视",
+        "icon": "clapperboard",
+        "order": 4
+      }
+    ],
+    "workbenchSkills": [
+      {
+        "id": "character-staging",
+        "categoryId": "cinema",
+        "name": "人物入景",
+        "subtitle": "替换模特图背景",
+        "description": "精确抠取人物边缘并保留发丝与衣服边界，自然融入外景街拍、法式露台或奢华室内背景。",
+        "isRecommended": true
+      },
+      {
+        "id": "cinematic-storyboard",
+        "categoryId": "cinema",
+        "name": "故事叙事关键帧",
+        "subtitle": "高戏剧张力电影感构图",
+        "description": "针对剧本情节冲突生成富有情绪张力、眼神线与景深运镜的影视级分镜底稿。"
+      },
+      {
+        "id": "cinemascope-frame",
+        "categoryId": "cinema",
+        "name": "宽银幕 2.39:1 构图",
+        "subtitle": "变形宽银幕胶片质感与光晕",
+        "description": "生成具备 2.39:1 宽荧幕视差拉伸、水平条形光晕（Anamorphic Flare）的电影分镜画面。"
+      }
+    ]
+  }
+}

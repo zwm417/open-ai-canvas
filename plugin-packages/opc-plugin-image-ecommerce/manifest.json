@@ -1,0 +1,108 @@
+{
+  "apiVersion": "yingce.plugin/v1",
+  "id": "opc-plugin-image-ecommerce",
+  "name": "电商全案与商品摄影",
+  "version": "1.0.0",
+  "description": "提供商品白底图、服装模特上身、商品实景使用、服装改款、3D爆炸分解图以及电商8联商详套图的商业视觉全流程技能。",
+  "author": "opc-Copilot",
+  "surfaces": ["fullscreen", "settings"],
+  "permissions": [
+    "generation.run",
+    "media.read",
+    "ai.text"
+  ],
+  "trusted": true,
+  "runtime": { "backend": "trusted-backend", "web": "declarative" },
+  "contributes": {
+    "workbenchCategories": [
+      {
+        "id": "ecommerce",
+        "name": "商品",
+        "icon": "shopping-bag",
+        "order": 2
+      }
+    ],
+    "workbenchSkills": [
+      {
+        "id": "virtual-try-on",
+        "categoryId": "ecommerce",
+        "name": "服装上身",
+        "subtitle": "替换模特身上的服装衣物",
+        "description": "将选中的服装自然融入真人模特，保留衣物剪裁、面料纹理与模特真实肤色与肢体姿态。",
+        "isRecommended": true
+      },
+      {
+        "id": "product-lifestyle",
+        "categoryId": "ecommerce",
+        "name": "商品使用",
+        "subtitle": "生成真人试用与使用场景",
+        "description": "将单品置于真实生活消费场景，生成符合品牌调性的手持、佩戴或室内陈列场景。",
+        "isRecommended": true
+      },
+      {
+        "id": "product-hero",
+        "categoryId": "ecommerce",
+        "name": "商品白底图",
+        "subtitle": "生成高级白底商品图与多角度资产",
+        "description": "去除杂乱背景，智能生成棚拍级高光、软阴影与全方位产品静物资产。",
+        "isRecommended": true
+      },
+      {
+        "id": "clothing-redesign",
+        "categoryId": "ecommerce",
+        "name": "服装改款",
+        "subtitle": "替换服装的面料、印花等",
+        "description": "基于服装原件版型，定向替换材质质感（丝绸、羊绒、粗花呢）与表面印花图案。"
+      },
+      {
+        "id": "exploded-view",
+        "categoryId": "ecommerce",
+        "name": "3D拆解爆炸图",
+        "subtitle": "生成产品内部精密结构与组件拆解",
+        "description": "专业展示工业产品与数码配件的精细拆解透视与结构层次。"
+      },
+      {
+        "id": "detail-8pack",
+        "categoryId": "ecommerce",
+        "name": "商详套图全案",
+        "subtitle": "首图/卖点/场景/成分等8大细分",
+        "description": "一站式规划生成电商详情页成套视觉物料，包含主图、卖点特写、成分与包装图。"
+      },
+      {
+        "id": "ghost-mannequin-3d",
+        "categoryId": "ecommerce",
+        "name": "3D 幽灵模特图",
+        "subtitle": "服装立体镂空隐形模特效果",
+        "description": "服装立体镂空隐形模特效果，保留服装自然饱满的3D穿着立体轮廓与悬浮感。"
+      },
+      {
+        "id": "before-after",
+        "categoryId": "ecommerce",
+        "name": "功效前后对比图",
+        "subtitle": "同画幅左右双拼效果直观对比",
+        "description": "生成电商高转化率的左右（或上下）双拼功效前后对比图，直观展现产品使用蜕变。"
+      },
+      {
+        "id": "ingredient-infographic",
+        "categoryId": "ecommerce",
+        "name": "核心成分科技图",
+        "subtitle": "产品核心天然提取物与微观科技解析",
+        "description": "微距大景深电影感，产品周围环绕核心天然提取物与微观活性分子科技视觉。"
+      },
+      {
+        "id": "flat-lay-aesthetic",
+        "categoryId": "ecommerce",
+        "name": "平铺美学摆拍",
+        "subtitle": "俯视网格与惬意生活场景平铺图",
+        "description": "90°垂直正俯视Knolling平铺摄影，时尚杂志级穿搭好物美学陈列。"
+      },
+      {
+        "id": "garment-extract",
+        "categoryId": "ecommerce",
+        "name": "模特图服装提取",
+        "subtitle": "从真人街拍/模特照提取纯净单品白底图",
+        "description": "一键分离模特穿搭，还原纯净高保真电商单品挂拍与平铺白底图。"
+      }
+    ]
+  }
+}

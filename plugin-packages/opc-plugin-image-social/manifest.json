@@ -1,0 +1,50 @@
+{
+  "apiVersion": "yingce.plugin/v1",
+  "id": "opc-plugin-image-social",
+  "name": "自媒体营销与爆款社媒",
+  "version": "1.0.0",
+  "description": "提供小红书高赞爆款封面、真实买家秀随拍、大促留白营销海报等新媒体视觉技能。",
+  "author": "opc-Copilot",
+  "surfaces": ["fullscreen", "settings"],
+  "permissions": [
+    "generation.run",
+    "media.read",
+    "ai.text"
+  ],
+  "trusted": true,
+  "runtime": { "backend": "trusted-backend", "web": "declarative" },
+  "contributes": {
+    "workbenchCategories": [
+      {
+        "id": "social",
+        "name": "社媒",
+        "icon": "share-2",
+        "order": 6
+      }
+    ],
+    "workbenchSkills": [
+      {
+        "id": "redbook-seed",
+        "categoryId": "social",
+        "name": "小红书种草图",
+        "subtitle": "高饱和高明度抓眼球封面",
+        "description": "具备强视觉吸引力的生活方式封面，自然预留上部或侧边标题大字摆放区域。",
+        "isRecommended": true
+      },
+      {
+        "id": "buyer-show-ugc",
+        "categoryId": "social",
+        "name": "真实买家秀随拍",
+        "subtitle": "去影棚化自然光随手拍",
+        "description": "模拟真实手机自然抓拍视角、生活化桌面与微弱日常曝光，极具真实可信度。"
+      },
+      {
+        "id": "promo-poster",
+        "categoryId": "social",
+        "name": "营销大促海报",
+        "subtitle": "商业级构图预留文案排版位",
+        "description": "具备强视觉重心、底部与顶部留白 40% 以上的电商节庆宣传海报。"
+      }
+    ]
+  }
+}

@@ -1,0 +1,491 @@
+{
+  "apiVersion": "yingce.plugin/v2",
+  "id": "dmc-h3",
+  "name": "DMC MiniMax H3",
+  "version": "1.0.1",
+  "author": "DMC / 智影",
+  "description": "DMC MiniMax H3 异步视频生成协议插件（768P，支持 1-15 秒，首尾帧/多模态参考）。",
+  "permissions": [
+    "generation.run",
+    "media.read"
+  ],
+  "configuration": {
+    "fields": [
+      {
+        "name": "apiKey",
+        "type": "secret",
+        "label": "API Key",
+        "required": true
+      }
+    ]
+  },
+  "contributes": {
+    "providers": [
+      {
+        "id": "dmc-h3",
+        "label": "DMC MiniMax H3",
+        "capabilities": [
+          "video"
+        ],
+        "scopes": [
+          "admin.system-channel",
+          "user.custom-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "https://dmc.cc",
+        "auth": {
+          "type": "bearer",
+          "field": "apiKey"
+        },
+        "requiresPublicMediaUrls": true,
+        "parameters": [
+          {
+            "name": "model",
+            "type": "string",
+            "required": true,
+            "mapping": "model",
+            "description": "MiniMax H3 视频模型 ID（MiniMax-H3）。"
+          },
+          {
+            "name": "prompt",
+            "type": "string",
+            "required": true,
+            "mapping": "content[type=text].text",
+            "description": "视频提示词（最长 7000 字符）。"
+          },
+          {
+            "name": "images",
+            "type": "media[]",
+            "required": false,
+            "mapping": "content[type=image_url]",
+            "description": "显式 role 图片输入（首帧 first_frame / 尾帧 last_frame / 参考图 reference_image）。"
+          },
+          {
+            "name": "videos",
+            "type": "media[]",
+            "required": false,
+            "mapping": "content[type=video_url]",
+            "description": "参考视频（最多 3 段）。"
+          },
+          {
+            "name": "audios",
+            "type": "media[]",
+            "required": false,
+            "mapping": "content[type=audio_url]",
+            "description": "参考音频（最多 3 段）。"
+          },
+          {
+            "name": "duration",
+            "type": "integer",
+            "required": false,
+            "values": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10",
+              "11",
+              "12",
+              "13",
+              "14",
+              "15"
+            ],
+            "mapping": "duration",
+            "description": "输出时长秒数（1-15）。"
+          },
+          {
+            "name": "aspectRatio",
+            "type": "string",
+            "required": false,
+            "mapping": "ratio",
+            "description": "画幅比例（16:9、9:16、1:1、4:3、3:4、21:9、adaptive）。"
+          },
+          {
+            "name": "resolution",
+            "type": "string",
+            "required": false,
+            "mapping": "resolution",
+            "description": "分辨率档位（固定 768P）。"
+          }
+        ],
+        "validations": [
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$ref": "request.images"
+                  }
+                },
+                9
+              ]
+            },
+            "message": "DMC MiniMax H3 最多支持 9 张图片"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$ref": "request.videos"
+                  }
+                },
+                3
+              ]
+            },
+            "message": "DMC MiniMax H3 最多支持 3 个参考视频"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$ref": "request.audios"
+                  }
+                },
+                3
+              ]
+            },
+            "message": "DMC MiniMax H3 最多支持 3 个参考音频"
+          },
+          {
+            "assert": {
+              "$and": [
+                {
+                  "$gte": [
+                    {
+                      "$ref": "request.duration"
+                    },
+                    1
+                  ]
+                },
+                {
+                  "$lte": [
+                    {
+                      "$ref": "request.duration"
+                    },
+                    15
+                  ]
+                }
+              ]
+            },
+            "message": "DMC MiniMax H3 duration 必须在 1-15 秒之间"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$filter": {
+                      "from": {
+                        "$ref": "request.images"
+                      },
+                      "as": "image",
+                      "where": {
+                        "$eq": [
+                          {
+                            "$ref": "image.role"
+                          },
+                          "first_frame"
+                        ]
+                      }
+                    }
+                  }
+                },
+                1
+              ]
+            },
+            "message": "DMC MiniMax H3 最多只能有一个首帧"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$filter": {
+                      "from": {
+                        "$ref": "request.images"
+                      },
+                      "as": "image",
+                      "where": {
+                        "$eq": [
+                          {
+                            "$ref": "image.role"
+                          },
+                          "last_frame"
+                        ]
+                      }
+                    }
+                  }
+                },
+                1
+              ]
+            },
+            "message": "DMC MiniMax H3 最多只能有一个尾帧"
+          }
+        ],
+        "create": {
+          "method": "POST",
+          "path": "/v2/video_generation",
+          "contentType": "application/json",
+          "body": {
+            "model": {
+              "$coalesce": [
+                {
+                  "$ref": "request.model"
+                },
+                "MiniMax-H3"
+              ]
+            },
+            "content": {
+              "$concatArrays": [
+                [
+                  {
+                    "type": "text",
+                    "text": {
+                      "$ref": "request.prompt"
+                    }
+                  }
+                ],
+                {
+                  "$map": {
+                    "from": {
+                      "$sortByOrder": {
+                        "$ref": "request.images"
+                      }
+                    },
+                    "as": "media",
+                    "in": {
+                      "type": "image_url",
+                      "image_url": {
+                        "url": {
+                          "$coalesce": [
+                            {
+                              "$ref": "media.url"
+                            },
+                            {
+                              "$ref": "media.dataUrl"
+                            },
+                            {
+                              "$ref": "media.value"
+                            }
+                          ]
+                        }
+                      },
+                      "role": {
+                        "$coalesce": [
+                          {
+                            "$ref": "media.role"
+                          },
+                          "reference_image"
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  "$map": {
+                    "from": {
+                      "$sortByOrder": {
+                        "$ref": "request.videos"
+                      }
+                    },
+                    "as": "media",
+                    "in": {
+                      "type": "video_url",
+                      "video_url": {
+                        "url": {
+                          "$coalesce": [
+                            {
+                              "$ref": "media.url"
+                            },
+                            {
+                              "$ref": "media.dataUrl"
+                            },
+                            {
+                              "$ref": "media.value"
+                            }
+                          ]
+                        }
+                      },
+                      "role": {
+                        "$coalesce": [
+                          {
+                            "$ref": "media.role"
+                          },
+                          "reference_video"
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  "$map": {
+                    "from": {
+                      "$sortByOrder": {
+                        "$ref": "request.audios"
+                      }
+                    },
+                    "as": "media",
+                    "in": {
+                      "type": "audio_url",
+                      "audio_url": {
+                        "url": {
+                          "$coalesce": [
+                            {
+                              "$ref": "media.url"
+                            },
+                            {
+                              "$ref": "media.dataUrl"
+                            },
+                            {
+                              "$ref": "media.value"
+                            }
+                          ]
+                        }
+                      },
+                      "role": {
+                        "$coalesce": [
+                          {
+                            "$ref": "media.role"
+                          },
+                          "reference_audio"
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "resolution": "768P",
+            "duration": {
+              "$coalesce": [
+                {
+                  "$ref": "request.duration"
+                },
+                5
+              ]
+            },
+            "ratio": {
+              "$if": {
+                "condition": {
+                  "$gt": [
+                    {
+                      "$len": {
+                        "$filter": {
+                          "from": {
+                            "$ref": "request.images"
+                          },
+                          "as": "image",
+                          "where": {
+                            "$in": [
+                              {
+                                "$ref": "image.role"
+                              },
+                              [
+                                "first_frame",
+                                "last_frame"
+                              ]
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    0
+                  ]
+                },
+                "then": "adaptive",
+                "else": {
+                  "$coalesce": [
+                    {
+                      "$ref": "request.aspectRatio"
+                    },
+                    "16:9"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "poll": {
+          "method": "GET",
+          "path": "/v2/query/video_generation/{{taskId}}"
+        },
+        "response": {
+          "taskId": {
+            "$coalesce": [
+              {
+                "$ref": "response.task_id"
+              },
+              {
+                "$ref": "response.task.id"
+              },
+              {
+                "$ref": "response.id"
+              },
+              {
+                "$ref": "taskId"
+              }
+            ]
+          },
+          "status": {
+            "$coalesce": [
+              {
+                "$ref": "response.task.status"
+              },
+              {
+                "$ref": "response.status"
+              },
+              "pending"
+            ]
+          },
+          "message": {
+            "$coalesce": [
+              {
+                "$ref": "response.task.error.message"
+              },
+              {
+                "$ref": "response.error.message"
+              },
+              {
+                "$ref": "response.message"
+              }
+            ]
+          },
+          "videos": {
+            "$coalesce": [
+              {
+                "$ref": "response.task.content.url"
+              },
+              {
+                "$ref": "response.content.url"
+              }
+            ]
+          },
+          "usage": {
+            "$ref": "response.task.usage"
+          },
+          "errorPaths": [
+            "task.error.type",
+            "task.error.code",
+            "error.type",
+            "error.code"
+          ],
+          "resultEphemeral": true,
+          "messagePaths": [
+            "task.error.message",
+            "error.message"
+          ]
+        }
+      }
+    ]
+  },
+  "documentation": "# DMC MiniMax H3\n\nDMC MiniMax H3 异步视频生成协议插件（支持 768P、1-15秒、首尾帧/多模态参考）。\n\n## Provider\n\n| Provider | 能力 | 端点 |\n|---|---|---|\n| dmc-h3 | video | POST /v2/video_generation（创建任务）<br>GET /v2/query/video_generation/{taskId}（查询任务） |\n\n## 配置说明\n\n- **Base URL**：`https://dmc.cc`\n- **鉴权方式**：`Authorization: Bearer <DMC_API_KEY>`\n- **模型 ID**：`MiniMax-H3`\n\n## 契约特性与技术规范\n\n- **输出规格**：固定输出 `768P`，支持整数 `1–15` 秒名义时长。\n- **画幅比例**：支持 `16:9`、`9:16`、`1:1`、`4:3`、`3:4`、`21:9`，首尾帧模式可使用 `adaptive`。\n- **输入支持**：\n  - 恰好 1 个文本项（最长 7000 Unicode 字符）；\n  - 0–12 个媒体项（图片 ≤ 9 张、参考视频 ≤ 3 段、参考音频 ≤ 3 段）；\n  - 角色（role）：首帧 `first_frame`、尾帧 `last_frame`、参考图 `reference_image`、参考视频 `reference_video`、参考音频 `reference_audio`。\n- **严格校验**：上游实行严格字段校验，不发送任何未公开的扩展字段以防触发 HTTP 400。\n- **计费模式**：按秒阶梯计费（`per_second`），基准单价 ¥0.06/秒（60,000 微积分/秒）。\n\n---\n\n# DMC MiniMax H3 接口说明\n\n## 鉴权\n\n`Authorization: Bearer <DMC_API_KEY>`\n\n## 创建视频生成任务\n\nPOST `https://dmc.cc/v2/video_generation`\n\n请求体：\n\n```json\n{\n  \"model\": \"MiniMax-H3\",\n  \"content\": [\n    { \"type\": \"text\", \"text\": \"视频描述\" },\n    { \"type\": \"image_url\", \"image_url\": { \"url\": \"https://...\" }, \"role\": \"first_frame\" },\n    { \"type\": \"video_url\", \"video_url\": { \"url\": \"https://...\" }, \"role\": \"reference_video\" },\n    { \"type\": \"audio_url\", \"audio_url\": { \"url\": \"https://...\" }, \"role\": \"reference_audio\" }\n  ],\n  \"resolution\": \"768P\",\n  \"duration\": 5,\n  \"ratio\": \"16:9\"\n}\n```\n\n- `content` 必须且只能包含一个非空 text 项（最长 7000 字符）。\n- 媒体角色包含：`first_frame`、`last_frame`、`reference_image`、`reference_video`、`reference_audio`。\n- 首尾帧（`first_frame`/`last_frame`）与多模态参考（`reference_*`）互斥。\n- 全部媒体文件合计最多 12 个（图片 ≤ 9 张、视频 ≤ 3 段、音频 ≤ 3 段）。\n\n创建响应：\n\n```json\n{ \"task_id\": \"424010985738629\" }\n```\n\n## 查询任务\n\nGET `https://dmc.cc/v2/query/video_generation/{task_id}`\n\n查询响应：\n\n```json\n{\n  \"task\": {\n    \"id\": \"424010985738629\",\n    \"status\": \"succeeded\",\n    \"content\": { \"url\": \"https://media.example.com/output.mp4\" },\n    \"resolution\": \"768P\",\n    \"duration\": 5,\n    \"usage\": { \"total_seconds\": 5, \"output_seconds\": 5 }\n  }\n}\n```\n\nstatus 取值：`queued` / `running` / `succeeded` / `failed` / `cancelled`。\n\n## 错误与响应处理\n\n创建与查询返回统一错误 Envelope，含 `error.type` / `error.message` / `request_id`；失败任务在 `task.error` 中携带具体错误码及错误原因。\n\n<!-- YINGCE_MANIFEST_CONTRACT_START -->\n```json\n{\n  \"apiVersion\": \"yingce.plugin/v2\",\n  \"id\": \"dmc-h3\",\n  \"name\": \"DMC MiniMax H3\",\n  \"version\": \"1.0.1\",\n  \"author\": \"DMC / 智影\",\n  \"description\": \"DMC MiniMax H3 异步视频生成协议插件（768P，支持 1-15 秒，首尾帧/多模态参考）。\",\n  \"permissions\": [\n    \"generation.run\",\n    \"media.read\"\n  ],\n  \"configuration\": {\n    \"fields\": [\n      {\n        \"name\": \"apiKey\",\n        \"type\": \"secret\",\n        \"label\": \"API Key\",\n        \"required\": true\n      }\n    ]\n  },\n  \"contributes\": {\n    \"providers\": [\n      {\n        \"id\": \"dmc-h3\",\n        \"label\": \"DMC MiniMax H3\",\n        \"capabilities\": [\n          \"video\"\n        ],\n        \"scopes\": [\n          \"admin.system-channel\",\n          \"user.custom-channel\",\n          \"canvas\",\n          \"creation\",\n          \"agent\"\n        ],\n        \"baseUrl\": \"https://dmc.cc\",\n        \"auth\": {\n          \"type\": \"bearer\",\n          \"field\": \"apiKey\"\n        },\n        \"requiresPublicMediaUrls\": true,\n        \"parameters\": [\n          {\n            \"name\": \"model\",\n            \"type\": \"string\",\n            \"required\": true,\n            \"mapping\": \"model\",\n            \"description\": \"MiniMax H3 视频模型 ID（MiniMax-H3）。\"\n          },\n          {\n            \"name\": \"prompt\",\n            \"type\": \"string\",\n            \"required\": true,\n            \"mapping\": \"content[type=text].text\",\n            \"description\": \"视频提示词（最长 7000 字符）。\"\n          },\n          {\n            \"name\": \"images\",\n            \"type\": \"media[]\",\n            \"required\": false,\n            \"mapping\": \"content[type=image_url]\",\n            \"description\": \"显式 role 图片输入（首帧 first_frame / 尾帧 last_frame / 参考图 reference_image）。\"\n          },\n          {\n            \"name\": \"videos\",\n            \"type\": \"media[]\",\n            \"required\": false,\n            \"mapping\": \"content[type=video_url]\",\n            \"description\": \"参考视频（最多 3 段）。\"\n          },\n          {\n            \"name\": \"audios\",\n            \"type\": \"media[]\",\n            \"required\": false,\n            \"mapping\": \"content[type=audio_url]\",\n            \"description\": \"参考音频（最多 3 段）。\"\n          },\n          {\n            \"name\": \"duration\",\n            \"type\": \"integer\",\n            \"required\": false,\n            \"values\": [\n              \"1\",\n              \"2\",\n              \"3\",\n              \"4\",\n              \"5\",\n              \"6\",\n              \"7\",\n              \"8\",\n              \"9\",\n              \"10\",\n              \"11\",\n              \"12\",\n              \"13\",\n              \"14\",\n              \"15\"\n            ],\n            \"mapping\": \"duration\",\n            \"description\": \"输出时长秒数（1-15）。\"\n          },\n          {\n            \"name\": \"aspectRatio\",\n            \"type\": \"string\",\n            \"required\": false,\n            \"mapping\": \"ratio\",\n            \"description\": \"画幅比例（16:9、9:16、1:1、4:3、3:4、21:9、adaptive）。\"\n          },\n          {\n            \"name\": \"resolution\",\n            \"type\": \"string\",\n            \"required\": false,\n            \"mapping\": \"resolution\",\n            \"description\": \"分辨率档位（固定 768P）。\"\n          }\n        ],\n        \"validations\": [\n          {\n            \"assert\": {\n              \"$lte\": [\n                {\n                  \"$len\": {\n                    \"$ref\": \"request.images\"\n                  }\n                },\n                9\n              ]\n            },\n            \"message\": \"DMC MiniMax H3 最多支持 9 张图片\"\n          },\n          {\n            \"assert\": {\n              \"$lte\": [\n                {\n                  \"$len\": {\n                    \"$ref\": \"request.videos\"\n                  }\n                },\n                3\n              ]\n            },\n            \"message\": \"DMC MiniMax H3 最多支持 3 个参考视频\"\n          },\n          {\n            \"assert\": {\n              \"$lte\": [\n                {\n                  \"$len\": {\n                    \"$ref\": \"request.audios\"\n                  }\n                },\n                3\n              ]\n            },\n            \"message\": \"DMC MiniMax H3 最多支持 3 个参考音频\"\n          },\n          {\n            \"assert\": {\n              \"$and\": [\n                {\n                  \"$gte\": [\n                    {\n                      \"$ref\": \"request.duration\"\n                    },\n                    1\n                  ]\n                },\n                {\n                  \"$lte\": [\n                    {\n                      \"$ref\": \"request.duration\"\n                    },\n                    15\n                  ]\n                }\n              ]\n            },\n            \"message\": \"DMC MiniMax H3 duration 必须在 1-15 秒之间\"\n          },\n          {\n            \"assert\": {\n              \"$lte\": [\n                {\n                  \"$len\": {\n                    \"$filter\": {\n                      \"from\": {\n                        \"$ref\": \"request.images\"\n                      },\n                      \"as\": \"image\",\n                      \"where\": {\n                        \"$eq\": [\n                          {\n                            \"$ref\": \"image.role\"\n                          },\n                          \"first_frame\"\n                        ]\n                      }\n                    }\n                  }\n                },\n                1\n              ]\n            },\n            \"message\": \"DMC MiniMax H3 最多只能有一个首帧\"\n          },\n          {\n            \"assert\": {\n              \"$lte\": [\n                {\n                  \"$len\": {\n                    \"$filter\": {\n                      \"from\": {\n                        \"$ref\": \"request.images\"\n                      },\n                      \"as\": \"image\",\n                      \"where\": {\n                        \"$eq\": [\n                          {\n                            \"$ref\": \"image.role\"\n                          },\n                          \"last_frame\"\n                        ]\n                      }\n                    }\n                  }\n                },\n                1\n              ]\n            },\n            \"message\": \"DMC MiniMax H3 最多只能有一个尾帧\"\n          }\n        ],\n        \"create\": {\n          \"method\": \"POST\",\n          \"path\": \"/v2/video_generation\",\n          \"contentType\": \"application/json\",\n          \"body\": {\n            \"model\": {\n              \"$coalesce\": [\n                {\n                  \"$ref\": \"request.model\"\n                },\n                \"MiniMax-H3\"\n              ]\n            },\n            \"content\": {\n              \"$concatArrays\": [\n                [\n                  {\n                    \"type\": \"text\",\n                    \"text\": {\n                      \"$ref\": \"request.prompt\"\n                    }\n                  }\n                ],\n                {\n                  \"$map\": {\n                    \"from\": {\n                      \"$sortByOrder\": {\n                        \"$ref\": \"request.images\"\n                      }\n                    },\n                    \"as\": \"media\",\n                    \"in\": {\n                      \"type\": \"image_url\",\n                      \"image_url\": {\n                        \"url\": {\n                          \"$coalesce\": [\n                            {\n                              \"$ref\": \"media.url\"\n                            },\n                            {\n                              \"$ref\": \"media.dataUrl\"\n                            },\n                            {\n                              \"$ref\": \"media.value\"\n                            }\n                          ]\n                        }\n                      },\n                      \"role\": {\n                        \"$coalesce\": [\n                          {\n                            \"$ref\": \"media.role\"\n                          },\n                          \"reference_image\"\n                        ]\n                      }\n                    }\n                  }\n                },\n                {\n                  \"$map\": {\n                    \"from\": {\n                      \"$sortByOrder\": {\n                        \"$ref\": \"request.videos\"\n                      }\n                    },\n                    \"as\": \"media\",\n                    \"in\": {\n                      \"type\": \"video_url\",\n                      \"video_url\": {\n                        \"url\": {\n                          \"$coalesce\": [\n                            {\n                              \"$ref\": \"media.url\"\n                            },\n                            {\n                              \"$ref\": \"media.dataUrl\"\n                            },\n                            {\n                              \"$ref\": \"media.value\"\n                            }\n                          ]\n                        }\n                      },\n                      \"role\": {\n                        \"$coalesce\": [\n                          {\n                            \"$ref\": \"media.role\"\n                          },\n                          \"reference_video\"\n                        ]\n                      }\n                    }\n                  }\n                },\n                {\n                  \"$map\": {\n                    \"from\": {\n                      \"$sortByOrder\": {\n                        \"$ref\": \"request.audios\"\n                      }\n                    },\n                    \"as\": \"media\",\n                    \"in\": {\n                      \"type\": \"audio_url\",\n                      \"audio_url\": {\n                        \"url\": {\n                          \"$coalesce\": [\n                            {\n                              \"$ref\": \"media.url\"\n                            },\n                            {\n                              \"$ref\": \"media.dataUrl\"\n                            },\n                            {\n                              \"$ref\": \"media.value\"\n                            }\n                          ]\n                        }\n                      },\n                      \"role\": {\n                        \"$coalesce\": [\n                          {\n                            \"$ref\": \"media.role\"\n                          },\n                          \"reference_audio\"\n                        ]\n                      }\n                    }\n                  }\n                }\n              ]\n            },\n            \"resolution\": \"768P\",\n            \"duration\": {\n              \"$coalesce\": [\n                {\n                  \"$ref\": \"request.duration\"\n                },\n                5\n              ]\n            },\n            \"ratio\": {\n              \"$if\": {\n                \"condition\": {\n                  \"$gt\": [\n                    {\n                      \"$len\": {\n                        \"$filter\": {\n                          \"from\": {\n                            \"$ref\": \"request.images\"\n                          },\n                          \"as\": \"image\",\n                          \"where\": {\n                            \"$in\": [\n                              {\n                                \"$ref\": \"image.role\"\n                              },\n                              [\n                                \"first_frame\",\n                                \"last_frame\"\n                              ]\n                            ]\n                          }\n                        }\n                      }\n                    },\n                    0\n                  ]\n                },\n                \"then\": \"adaptive\",\n                \"else\": {\n                  \"$coalesce\": [\n                    {\n                      \"$ref\": \"request.aspectRatio\"\n                    },\n                    \"16:9\"\n                  ]\n                }\n              }\n            }\n          }\n        },\n        \"poll\": {\n          \"method\": \"GET\",\n          \"path\": \"/v2/query/video_generation/{{taskId}}\"\n        },\n        \"response\": {\n          \"taskId\": {\n            \"$coalesce\": [\n              {\n                \"$ref\": \"response.task_id\"\n              },\n              {\n                \"$ref\": \"response.task.id\"\n              },\n              {\n                \"$ref\": \"response.id\"\n              },\n              {\n                \"$ref\": \"taskId\"\n              }\n            ]\n          },\n          \"status\": {\n            \"$coalesce\": [\n              {\n                \"$ref\": \"response.task.status\"\n              },\n              {\n                \"$ref\": \"response.status\"\n              },\n              \"pending\"\n            ]\n          },\n          \"message\": {\n            \"$coalesce\": [\n              {\n                \"$ref\": \"response.task.error.message\"\n              },\n              {\n                \"$ref\": \"response.error.message\"\n              },\n              {\n                \"$ref\": \"response.message\"\n              }\n            ]\n          },\n          \"videos\": {\n            \"$coalesce\": [\n              {\n                \"$ref\": \"response.task.content.url\"\n              },\n              {\n                \"$ref\": \"response.content.url\"\n              }\n            ]\n          },\n          \"usage\": {\n            \"$ref\": \"response.task.usage\"\n          },\n          \"errorPaths\": [\n            \"task.error.type\",\n            \"task.error.code\",\n            \"error.type\",\n            \"error.code\"\n          ],\n          \"resultEphemeral\": true,\n          \"messagePaths\": [\n            \"task.error.message\",\n            \"error.message\"\n          ]\n        }\n      }\n    ]\n  },\n  \"documentation\": \"<当前插件的完整 documentation，由 README.md 与 docs/interface.md 拼接而成；为避免 JSON 递归，此处不重复展开正文。>\"\n}\n```\n<!-- YINGCE_MANIFEST_CONTRACT_END -->"
+}
