@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "description": "OPC Media-Lab 核心隐式围栏基准清单（防上游更新覆盖与二开丢失）",
-  "updatedAt": "2026-10-02T12:16:53+08:00",
-  "totalFences": 283,
+  "updatedAt": "2026-10-02T12:45:44+08:00",
+  "totalFences": 284,
   "fences": {
     "adapter:auto-derive-tier-price-configured": [
       "backend/internal/app/channel_models_pricing.go"
@@ -17,6 +17,9 @@
     "adapter:brand-identity": [
       "backend/internal/app/appearance.go",
       "backend/internal/app/protocol_registry.go"
+    ],
+    "adapter:canvas-extensions-migration": [
+      "backend/internal/database/migrations.go"
     ],
     "adapter:canvas-extensions-schema": [
       "backend/internal/database/schema.go"

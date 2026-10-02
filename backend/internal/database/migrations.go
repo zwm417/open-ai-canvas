@@ -14,9 +14,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// @opc-adapter: creative-prompt-templates [start]
-const CurrentSchemaVersion int64 = 44
-// @opc-adapter: creative-prompt-templates [end]
+// @opc-adapter: canvas-extensions-migration [start]
+const CurrentSchemaVersion int64 = 45
+// @opc-adapter: canvas-extensions-migration [end]
 
 const baselineSchemaChecksum = "sha256:open-ai-canvas-schema-v1-20260830"
 const schemaMigrationAppliedAtIndexChecksum = "sha256:schema-migrations-applied-at-index-v2-20260830"
@@ -158,6 +158,11 @@ var schemaMigrations = []migration{
 		return creativeprompts.SeedDefaultTemplates(tx)
 	}},
 	// @opc-adapter: creative-prompt-templates [end]
+	// @opc-adapter: canvas-extensions-migration [start]
+	{version: 45, name: "canvas_extensions_schema", checksum: "sha256:canvas-extensions-schema-v45-20261002", apply: func(tx *gorm.DB) error {
+		return tx.AutoMigrate(&model.Canvas{}, &model.CanvasNode{}, &model.Approval{})
+	}},
+	// @opc-adapter: canvas-extensions-migration [end]
 }
 
 func migratePrefixedIDSequenceReconcile(tx *gorm.DB) error {
