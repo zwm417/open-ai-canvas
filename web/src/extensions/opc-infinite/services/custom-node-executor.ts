@@ -49,6 +49,7 @@ import {
     fetchCreativeReversePrompt,
     formatShotManifestToReadableScript,
     parseDirectorJson,
+    parseMarkdownShots,
 } from "../prompts/hypit-director-prompts";
 import {
     buildRefScriptMentionReferences,
@@ -350,6 +351,8 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
             const parsed = parseDirectorJson<{ title?: string; coreElements?: any; originalMasterSlots?: any; shots?: any[] }>(rawPrompt);
             if (parsed?.shots && Array.isArray(parsed.shots)) {
                 parsedShots = parsed.shots;
+            } else {
+                parsedShots = parseMarkdownShots(rawPrompt);
             }
             const rawSlots = parsed?.coreElements || parsed?.originalMasterSlots;
             if (rawSlots && typeof rawSlots === "object") {
@@ -370,19 +373,23 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
         const finishStage = isDeconstruct ? "创意反推分镜拆解完成" : "反推完成";
 
         const trackKey = isDeconstruct ? "deconstruct" : "classic";
-        const contactSheets = prepared?.pages.map((p) => {
-            const storageKey = `reverse_sheet_${nodeId}_${trackKey}_${p.pageIndex}`;
-            void setMediaBlob(storageKey, p.blob);
-            return {
-                pageIndex: p.pageIndex,
-                url: p.url,
-                storageKey,
-                localFilePath: p.localFilePath,
-                frameStart: p.frameStart,
-                frameEnd: p.frameEnd,
-                frameCount: p.frames.length,
-            };
-        });
+        const contactSheets = prepared?.pages
+            ? await Promise.all(
+                  prepared.pages.map(async (p) => {
+                      const storageKey = `reverse_sheet_${nodeId}_${trackKey}_${p.pageIndex}`;
+                      await setMediaBlob(storageKey, p.blob);
+                      return {
+                          pageIndex: p.pageIndex,
+                          url: p.url,
+                          storageKey,
+                          localFilePath: p.localFilePath,
+                          frameStart: p.frameStart,
+                          frameEnd: p.frameEnd,
+                          frameCount: p.frames.length,
+                      };
+                  }),
+              )
+            : undefined;
 
         const nextClassicTrack = isDeconstruct ? meta.classic : {
             prompt: userFacingPrompt,

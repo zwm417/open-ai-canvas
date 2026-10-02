@@ -14,10 +14,20 @@ export function extractResourceId(locator?: string): string {
 }
 
 /**
- * 计算 Blob / File 的 SHA-256 哈希字符串（十六进制）。
- * 针对 <= 20MB 文件采用原生全量 SHA-256；
- * 针对 > 20MB 的大文件采用工业级复合抽样特征哈希（头 2MB + 中 2MB + 尾 2MB + 尺寸与类型元数据），
- * 仅读取 6MB 数据，在 10ms 内生成确定性特征指纹，彻底规避数百兆文件整体载入内存导致的标签页卡顿或 OOM 崩溃。
+ * 计算完整 Blob / File 的严格全量 SHA-256 哈希字符串（十六进制）。
+ * 注意：> 100MB 的极大文件建议使用流式或分块计算，避免一次性 arrayBuffer 占用过大内存。
+ */
+export async function computeFullBlobSha256(blob: Blob): Promise<string> {
+    const buffer = await blob.arrayBuffer();
+    const digest = await crypto.subtle.digest("SHA-256", buffer);
+    return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * 计算 Blob / File 的快速特征指纹（十六进制）。
+ * - 针对 <= 20MB 文件：采用原生 100% 全量 SHA-256；
+ * - 针对 > 20MB 的大文件：采用工业级复合抽样特征指纹（头 2MB + 中 2MB + 尾 2MB + 字节尺寸与 MIME 类型），
+ *   在 10ms 内生成确定性特征指纹，彻底规避数百兆视频文件整体载入内存导致的浏览器卡顿或 OOM 崩溃。
  */
 export async function computeBlobSha256(blob: Blob): Promise<string> {
     if (blob.size <= 20 * 1024 * 1024) {

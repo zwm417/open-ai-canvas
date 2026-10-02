@@ -516,16 +516,87 @@ export function stripJsonCodeBlocks(text: string): string {
 }
 
 /**
+ * 从工业级全息 Markdown 文本中自动解析并提取结构化镜头列表 (CreativeReplicationShot[])
+ * 完美支持纯 Markdown 格式的“逐镜头全息工程图纸”向下游多维表格与自动化管线流转
+ */
+export function parseMarkdownShots(text: string): CreativeReplicationShot[] {
+    if (!text || typeof text !== "string") return [];
+    const shots: CreativeReplicationShot[] = [];
+    const shotRegex = /(?:^|\n)###\s*镜头\s*(\d+)\s*(?:\[([^\]]+)\])?\s*([^\n]*)/gi;
+    const matches: { index: number; shotNumber: number; shotType: string; timeRange: string; fullMatch: string }[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = shotRegex.exec(text)) !== null) {
+        matches.push({
+            index: m.index,
+            shotNumber: parseInt(m[1], 10),
+            shotType: m[2] ? m[2].trim().toLowerCase() : "a-roll",
+            timeRange: m[3] ? m[3].trim() : "",
+            fullMatch: m[0],
+        });
+    }
+    if (matches.length === 0) return [];
+
+    for (let i = 0; i < matches.length; i++) {
+        const current = matches[i];
+        const nextIndex = i + 1 < matches.length ? matches[i + 1].index : text.length;
+        const block = text.slice(current.index + current.fullMatch.length, nextIndex).trim();
+
+        const shot: any = {
+            shotNumber: current.shotNumber,
+            shotType: (current.shotType || "a-roll") as CreativeReplicationShotType,
+            timeRange: current.timeRange,
+            lines: "",
+            imagePrompt: "",
+            motionPrompt: "",
+        };
+        enrichShotTiming(shot);
+
+        const lines = block.split(/\r?\n/);
+        for (const line of lines) {
+            const propMatch = line.match(/^-\s*\*\*([^*]+)\*\*[：:]\s*(.*)$/);
+            if (propMatch) {
+                const key = propMatch[1].trim();
+                const val = propMatch[2].trim();
+                if (/景别机位|景别|机位/.test(key)) {
+                    shot.camera = val;
+                } else if (/画面内容|画面/.test(key)) {
+                    shot.visualAction = val;
+                } else if (/表演时序|微动作时序|微动作/.test(key)) {
+                    shot.performanceTiming = val;
+                } else if (/物理反馈|力学/.test(key)) {
+                    shot.physicalFeedback = val;
+                } else if (/原片台词|台词|对白/.test(key)) {
+                    shot.dialogue = val;
+                    shot.lines = val;
+                } else if (/语言与语速|语调|语速/.test(key)) {
+                    shot.voiceTone = val;
+                    const wtMatch = val.match(/时间轴[：:]\s*([^\s|]+(?:\s+\[[^\]]+\]|\s+\d+(?:\.\d+)?s\[[^\]]+\])*)/i) || val.match(/时间轴[：:]\s*([^|]+)/i);
+                    if (wtMatch) {
+                        shot.wordTimings = wtMatch[1].trim();
+                    }
+                } else if (/视听氛围|音效/.test(key)) {
+                    shot.soundFx = val;
+                } else if (/剪辑与功能|剪辑|功能/.test(key)) {
+                    shot.narrativeFunction = val;
+                }
+            }
+        }
+        shots.push(shot);
+    }
+    return shots;
+}
+
+/**
  * 将结构化分镜列表转化为供用户展示与下游易读的中文 Markdown 分镜工程图纸
- * 智能将提取出的分镜 Markdown 无缝接到板块五“逐镜头全息工程图纸”中，
- * 替换原有 JSON 代码块与提示词套话，并在无板块五时自动补全规范标题。
+ * 智能将提取出的分镜 Markdown 无缝接到板块“逐镜头全息工程图纸”中，
+ * 替换原有 JSON 代码块与提示词套话，并在无逐镜头板块时自动补全规范标题。
  */
 export function formatShotManifestToReadableScript(
     shots?: any[],
     overviewText?: string,
     title = "创意反推分镜拆解表",
 ): string {
-    // 1. 如果未传入分镜数组，或数组为空，但 overviewText 中含有 JSON，自动提取 shots
+    // 1. 如果未传入分镜数组，或数组为空，但 overviewText 中含有内容，自动提取 shots
     let effectiveShots = Array.isArray(shots) ? [...shots] : [];
     if (effectiveShots.length === 0 && overviewText) {
         const parsed = parseDirectorJson<any>(overviewText);
@@ -533,6 +604,12 @@ export function formatShotManifestToReadableScript(
             effectiveShots = parsed.shots;
         } else if (parsed && Array.isArray(parsed.shotManifest) && parsed.shotManifest.length > 0) {
             effectiveShots = parsed.shotManifest;
+        } else {
+            const mdShots = parseMarkdownShots(overviewText);
+            if (mdShots.length > 0) {
+                // 如果 overviewText 原生就是纯正且完整的 Markdown 分镜卡段，直接返回原文本，防止二次重序列化造成信息损失
+                return overviewText.trim();
+            }
         }
     }
 
@@ -621,19 +698,29 @@ export function formatShotManifestToReadableScript(
 
     const rawOverview = overviewText.trim();
 
-    // 4. 检查 overviewText 中是否已存在逐镜头板块（如 ## 三、逐镜头全息工程图纸 或 ## 五、逐镜头全息工程图纸）
+    // 4. 检查 overviewText 中是否已存在逐镜头板块（如 ## 三、逐镜头全息工程图纸 或 ## 六、逐镜头全息工程图纸）
     const shotSecMatch = rawOverview.match(/(?:^|\n)(##\s*(?:[一二三四五六七八九十\d]+[、\.\s]+)?逐镜头全息工程图纸[^\n]*)/i) ||
-                         rawOverview.match(/(?:^|\n)(##\s*(?:三|3|五|5)[、\.\s][^\n]*)/i);
+                         rawOverview.match(/(?:^|\n)(##\s*(?:三|3|五|5|六|6)[、\.\s][^\n]*)/i);
 
     if (shotSecMatch && shotSecMatch.index !== undefined) {
         const matchIndex = shotSecMatch.index + (shotSecMatch[0].startsWith("\n") ? 1 : 0);
         const beforeShotSec = rawOverview.slice(0, matchIndex).trim();
         const shotSecHeader = shotSecMatch[1].trim();
+        const contentAfterShotSec = rawOverview.slice(matchIndex + shotSecMatch[0].trim().length).trim();
+
+        // 若 overviewText 本身已包含原生 Markdown 镜头卡段（### 镜头...），且无外部传入的新分镜，完整保留原文本
+        if (!formattedShotsText && contentAfterShotSec && /(?:^|\n)###\s*镜头/i.test(contentAfterShotSec)) {
+            return rawOverview;
+        }
 
         const resultParts: string[] = [];
         if (beforeShotSec) resultParts.push(beforeShotSec);
         resultParts.push(shotSecHeader);
-        if (formattedShotsText) resultParts.push(formattedShotsText);
+        if (formattedShotsText) {
+            resultParts.push(formattedShotsText);
+        } else if (contentAfterShotSec) {
+            resultParts.push(contentAfterShotSec);
+        }
 
         return resultParts.join("\n\n").trim();
     }

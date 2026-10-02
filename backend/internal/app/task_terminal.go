@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"infinite-canvas/backend/internal/model"
@@ -59,6 +60,12 @@ type billingOrderReader interface {
 type audioDurationTaskOutput interface {
 	AudioOutputDurationMs(task model.Task) (int64, error)
 }
+
+// @opc-adapter: strict-billing-assurance [start]
+type restoredTaskBilling interface {
+	RestoreRefundedBilling(orderID string, providerRequestID string) error
+}
+// @opc-adapter: strict-billing-assurance [end]
 
 func newTaskTerminalCoordinator(s *Service) *taskTerminalCoordinator {
 	return &taskTerminalCoordinator{
@@ -264,7 +271,22 @@ func (c *taskTerminalCoordinator) handleSuccess(task *model.Task) error {
 				return audioBilling.SettleBillingWithAudioDuration(task.BillingOrderID, "", durationMs)
 			}
 		}
-		return c.billing.SettleBilling(task.BillingOrderID, "")
+		// @opc-adapter: strict-billing-assurance [start]
+		if orderReader, readerOK := c.billing.(billingOrderReader); readerOK {
+			order, err := orderReader.BillingOrder(task.BillingOrderID)
+			if err == nil && order != nil {
+				if task.ProviderRequestID == "" && strings.TrimSpace(order.ProviderRequestID) != "" {
+					task.ProviderRequestID = strings.TrimSpace(order.ProviderRequestID)
+				}
+				if order.Status == model.BillingStatusRefunded {
+					if restorer, restorerOK := c.billing.(restoredTaskBilling); restorerOK {
+						return restorer.RestoreRefundedBilling(task.BillingOrderID, task.ProviderRequestID)
+					}
+				}
+			}
+		}
+		// @opc-adapter: strict-billing-assurance [end]
+		return c.billing.SettleBilling(task.BillingOrderID, task.ProviderRequestID)
 	}
 	if err := settleBilling(); err != nil {
 		uncertainErr := c.billing.MarkBillingUncertain(task.BillingOrderID, "生成成功但积分结算失败："+err.Error())

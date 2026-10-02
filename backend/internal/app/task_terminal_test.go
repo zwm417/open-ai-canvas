@@ -276,3 +276,74 @@ func TestTaskTerminalCoordinatorReturnsTaskReadErrorAfterSuccess(t *testing.T) {
 		t.Fatalf("billing settlement calls = %d, want 1", billing.settleCalls)
 	}
 }
+
+// @opc-adapter: strict-billing-assurance [start]
+type taskTerminalBillingWithRestoreStub struct {
+	taskTerminalBillingStub
+	order        *model.BillingOrder
+	restoreCalls int
+	restoreError error
+	lastProviderRequestID string
+}
+
+func (b *taskTerminalBillingWithRestoreStub) BillingOrder(string) (*model.BillingOrder, error) {
+	return b.order, nil
+}
+
+func (b *taskTerminalBillingWithRestoreStub) RestoreRefundedBilling(_ string, providerRequestID string) error {
+	b.restoreCalls++
+	b.lastProviderRequestID = providerRequestID
+	return b.restoreError
+}
+
+func TestTaskTerminalRestoresRefundedBillingUponLateSuccess(t *testing.T) {
+	task := &model.Task{ID: "task-late", UserID: "user-1", BillingOrderID: "order-refunded", ProviderRequestID: "req-1"}
+	billing := &taskTerminalBillingWithRestoreStub{
+		order: &model.BillingOrder{ID: "order-refunded", Status: model.BillingStatusRefunded},
+	}
+	coordinator := &taskTerminalCoordinator{
+		repo:              &taskTerminalRepositoryStub{task: task},
+		billing:           billing,
+		replay:            &taskTerminalReplayStub{},
+		logger:            &taskTerminalLoggerStub{},
+		outputs:           &taskTerminalOutputStub{},
+		userFacingMessage: func(err error) string { return err.Error() },
+	}
+
+	if err := coordinator.handleSuccess(task); err != nil {
+		t.Fatalf("handleSuccess() error = %v", err)
+	}
+	if billing.restoreCalls != 1 {
+		t.Fatalf("expected RestoreRefundedBilling calls = 1, got %d", billing.restoreCalls)
+	}
+	if billing.settleCalls != 0 {
+		t.Fatalf("expected SettleBilling calls = 0, got %d", billing.settleCalls)
+	}
+}
+
+func TestTaskTerminalHydratesProviderRequestIDFromOrder(t *testing.T) {
+	task := &model.Task{ID: "task-hydrate", UserID: "user-1", BillingOrderID: "order-1", ProviderRequestID: ""}
+	billing := &taskTerminalBillingWithRestoreStub{
+		order: &model.BillingOrder{ID: "order-1", Status: model.BillingStatusRefunded, ProviderRequestID: "order-req-999"},
+	}
+	coordinator := &taskTerminalCoordinator{
+		repo:              &taskTerminalRepositoryStub{task: task},
+		billing:           billing,
+		replay:            &taskTerminalReplayStub{},
+		logger:            &taskTerminalLoggerStub{},
+		outputs:           &taskTerminalOutputStub{},
+		userFacingMessage: func(err error) string { return err.Error() },
+	}
+
+	if err := coordinator.handleSuccess(task); err != nil {
+		t.Fatalf("handleSuccess() error = %v", err)
+	}
+	if billing.lastProviderRequestID != "order-req-999" {
+		t.Fatalf("expected lastProviderRequestID = 'order-req-999', got %q", billing.lastProviderRequestID)
+	}
+	if task.ProviderRequestID != "order-req-999" {
+		t.Fatalf("expected task.ProviderRequestID hydrated to 'order-req-999', got %q", task.ProviderRequestID)
+	}
+}
+// @opc-adapter: strict-billing-assurance [end]
+

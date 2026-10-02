@@ -199,10 +199,8 @@ describe("创意反推与创意复刻管线规范", () => {
         expect(HYPIT_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).toContain("b-roll");
         expect(HYPIT_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).toContain("l-cut");
         expect(HYPIT_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).toContain("wordTimings");
-        expect(HYPIT_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).toContain("originalMasterSlots");
-        expect(HYPIT_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).toContain("主要物品分析");
-        expect(HYPIT_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).toContain("声画毫秒级锁死与词级时间戳契约");
-        expect(HYPIT_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).toContain("lightingTone");
+        expect(HYPIT_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).toContain("全片视听基因与宏观架构总览");
+        expect(HYPIT_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).toContain("逐镜头全息工程图纸");
         expect(HYPIT_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).not.toContain("hookType");
         expect(HYPIT_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).not.toContain("productAnchor");
     });
@@ -1883,7 +1881,7 @@ describe("创意反推与创意复刻管线规范", () => {
         expect(CREATIVE_REVERSE_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).toContain("三段式微过程");
         expect(CREATIVE_REVERSE_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).toContain("主要物品物理反馈");
         expect(CREATIVE_REVERSE_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).toContain("情绪微表情与眼神轨迹");
-        expect(CREATIVE_REVERSE_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).toContain("coreElements");
+        expect(CREATIVE_REVERSE_SHOT_DECONSTRUCTION_SYSTEM_PROMPT).toContain("逐镜头全息工程图纸");
 
         // 4. 验证通用 JSON 反推数据结构解析，同时兼容 coreElements 与 originalMasterSlots
         const sampleDeconstructOutput = `
@@ -3107,6 +3105,73 @@ describe("创意反推与创意复刻管线规范", () => {
         expect(rescued?.originalMasterSlots?.product).toBe("防晒喷雾");
         expect(rescued?.originalMasterSlots?.scene).toBe("海边沙滩");
         expect(rescued?.coreElements?.actor).toBe("20岁年轻女孩");
+    });
+
+    it("创意反推纯 Markdown 全息工程图纸解析与无损保活：parseMarkdownShots 与 formatShotManifestToReadableScript 完美协同", async () => {
+        const { parseMarkdownShots, formatShotManifestToReadableScript } = await import("../src/extensions/opc-infinite/prompts/hypit-director-prompts");
+
+        const sampleMarkdownOverview = `## 一、全片视听基因与宏观架构总览
+- 视频总时长：14.0 秒
+- 风格关键词：第一人称视角、质问反转
+
+## 二、注意力动力学与商业转化机制
+- **0-3秒黄金双钩子**：视觉强冲突
+
+## 六、逐镜头全息工程图纸
+
+### 镜头 1 [POV] 00:00.0-00:02.5 (2.5s)
+- **景别机位**：第一人称主观视角，近景微仰，手持剧烈晃动
+- **画面内容**：第一人称主观视角。操作者右手从画面正下方粗暴伸出揪住店老板衣领
+- **表演时序与微动作**：0.0s 揪住衣领 -> 1.0s 老板身体受力前倾 -> 2.5s 喉结滑动定格
+- **物理反馈与力学**：棉质衣领受外力剧烈拉扯形成紧绷放射褶皱
+- **原片台词**：“这家店是不是你开的？”“是是是，我开的哪能啊！”
+- **语言与语速**：时间轴: 0.0s[这家店] 0.5s[是不是] 0.9s[你开的] 1.4s[是是是] 1.8s[我开的] 2.1s[哪能啊] | 语调: 问话者粗声质问
+- **视听氛围**：粗暴衣物布料撕扯摩擦声“唰”
+- **剪辑与功能**：开场强冲突钩子
+
+### 镜头 2 [L-CUT] 00:02.5-00:06.5 (4.0s)
+- **景别机位**：第一视角中景 ➔ 快速切入满桌菜品 45 度微俯特写平移
+- **画面内容**：【前段·质问引出福利 (00:02.5-00:04.2)】：老板一手抚平衣领；【后段·菜品爆发特写 (00:04.2-00:06.5)】：镜头切入烤肉冒油
+- **表演时序与微动作**：2.5s 老板抚胸赔笑 -> 4.2s 画面切入餐桌 -> 6.5s 牛肉特写定格
+- **物理反馈与力学**：五花肉接触高温铁盘瞬间收缩，表面细密油脂受热爆裂飞溅
+- **原片台词**：“所以抖音上49.8块两个人的半自助套餐是你设的啊？”“对个呀，我今朝刚刚上个套餐！”
+- **语言与语速**：时间轴: 2.5s[所以] 2.8s[抖音上] 3.2s[四十九块八] 4.0s[两个人的] 4.6s[半自助套餐] 5.2s[是你设的啊] 5.7s[对个呀] 6.0s[我今朝刚刚] 6.3s[上个套餐] | 语调: 热情笃定
+- **视听氛围**：烤肉油煎滋滋声
+- **剪辑与功能**：抛出超值低价锚点
+`;
+
+        // 1. 验证 parseMarkdownShots 正确解析出 2 个镜头且包含完备属性
+        const shots = parseMarkdownShots(sampleMarkdownOverview);
+        expect(shots).toHaveLength(2);
+        expect(shots[0].shotNumber).toBe(1);
+        expect(shots[0].shotType).toBe("pov");
+        expect(shots[0].startSec).toBe(0.0);
+        expect(shots[0].endSec).toBe(2.5);
+        expect(shots[0].durationSec).toBe(2.5);
+        expect(shots[0].camera).toContain("第一人称主观视角");
+        expect(shots[0].visualAction).toContain("第一人称主观视角。操作者右手从画面正下方粗暴伸出");
+        expect(shots[0].performanceTiming).toContain("0.0s 揪住衣领");
+        expect(shots[0].physicalFeedback).toContain("棉质衣领受外力剧烈拉扯");
+        expect(shots[0].dialogue).toContain("这家店是不是你开的？");
+        expect(shots[0].wordTimings).toContain("0.0s[这家店]");
+        expect(shots[0].soundFx).toContain("粗暴衣物布料撕扯摩擦声");
+        expect(shots[0].narrativeFunction).toContain("开场强冲突钩子");
+
+        expect(shots[1].shotNumber).toBe(2);
+        expect(shots[1].shotType).toBe("l-cut");
+        expect(shots[1].startSec).toBe(2.5);
+        expect(shots[1].endSec).toBe(6.5);
+        expect(shots[1].durationSec).toBe(4.0);
+        expect(shots[1].visualAction).toContain("【前段·质问引出福利");
+        expect(shots[1].visualAction).toContain("【后段·菜品爆发特写");
+        expect(shots[1].wordTimings).toContain("3.2s[四十九块八]");
+
+        // 2. 验证 formatShotManifestToReadableScript 在输入原生 Markdown 时绝不截断丢弃逐镜头内容
+        const formatted = formatShotManifestToReadableScript([], sampleMarkdownOverview);
+        expect(formatted).toContain("### 镜头 1 [POV]");
+        expect(formatted).toContain("### 镜头 2 [L-CUT]");
+        expect(formatted).toContain("这家店是不是你开的？");
+        expect(formatted).toContain("烤肉油煎滋滋声");
     });
 });
 

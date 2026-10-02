@@ -13,7 +13,9 @@ import (
 	"infinite-canvas/backend/internal/platform"
 )
 
-const newAPIChannel2TaskSyncMaxAge = 5 * time.Minute
+// @opc-adapter: video-task-sync-window [start]
+const newAPIChannel2TaskSyncMaxAge = 60 * time.Minute
+// @opc-adapter: video-task-sync-window [end]
 
 // taskWorkerCoordinator 收敛任务领取、租约维护和执行结果落库，避免 Service 同时承担 worker 生命周期与业务命令。
 type taskWorkerCoordinator struct {
@@ -306,6 +308,9 @@ func (w *taskWorkerCoordinator) processClaimedTask(task *model.Task, globalSlot 
 		return terminalErr
 	}
 	s.noteAgentMemoryCompactTask(*task, result, nil)
+	// @opc-adapter: strict-billing-assurance [start]
+	s.hydrateTaskProviderRequestID(task)
+	// @opc-adapter: strict-billing-assurance [end]
 	return terminal.handleSuccess(task)
 }
 

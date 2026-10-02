@@ -470,5 +470,10 @@ func migrations() []tableMigration {
 		migrateTable[model.TaskTextDelta]("task_text_delta"),
 		migrateTable[model.TaskLog]("task_logs"),
 		migrateTable[model.Result]("results"),
+		// @opc-adapter: canvas-extensions-schema [start]
+		migrateTable[model.Canvas]("canvases"),
+		migrateTable[model.CanvasNode]("canvas_nodes"),
+		migrateTable[model.Approval]("approvals"),
+		// @opc-adapter: canvas-extensions-schema [end]
 	}
 }

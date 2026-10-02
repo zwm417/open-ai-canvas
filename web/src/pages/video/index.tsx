@@ -37,7 +37,7 @@ import { captureVideoPoster } from "@/lib/video-poster";
 import { disposeCreationAssistantVideoAnalyses, isReusableCreationAssistantVideoAnalysis, prepareCreationAssistantVideos } from "@/services/creation-assistant-video-analysis";
 import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo, type VideoGenerationTask } from "@/services/api/video";
 import { recoverGenerationTaskMedia, refreshGenerationTaskStatus } from "@/services/api/task-center";
-import { runVideoSegmentBatch, type VideoSegmentBatchResult, type VideoSegmentRunnerTaskEvent, type VideoSegmentTaskCheckpoint } from "@/services/video-segment-runner";
+import { getTieredPollingIntervalMs, runVideoSegmentBatch, VIDEO_SEGMENT_HARD_TIMEOUT_MS, VIDEO_SEGMENT_SOFT_TIMEOUT_MS, type VideoSegmentBatchResult, type VideoSegmentRunnerTaskEvent, type VideoSegmentTaskCheckpoint } from "@/services/video-segment-runner";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useVideoWorkbenchStore, type VideoTextReference, type VideoWorkbenchDraft } from "@/stores/use-video-workbench-store";
 import { defaultCreationAssistantDraft, useCreationAssistantStore } from "@/stores/use-creation-assistant-store";
@@ -384,6 +384,7 @@ export default function VideoPage() {
     const activeSegmentLogRef = useRef<GenerationLog | null>(null);
     const activeSegmentBatchIdsRef = useRef<Set<string>>(new Set());
     const sessionExplicitlyResetRef = useRef(false);
+    const isReconcilingLogsRef = useRef(false);
 
     // 快捷键支持 (AGENTS.md Section 5.2/5.3 规范)
     useEffect(() => {
@@ -558,6 +559,22 @@ export default function VideoPage() {
 
     useEffect(() => {
         void refreshLogs(true, true);
+        // [silent-reconciliation] [start]
+        let visibilityDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible") {
+                if (visibilityDebounceTimer) clearTimeout(visibilityDebounceTimer);
+                visibilityDebounceTimer = setTimeout(() => {
+                    void refreshLogs(true, true);
+                }, 300);
+            }
+        };
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        return () => {
+            if (visibilityDebounceTimer) clearTimeout(visibilityDebounceTimer);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
+        // [silent-reconciliation] [end]
     }, []);
 
     // 状态生命周期守卫：同步生成记录与右侧结果面板（页面加载、刷新、路由切回、后台轮询完成均自动保活）
@@ -1282,8 +1299,8 @@ export default function VideoPage() {
                     await saveLog(finalLog, false);
                     if (agentTaskId) updateAgentTask(agentTaskId, { status: finalStatus === "success" ? "succeeded" : "failed", successCount: finalStatus === "success" ? outputRecords.length : 0, failCount: finalStatus === "success" ? 0 : 1, error: batchResult.error });
 
-                    // 资金与积分安全：任何未产出有效视频的情况，必须 100% 自动退款，严禁因取消或用户切屏漏退
-                    if (finalStatus !== "success" || outputRecords.length === 0) {
+                    // 资金与积分安全：严格对齐“产出有效视频即扣积分，不设补偿免单”规则，仅在 0 视频产出时全额退款
+                    if (outputRecords.length === 0) {
                         if (chargedMicrocredits > 0) {
                             void videoFeatureCredit.refund(chargedMicrocredits, snapshot.model, "视频分段生成未成功退款");
                         }
@@ -1310,7 +1327,8 @@ export default function VideoPage() {
                     }
                 } catch (batchErr) {
                     console.error("分段任务后台执行异常:", batchErr);
-                    if (chargedMicrocredits > 0) {
+                    const completedOutputsCount = activeSegmentLogRef.current?.runs?.[0]?.outputs?.length || 0;
+                    if (completedOutputsCount === 0 && chargedMicrocredits > 0) {
                         void videoFeatureCredit.refund(chargedMicrocredits, snapshot.model, "视频分段生成异常退款");
                     }
                     if (isCurrentSession()) {
@@ -1422,11 +1440,20 @@ export default function VideoPage() {
         const effectiveChargedCredits = chargedMicrocredits || log.chargedMicrocredits || 0;
         const isCurrentSession = () => !log.sessionId || !useVideoWorkbenchStore.getState().draft.sessionId || log.sessionId === useVideoWorkbenchStore.getState().draft.sessionId;
         const taskConfig = buildVideoConfig(configOverride || { ...effectiveConfig, model: log.config.model, videoModel: log.config.videoModel }, log.model);
-        const isLongRunningProvider = log.task?.provider === "backend" || log.task?.provider === "seedance";
-        const delayMs = log.task?.provider === "agnes" ? 1500 : isLongRunningProvider ? 5000 : 2500;
-        const maxAttempts = isLongRunningProvider ? 300 : 120;
+        const isLongRunningProvider = log.task?.provider !== "agnes";
+        const startedAt = log.createdAt || Date.now();
+        let notifiedSoftTimeout = false;
+
+        // [tiered-video-polling] [start]
+        if (isLongRunningProvider) {
+            const initialElapsed = Date.now() - startedAt;
+            if (initialElapsed < 60_000) {
+                await delay(60_000 - initialElapsed, signal);
+            }
+        }
+        // [tiered-video-polling] [end]
         try {
-            for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+            for (let attempt = 0; ; attempt += 1) {
                 if (signal?.aborted) throw new DOMException("The operation was aborted", "AbortError");
                 const state = await pollVideoGenerationTask(taskConfig, log.task, { signal });
                 if (state.status === "completed") {
@@ -1483,8 +1510,29 @@ export default function VideoPage() {
                     return;
                 }
                 if (state.status === "failed") throw new Error(state.error);
-                if (attempt === maxAttempts - 1) throw new Error(t("videoWorkbench.timeout"));
-                await delay(delayMs, signal);
+
+                // [tiered-video-polling] [start]
+                const currentElapsed = Date.now() - startedAt;
+                if (isLongRunningProvider) {
+                    if (currentElapsed >= VIDEO_SEGMENT_HARD_TIMEOUT_MS) {
+                        throw new Error(t("videoWorkbench.timeout"));
+                    }
+                    if (currentElapsed >= VIDEO_SEGMENT_SOFT_TIMEOUT_MS && !notifiedSoftTimeout) {
+                        notifiedSoftTimeout = true;
+                        if (isCurrentSession()) {
+                            message.info("视频生成耗时较长，已转入后台长效托管，成片后将自动入库");
+                        }
+                    }
+                    const nextInterval = getTieredPollingIntervalMs(currentElapsed);
+                    await delay(nextInterval, signal);
+                } else {
+                    const delayMs = log.task?.provider === "agnes" ? 1500 : 2500;
+                    if (currentElapsed >= 5 * 60 * 1000) {
+                        throw new Error(t("videoWorkbench.timeout"));
+                    }
+                    await delay(delayMs, signal);
+                }
+                // [tiered-video-polling] [end]
             }
         } catch (error) {
             // 失败或中断时无论当前在哪个页面，100% 执行退款，杜绝吞积分
@@ -2030,42 +2078,51 @@ export default function VideoPage() {
     };
 
     const refreshLogs = async (resumePending = true, fetchRemote = false) => {
-        const scope = getActiveUserScope();
-        let nextLogs = await readStoredLogs(scope);
-        setLogs(nextLogs);
+        if (isReconcilingLogsRef.current) return logs;
+        isReconcilingLogsRef.current = true;
+        try {
+            const scope = getActiveUserScope();
+            let nextLogs = await readStoredLogs(scope);
+            setLogs(nextLogs);
 
-        if (fetchRemote) {
-            try {
-                const res = await listRemoteGenerationLogs("video");
-                if (res?.logs?.length) {
-                    const localMap = new Map(nextLogs.map((item) => [item.id, item]));
-                    let hasNewRemote = false;
-                    for (const raw of res.logs) {
-                        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-                        if (parsed && typeof parsed === "object" && "id" in parsed) {
-                            const remoteLog = parsed as GenerationLog;
-                            const local = localMap.get(remoteLog.id);
-                            if (!local || (remoteLog.updatedAt || 0) > (local.updatedAt || 0)) {
-                                await logStore.setItem(remoteLog.id, remoteLog);
-                                hasNewRemote = true;
+            if (fetchRemote) {
+                try {
+                    const res = await listRemoteGenerationLogs("video");
+                    if (res?.logs?.length) {
+                        const localMap = new Map(nextLogs.map((item) => [item.id, item]));
+                        let hasNewRemote = false;
+                        for (const raw of res.logs) {
+                            const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+                            if (parsed && typeof parsed === "object" && "id" in parsed) {
+                                const remoteLog = parsed as GenerationLog;
+                                const local = localMap.get(remoteLog.id);
+                                if (!local || (remoteLog.updatedAt || 0) > (local.updatedAt || 0)) {
+                                    await logStore.setItem(remoteLog.id, remoteLog);
+                                    hasNewRemote = true;
+                                }
                             }
                         }
+                        if (hasNewRemote) {
+                            nextLogs = await readStoredLogs(scope);
+                            setLogs(nextLogs);
+                        }
                     }
-                    if (hasNewRemote) {
-                        nextLogs = await readStoredLogs(scope);
-                        setLogs(nextLogs);
-                    }
+                } catch (err) {
+                    console.warn("拉取服务端视频生成记录失败:", err);
                 }
-            } catch (err) {
-                console.warn("拉取服务端视频生成记录失败:", err);
             }
-        }
 
-        if (resumePending) {
-            const pendingLogs = nextLogs.filter((log) => log.status === "pending" && log.task && !activeLogIdsRef.current.has(log.id) && (log.userId === scope || (!log.userId && scope === "guest")));
-            for (const log of pendingLogs) void pollGenerationLog(log);
+            if (resumePending) {
+                const pendingLogs = nextLogs.filter((log) => log.status === "pending" && log.task && !activeLogIdsRef.current.has(log.id) && (log.userId === scope || (!log.userId && scope === "guest")));
+                for (const log of pendingLogs) {
+                    activeLogIdsRef.current.add(log.id);
+                    void pollGenerationLog(log);
+                }
+            }
+            return nextLogs;
+        } finally {
+            isReconcilingLogsRef.current = false;
         }
-        return nextLogs;
     };
 
     const buildDraftLog = (): GenerationLog => {

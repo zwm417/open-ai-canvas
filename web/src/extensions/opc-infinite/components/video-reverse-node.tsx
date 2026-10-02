@@ -10,6 +10,7 @@ import {
     fetchCreativeReversePrompt,
     formatShotManifestToReadableScript,
     parseDirectorJson,
+    parseMarkdownShots,
     stripJsonCodeBlocks,
 } from "../prompts/hypit-director-prompts";
 
@@ -611,6 +612,10 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                 const parsed = parseDirectorJson<{ title?: string; coreElements?: any; originalMasterSlots?: any; shots?: any[] }>(result.prompt);
                 if (parsed?.shots && Array.isArray(parsed.shots)) {
                     parsedShots = parsed.shots;
+                } else {
+                    parsedShots = parseMarkdownShots(result.prompt);
+                }
+                if (parsedShots.length > 0) {
                     setShotManifest(parsedShots);
                 }
                 const rawSlots = parsed?.coreElements || parsed?.originalMasterSlots;
@@ -649,19 +654,23 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
             setLocalProgress({ stage: "analysis", percent: 100, message: isDeconstruct ? "创意反推完成" : "经典反推完成" });
 
             const trackKey = isDeconstruct ? "deconstruct" : "classic";
-            const newContactSheets = prepared?.pages.map((p) => {
-                const storageKey = `reverse_sheet_${node.id}_${trackKey}_${p.pageIndex}`;
-                void setMediaBlob(storageKey, p.blob);
-                return {
-                    pageIndex: p.pageIndex,
-                    url: p.url,
-                    storageKey,
-                    localFilePath: p.localFilePath,
-                    frameStart: p.frameStart,
-                    frameEnd: p.frameEnd,
-                    frameCount: p.frames.length,
-                };
-            });
+            const newContactSheets = prepared?.pages
+                ? await Promise.all(
+                      prepared.pages.map(async (p) => {
+                          const storageKey = `reverse_sheet_${node.id}_${trackKey}_${p.pageIndex}`;
+                          await setMediaBlob(storageKey, p.blob);
+                          return {
+                              pageIndex: p.pageIndex,
+                              url: p.url,
+                              storageKey,
+                              localFilePath: p.localFilePath,
+                              frameStart: p.frameStart,
+                              frameEnd: p.frameEnd,
+                              frameCount: p.frames.length,
+                          };
+                      }),
+                  )
+                : undefined;
 
             const nextClassicTrack: ReverseTrackClassic | undefined = isDeconstruct ? meta.classic : {
                 prompt: userFacingScript,

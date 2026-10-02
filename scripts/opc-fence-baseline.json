@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "description": "OPC Media-Lab 核心隐式围栏基准清单（防上游更新覆盖与二开丢失）",
-  "updatedAt": "2026-10-02T12:45:44+08:00",
-  "totalFences": 284,
+  "updatedAt": "2026-10-02T13:55:02+08:00",
+  "totalFences": 288,
   "fences": {
     "adapter:auto-derive-tier-price-configured": [
       "backend/internal/app/channel_models_pricing.go"
@@ -170,6 +170,11 @@
     "adapter:storage-s3-timeout": [
       "backend/internal/storage/s3.go"
     ],
+    "adapter:strict-billing-assurance": [
+      "backend/internal/app/task_terminal_test.go",
+      "backend/internal/app/task_terminal.go",
+      "backend/internal/app/task_worker.go"
+    ],
     "adapter:video-resolution-fallback": [
       "backend/internal/app/provider_video_options.go"
     ],
@@ -181,6 +186,9 @@
     ],
     "adapter:video-reverse-policy": [
       "backend/internal/app/plugin_management.go"
+    ],
+    "adapter:video-task-sync-window": [
+      "backend/internal/app/task_worker.go"
     ],
     "adapter:vquality-orientation-tolerance": [
       "backend/internal/app/model_router_capability.go"
@@ -723,6 +731,10 @@
     "feature:instant-local-persistence": [
       "web/src/pages/canvas/use-canvas-upload.ts"
     ],
+    "feature:isolated-segment-prompt": [
+      "web/src/lib/video-segment-contract.ts",
+      "web/src/services/video-segment-runner.ts"
+    ],
     "feature:legacy-frontend-models-deprecation": [
       "web/src/pages/admin/components/admin-shell.tsx",
       "web/src/pages/admin/components/feature-availability-panel.tsx",
@@ -913,6 +925,9 @@
     ],
     "feature:task-local-deletion": [
       "web/src/pages/tasks/index.tsx"
+    ],
+    "feature:tiered-video-polling": [
+      "web/src/services/video-segment-runner.ts"
     ],
     "feature:users-panel-column-settings": [
       "web/src/pages/admin/users/users-panel.tsx"

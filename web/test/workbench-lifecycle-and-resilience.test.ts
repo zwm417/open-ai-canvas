@@ -148,6 +148,6 @@ describe("工作台后台自持生命周期与资损安全契约 (Workbench Life
         // 5. 生视频工作台：会话聚合恢复与后台轮询自动续接
         expect(videoSource.includes("const sessionLogs = draft.sessionId ? logs.filter((l) => (l.sessionId && l.sessionId === draft.sessionId) || l.id === draft.sessionId) : [targetLog];")).toBe(true);
         expect(videoSource.includes("const allSessionResults = sessionLogs.flatMap(deriveGenerationResultsFromLog);")).toBe(true);
-        expect(videoSource.includes("for (const log of pendingLogs) void pollGenerationLog(log);")).toBe(true);
+        expect(/for\s*\(\s*const\s+log\s+of\s+pendingLogs\s*\)[\s\S]*?void\s+pollGenerationLog\(log\)/.test(videoSource)).toBe(true);
     });
 });

@@ -95,6 +95,57 @@ export function extractScriptShotBlocks(script: string, format: "seconds" | "clo
     return { blocks, errors };
 }
 
+// @opc-feature: isolated-segment-prompt [start]
+/**
+ * 提取剧本开头的全局共用设定（视频总览、场景光线、全局角色设定），
+ * 截止到首个【视频分段】或首个带时间段标记的镜头之前，作为所有分段的通用前缀。
+ */
+export function extractSharedScriptHeader(script: string): string {
+    if (!script || !script.trim()) return "";
+    const lines = script.split(/\r?\n/);
+    const headerLines: string[] = [];
+    const segmentPattern = /^#{1,5}\s*【?视频分段/i;
+    const shotPattern = /(?:时间段\s*[:：]\s*)?((?:\d+(?:\.\d+)?\s*(?:秒|s)?\s*[-~至]\s*\d+(?:\.\d+)?\s*(?:秒|s)?)|(?:\d+:\d+(?:\.\d+)?\s*[-~至]\s*\d+:\d+(?:\.\d+)?))/i;
+
+    for (const line of lines) {
+        const cleaned = line.replace(/\*\*/g, "").trim();
+        if (segmentPattern.test(cleaned) || shotPattern.test(cleaned)) {
+            break;
+        }
+        headerLines.push(line);
+    }
+    return headerLines.join("\n").trim();
+}
+
+/**
+ * 非结构化无时间轴纯文本脚本：按段落/句子在逻辑上切分提取属于当前分段的内容，
+ * 避免无时间戳时向每一段都重复发送全篇内容。
+ */
+export function extractProportionalScriptSlice(script: string, segmentIndex: number, totalSegments: number): string {
+    if (!script || totalSegments <= 1) return script.trim();
+    const cleanText = script.trim();
+    // 优先按双换行段落切分
+    const paragraphs = cleanText.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+    if (paragraphs.length >= totalSegments) {
+        const itemsPerSeg = Math.ceil(paragraphs.length / totalSegments);
+        const start = (segmentIndex - 1) * itemsPerSeg;
+        const end = Math.min(paragraphs.length, start + itemsPerSeg);
+        const slice = paragraphs.slice(start, end).join("\n\n");
+        if (slice.trim()) return slice;
+    }
+    // 次优按主要标点句子切分
+    const sentences = cleanText.split(/(?<=[。！？!?\n])/).map((s) => s.trim()).filter(Boolean);
+    if (sentences.length >= totalSegments) {
+        const itemsPerSeg = Math.ceil(sentences.length / totalSegments);
+        const start = (segmentIndex - 1) * itemsPerSeg;
+        const end = Math.min(sentences.length, start + itemsPerSeg);
+        const slice = sentences.slice(start, end).join("");
+        if (slice.trim()) return slice;
+    }
+    return cleanText;
+}
+// @opc-feature: isolated-segment-prompt [end]
+
 export type BuildVideoCreationPlanInput = {
     source: VideoCreationSource;
     script: string;

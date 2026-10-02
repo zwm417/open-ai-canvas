@@ -4,7 +4,7 @@ import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo
 import type { AiConfig } from "@/stores/use-config-store";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
-import { formatSegmentTimeRange, type VideoCreationPlan, type VideoCreationSegment, type VideoSegmentHandoff, type VideoSegmentOutput } from "@/lib/video-segment-contract";
+import { extractProportionalScriptSlice, extractSharedScriptHeader, formatSegmentTimeRange, type VideoCreationPlan, type VideoCreationSegment, type VideoSegmentHandoff, type VideoSegmentOutput } from "@/lib/video-segment-contract";
 
 export type VideoSegmentRunnerProgress = {
     batchId: string;
@@ -179,23 +179,41 @@ export async function runVideoSegmentBatch(input: VideoSegmentRunnerInput): Prom
 }
 // @opc-feature: concurrent-video-segment-runner [end]
 
+// @opc-feature: isolated-segment-prompt [start]
 export function buildVideoSegmentPrompt(plan: VideoCreationPlan, segment: VideoCreationSegment) {
     const shotText = segment.shotBlockIds
         .map((blockId) => plan.shotBlocks.find((block) => block.blockId === blockId)?.text)
         .filter((text): text is string => Boolean(text))
         .join("\n");
-    const mode = segment.mode === "initial" ? "从全局脚本的开场状态开始生成" : segment.mode === "independent" ? "独立生成本段，并执行连续性状态" : segment.mode === "tail_frame" ? "从上一段尾帧状态继续生成" : "调用已验证的模型原生续接能力继续生成";
-    return [
-        "【视频分段执行】",
-        `这是完整视频的第 ${segment.index} 段，覆盖 ${formatSegmentTimeRange(segment.startSec, segment.endSec)}，本次模型请求时长为 ${segment.requestDurationSec} 秒，最终保留 ${segment.keepDurationSec} 秒。`,
-        `执行方式：${mode}。`,
-        `【完整脚本】\n${plan.scriptSnapshot}`,
-        `【本段镜头内容】\n${shotText || "按本段时间范围执行完整脚本中的对应内容"}`,
-        `【进入状态】\n${segment.continuityIn}`,
-        `【结束状态】\n${segment.continuityOut}`,
-        segment.index === plan.segments.length ? "本段覆盖完整视频结尾，按脚本风格自然完成最后约 2 秒的收束。" : "本段不得提前完成 CTA、结尾卡或行动引导，结束状态必须可被下一段承接。",
-    ].join("\n\n");
+
+    const sharedHeader = extractSharedScriptHeader(plan.scriptSnapshot);
+    const segmentContent = shotText || extractProportionalScriptSlice(plan.scriptSnapshot, segment.index, plan.segments.length);
+
+    const parts: string[] = [];
+    if (sharedHeader) {
+        parts.push(sharedHeader);
+    }
+
+    const modeDesc = segment.mode === "initial"
+        ? "开场段：从初始静态或基准画面起幅"
+        : segment.mode === "tail_frame"
+            ? "承接段：从上一段尾帧动作与画面承接"
+            : "独立段：保持人物与场景设定一致，独立生成";
+
+    parts.push([
+        `【当前执行分段：第 ${segment.index} 段 / 共 ${plan.segments.length} 段】(${formatSegmentTimeRange(segment.startSec, segment.endSec)})`,
+        `【执行规格】模型请求时长 ${segment.requestDurationSec} 秒，最终保留剪辑 ${segment.keepDurationSec} 秒。${modeDesc}`,
+        `【本段镜头动作】\n${segmentContent}`,
+        `【起幅状态】\n${segment.continuityIn || "保持主体与光影自然建立"}`,
+        `【落幅状态】\n${segment.continuityOut || "动作与运镜保持张力，为下段或成片收束留出过渡"}`,
+        segment.index === plan.segments.length
+            ? "【收束要求】本段覆盖完整视频结尾，请自然完成最后约 2 秒的情绪与视觉收束。"
+            : "【连续性禁令】本段为中间过渡段，严禁提前完成结局、CTA（行动号召）或结尾卡，落幅画面必须保持动态以便下一段承接。",
+    ].join("\n\n"));
+
+    return parts.join("\n\n");
 }
+// @opc-feature: isolated-segment-prompt [end]
 
 async function runVideoSegment(input: VideoSegmentRunnerInput & { batchId: string; segment: VideoCreationSegment; references: ReferenceImage[]; videoReferences: ReferenceVideo[]; audioReferences: ReferenceAudio[] }, existingTask?: VideoGenerationTask) {
     if (input.segment.mode === "native_continuation" || input.segment.mode === "tail_frame") {
@@ -214,7 +232,7 @@ async function runVideoSegment(input: VideoSegmentRunnerInput & { batchId: strin
     try {
         task = task || await createVideoGenerationTask(requestConfig, prompt, input.references, input.videoReferences, input.audioReferences, { signal: input.signal });
         await input.onTask?.({ batchId: input.batchId, segment: input.segment, task, status: "running" });
-        const result = await pollSegmentTask(requestConfig, task, input.signal);
+        const result = await pollSegmentTask(requestConfig, task, input.signal, Boolean(existingTask));
         const stored = await storeGeneratedVideo(result);
         const output = {
             segmentId: input.segment.segmentId,
@@ -236,18 +254,54 @@ async function runVideoSegment(input: VideoSegmentRunnerInput & { batchId: strin
     }
 }
 
-async function pollSegmentTask(config: AiConfig, task: VideoGenerationTask, signal?: AbortSignal) {
-    const delayMs = task.provider === "backend" ? 4000 : task.provider === "seedance" ? 5000 : 2500;
-    // 轮询上限提升至 360 次（约 15~20 分钟），杜绝高负载与 GPU 排队提前误判超时
-    for (let attempt = 0; attempt < 360; attempt += 1) {
+// @opc-feature: tiered-video-polling [start]
+export const VIDEO_SEGMENT_HARD_TIMEOUT_MS = 60 * 60 * 1000; // 60 分钟硬守护上限
+export const VIDEO_SEGMENT_SOFT_TIMEOUT_MS = 15 * 60 * 1000; // 15 分钟软超时托管线
+
+export function getTieredPollingIntervalMs(elapsedMs: number): number {
+    if (elapsedMs < 60_000) {
+        // 前 1 分钟免探静默期：直接计算距离第 1 分钟的剩余等待毫秒数
+        return Math.max(1000, 60_000 - elapsedMs);
+    }
+    if (elapsedMs < 180_000) {
+        // 1~3 分钟：第一阶段探测，15~20 秒探测一次（采用 18 秒）
+        return 18_000;
+    }
+    if (elapsedMs < 900_000) {
+        // 3~15 分钟：第二阶段探测（出片高峰期），10~15 秒探测一次（采用 12 秒）
+        return 12_000;
+    }
+    // 15 分钟以后：长尾低频托管期，30~60 秒探测一次（采用 30 秒）
+    return 30_000;
+}
+
+async function pollSegmentTask(config: AiConfig, task: VideoGenerationTask, signal?: AbortSignal, isResumed = false) {
+    const startTime = Date.now();
+    const isLongRunning = task.provider !== "agnes";
+    // 首次探测前：新创建长任务前 1 分钟免探静默，不发起任何 HTTP 请求；快速本地预览（agnes）不等待 60s
+    if (!isResumed && isLongRunning) {
+        await delay(60_000, signal);
+    }
+
+    const timeoutLimit = isLongRunning ? VIDEO_SEGMENT_HARD_TIMEOUT_MS : 5 * 60 * 1000;
+    while (Date.now() - startTime < timeoutLimit) {
         if (signal?.aborted) throw new DOMException("The operation was aborted", "AbortError");
         const state = await pollVideoGenerationTask(config, task, { signal });
         if (state.status === "completed") return state.result;
-        if (state.status === "failed") throw new Error(state.error);
-        await delay(delayMs, signal);
+        if (state.status === "failed") throw new Error(state.error || "视频分段上游生成失败");
+
+        if (!isLongRunning) {
+            await delay(1500, signal);
+            continue;
+        }
+
+        const elapsed = (isResumed ? 60_000 : 0) + (Date.now() - startTime);
+        const nextInterval = getTieredPollingIntervalMs(elapsed);
+        await delay(nextInterval, signal);
     }
-    throw new Error("视频分段生成超时");
+    throw new Error(isLongRunning ? "视频分段生成超时（已达 60 分钟最长守护上限）" : "视频分段生成超时");
 }
+// @opc-feature: tiered-video-polling [end]
 
 function buildBatchResult(plan: VideoCreationPlan, batchId: string, outputs: VideoSegmentOutput[], status: VideoSegmentBatchResult["status"], failedSegmentId?: string, error?: string): VideoSegmentBatchResult {
     return {
