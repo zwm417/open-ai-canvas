@@ -119,6 +119,11 @@ func Models() []any {
 		// @opc-adapter: creative-prompt-templates [start]
 		&model.CreativePromptTemplate{},
 		// @opc-adapter: creative-prompt-templates [end]
+		// @opc-adapter: canvas-extensions-schema [start]
+		&model.Canvas{},
+		&model.CanvasNode{},
+		&model.Approval{},
+		// @opc-adapter: canvas-extensions-schema [end]
 	}
 }
 

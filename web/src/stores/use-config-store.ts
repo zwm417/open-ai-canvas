@@ -1,4 +1,4 @@
-﻿// @opc-feature: desktop-local-channel [start]
+// @opc-feature: desktop-local-channel [start]
 import { projectDesktopLocalChannelRuntime } from "@/lib/desktop-local-channel";
 // @opc-feature: desktop-local-channel [end]
 import { scopedLocalStorage } from "@/lib/user-scope";

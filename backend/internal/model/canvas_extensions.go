@@ -12,9 +12,13 @@ type Canvas struct {
 	UserID      string                 `json:"userId" gorm:"index"`
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
-	Metadata    map[string]interface{} `json:"metadata" gorm:"type:jsonb"`
+	Metadata    map[string]interface{} `json:"metadata" gorm:"serializer:json;type:text"`
 	CreatedAt   time.Time              `json:"createdAt"`
 	UpdatedAt   time.Time              `json:"updatedAt"`
+}
+
+func (Canvas) TableName() string {
+	return "canvases"
 }
 
 // CanvasNode 画布节点
@@ -23,13 +27,17 @@ type CanvasNode struct {
 	CanvasID  string                 `json:"canvasId" gorm:"index"`
 	Type      string                 `json:"type"`
 	Content   string                 `json:"content" gorm:"type:text"`
-	Position  *CanvasPosition        `json:"position" gorm:"type:jsonb"`
-	Size      *CanvasSize            `json:"size" gorm:"type:jsonb"`
+	Position  *CanvasPosition        `json:"position" gorm:"serializer:json;type:text"`
+	Size      *CanvasSize            `json:"size" gorm:"serializer:json;type:text"`
 	ParentID  *string                `json:"parentId" gorm:"index"`
-	Children  []string               `json:"children" gorm:"type:jsonb"`
-	Metadata  map[string]interface{} `json:"metadata" gorm:"type:jsonb"`
+	Children  []string               `json:"children" gorm:"serializer:json;type:text"`
+	Metadata  map[string]interface{} `json:"metadata" gorm:"serializer:json;type:text"`
 	CreatedAt time.Time              `json:"createdAt"`
 	UpdatedAt time.Time              `json:"updatedAt"`
+}
+
+func (CanvasNode) TableName() string {
+	return "canvas_nodes"
 }
 
 // CanvasPosition 节点位置
@@ -66,9 +74,13 @@ type Approval struct {
 	UserID    string         `json:"userId" gorm:"index"`
 	RunID     string         `json:"runId" gorm:"index"`
 	ToolName  string         `json:"toolName"`
-	Data      map[string]any `json:"data" gorm:"type:jsonb"`
+	Data      map[string]any `json:"data" gorm:"serializer:json;type:text"`
 	Status    string         `json:"status"` // pending, approved, rejected
 	Decision  string         `json:"decision"`
 	CreatedAt time.Time      `json:"createdAt"`
 	UpdatedAt time.Time      `json:"updatedAt"`
+}
+
+func (Approval) TableName() string {
+	return "approvals"
 }

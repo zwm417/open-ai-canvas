@@ -4,9 +4,12 @@ import { conversationTimeFormatter, type CreationConversation, type CreationMess
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { useUserStore } from "@/stores/use-user-store";
-import { App, Dropdown } from "antd";
+import { App } from "antd";
 import { displayCreationPrompt } from "./creation-references";
 import { AppDrawer } from "@/components/ui/product/app-drawer";
+// @opc-feature: creation-workspace-dropdown [start]
+import { DropdownMenu } from "@/components/ui/base/dropdown-menu";
+// @opc-feature: creation-workspace-dropdown [end]
 import { Clapperboard, Download, Image as ImageIcon, MessageSquareText, MoreHorizontal, Pencil, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import { conversationTimestamp } from "./creation-conversations";
 import { formatMessageTime } from "./creation-workspace-messages";
@@ -204,40 +207,38 @@ export function CreationHistoryDrawer({
                                             <span className="creation-history-time-slot" aria-hidden={menuOpenId === conversation.id}>
                                                 <time dateTime={conversation.updatedAt}>{formatHistoryRelativeTime(conversation.updatedAt)}</time>
                                             </span>
-                                            <Dropdown
-                                                trigger={["click"]}
-                                                placement="bottomRight"
-                                                open={menuOpenId === conversation.id}
-                                                onOpenChange={(open) => setMenuOpenId(open ? conversation.id : null)}
-                                                overlayClassName="creation-history-menu-overlay"
-                                                menu={{
-                                                    items: [
-                                                        { key: "rename", label: "重命名", icon: <Pencil /> },
-                                                        { key: "export", label: "导出对话", icon: <Download /> },
-                                                        { key: "delete", label: "删除对话", danger: true, icon: <Trash2 /> },
-                                                    ],
-                                                    onClick: ({ key }) => {
-                                                        setMenuOpenId(null);
-                                                        if (key === "rename") {
-                                                            beginRename(conversation);
-                                                        } else if (key === "export") {
+                                            {/* @opc-feature: creation-workspace-dropdown [start] */}
+                                            <DropdownMenu
+                                                placement="bottom end"
+                                                triggerClassName={menuOpenId === conversation.id ? "creation-history-more is-open" : "creation-history-more"}
+                                                trigger={<MoreHorizontal />}
+                                                ariaLabel={`更多操作：${conversation.title.trim() || "新创作"}`}
+                                                items={[
+                                                    {
+                                                        key: "rename",
+                                                        label: "重命名",
+                                                        icon: <Pencil />,
+                                                        onClick: () => beginRename(conversation),
+                                                    },
+                                                    {
+                                                        key: "export",
+                                                        label: "导出对话",
+                                                        icon: <Download />,
+                                                        onClick: () => {
                                                             downloadCreationConversation(conversation, assistantName, exportUser?.displayName || "你");
                                                             drawerToast.success("对话已导出为 Markdown");
-                                                        } else {
-                                                            onDelete(conversation);
-                                                        }
+                                                        },
                                                     },
-                                                }}
-                                            >
-                                                <button
-                                                    type="button"
-                                                    className={menuOpenId === conversation.id ? "creation-history-more is-open" : "creation-history-more"}
-                                                    aria-label={`更多操作：${conversation.title.trim() || "新创作"}`}
-                                                    onClick={(event) => event.preventDefault()}
-                                                >
-                                                    <MoreHorizontal />
-                                                </button>
-                                            </Dropdown>
+                                                    {
+                                                        key: "delete",
+                                                        label: "删除对话",
+                                                        danger: true,
+                                                        icon: <Trash2 />,
+                                                        onClick: () => onDelete(conversation),
+                                                    },
+                                                ]}
+                                            />
+                                            {/* @opc-feature: creation-workspace-dropdown [end] */}
                                         </div>
                                     )}
                                 </li>,

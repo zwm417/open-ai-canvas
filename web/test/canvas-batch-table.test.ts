@@ -197,4 +197,27 @@ describe("batch creation table", () => {
         expect(batchPromptForRow(table, table.rows[0])).toBe("全局覆盖");
         expect(batchPromptForRow({ ...table, globalPrompt: "   " }, table.rows[0])).toBe("行提示词");
     });
+
+    test("canvas-batch-table-node.tsx 杜绝任何向 JSX 模板子节点泄露的单行 // @opc- 注释", () => {
+        const fs = require("node:fs");
+        const path = require("node:path");
+        const file = path.resolve(__dirname, "../src/components/canvas/canvas-batch-table-node.tsx");
+        const content = fs.readFileSync(file, "utf8");
+        const lines = content.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (line.startsWith("// @opc-feature:") || line.startsWith("// @opc-adapter:")) {
+                let prev = "";
+                for (let j = i - 1; j >= 0; j--) {
+                    if (lines[j].trim()) { prev = lines[j].trim(); break; }
+                }
+                let next = "";
+                for (let j = i + 1; j < lines.length; j++) {
+                    if (lines[j].trim()) { next = lines[j].trim(); break; }
+                }
+                const isInsideJsxChildren = (prev.endsWith(">") || prev.endsWith("}")) && (next.startsWith("<") || next.startsWith("{") || next.startsWith("</"));
+                expect(isInsideJsxChildren).toBe(false);
+            }
+        }
+    });
 });

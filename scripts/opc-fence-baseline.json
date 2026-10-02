@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "description": "OPC Media-Lab 核心隐式围栏基准清单（防上游更新覆盖与二开丢失）",
-  "updatedAt": "2026-10-02T09:11:01+08:00",
-  "totalFences": 281,
+  "updatedAt": "2026-10-02T12:16:53+08:00",
+  "totalFences": 283,
   "fences": {
     "adapter:auto-derive-tier-price-configured": [
       "backend/internal/app/channel_models_pricing.go"
@@ -17,6 +17,9 @@
     "adapter:brand-identity": [
       "backend/internal/app/appearance.go",
       "backend/internal/app/protocol_registry.go"
+    ],
+    "adapter:canvas-extensions-schema": [
+      "backend/internal/database/schema.go"
     ],
     "adapter:channel-model-fetch-adaptive": [
       "backend/internal/app/channel_model_catalog.go"
@@ -332,6 +335,9 @@
       "web/src/components/canvas/canvas-node-graph-context.ts",
       "web/src/pages/canvas/project.tsx"
     ],
+    "feature:canvas-node-size-upgrades": [
+      "web/src/lib/canvas/canvas-batch-table.ts"
+    ],
     "feature:canvas-resource-mention-enhanced-search": [
       "web/src/components/canvas/canvas-resource-mention-textarea.tsx"
     ],
@@ -410,7 +416,7 @@
       "web/src/components/canvas/canvas-node-prompt-panel.tsx"
     ],
     "feature:creation-workspace-dropdown": [
-      "web/src/pages/create/creation-workspace.tsx"
+      "web/src/pages/create/creation-workspace-history.tsx"
     ],
     "feature:creative_inspirations": [
       "web/src/components/prompts/aesthetic-blueprint-card.tsx",
@@ -758,6 +764,7 @@
       "web/src/services/api/request.ts"
     ],
     "feature:plugin-canvas-node-default-metadata": [
+      "web/src/lib/canvas/node-registry/node-definition.ts",
       "web/src/lib/plugins/plugin-types.ts"
     ],
     "feature:preserve-local-preview": [
