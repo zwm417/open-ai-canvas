@@ -126,8 +126,8 @@ export type CreateTaskInput = {
 	logicalModelId?: string;
     input?: Record<string, unknown>;
 };
-export function createGenerationTask(input: CreateTaskInput, options?: { signal?: AbortSignal }) {
-    return http.post<GenerationTask>("/tasks", input, { signal: options?.signal }).then((task) => {
+export function createGenerationTask(input: CreateTaskInput) {
+    return http.post<GenerationTask>("/tasks", input).then((task) => {
         recordDiagnosticEvent({ level: "info", category: "task", message: "任务已创建", taskId: task.id, projectId: task.projectId });
         notifyCanvasTaskCreated(task);
         // 创建任务时积分已被预占，不能等任务结束后才刷新可用余额。

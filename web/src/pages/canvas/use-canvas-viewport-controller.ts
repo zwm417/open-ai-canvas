@@ -144,10 +144,9 @@ export function useCanvasViewportController({
         const scale = Math.min(1.18, Math.max(viewportRef.current.k, 0.72));
         transitionViewportTo({ x: size.width / 2 - (node.position.x + node.width / 2) * scale, y: size.height / 2 - (node.position.y + node.height / 2) * scale, k: scale });
         selectFocusedNode(node.id);
-        const isNonDialogNode =
+        // @opc-feature: custom-canvas-nodes [start]
+        const isCustomNonDialogNode =
             node.type === CanvasNodeType.BatchTable ||
-            node.type === CanvasNodeType.Drawing ||
-            node.type === CanvasNodeType.Script ||
             node.type === CanvasNodeType.Panorama ||
             node.type === CanvasNodeType.Audio ||
             Boolean(node.metadata?.batchTable) ||
@@ -158,7 +157,12 @@ export function useCanvasViewportController({
             node.type === "creative_asset_table" ||
             node.type === "creative_voice_table" ||
             node.type === "creative_storyboard_table";
-        setDialogNodeId(isNonDialogNode ? null : node.id);
+        if (isCustomNonDialogNode) {
+            setDialogNodeId(null);
+            return;
+        }
+        // @opc-feature: custom-canvas-nodes [end]
+        setDialogNodeId(node.type === CanvasNodeType.Drawing || node.type === CanvasNodeType.Script ? null : node.id);
     }, [nodesRef, selectFocusedNode, setDialogNodeId, size.height, size.width, transitionViewportTo, viewportRef]);
 
     const setZoomScale = useCallback((scale: number) => {

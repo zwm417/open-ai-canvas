@@ -2,6 +2,7 @@ package app
 
 import (
 	"testing"
+	"time"
 
 	"infinite-canvas/backend/internal/model"
 )
@@ -24,18 +25,15 @@ func TestPurgeAssetsBatchSharedResourcesAndHistory(t *testing.T) {
 		&model.AssetRepresentation{ID: "second-representation", AssetVersionID: "second-version", Role: "image", ResourceID: "batch-shared", MetadataJSON: `{}`},
 		&model.Asset{ID: "unselected", UserID: "user-1", PayloadJSON: `{}`},
 		&model.AssetVersion{ID: "unselected-version", AssetID: "unselected", DefinitionJSON: `{}`},
-		&model.AssetRepresentation{ID: "unselected-representation", AssetVersionID: "unselected-version", Role: "video", ResourceID: "keep-shared", MetadataJSON: `{"resourceId":"keep-shared"}`},
+		&model.AssetRepresentation{ID: "unselected-representation", AssetVersionID: "unselected-version", Role: "video", MetadataJSON: `{"resourceId":"keep-shared"}`},
+		&model.Task{ID: "batch-task", UserID: "user-1", Status: model.TaskStatusRunning, InputJSON: `{"resourceId":"batch-shared"}`},
+		&model.CanvasProject{ID: "batch-canvas", UserID: "user-1", PayloadJSON: `{"resourceId":"batch-shared"}`},
+		&model.CanvasSnapshot{ID: "batch-snapshot", CanvasID: "batch-canvas", UserID: "user-1", Revision: 1, PayloadJSON: `{}`, CreatedAt: time.Now()},
+		&model.CanvasSnapshotResource{SnapshotID: "batch-snapshot", ResourceID: "batch-shared"},
 	} {
 		if err := db.Create(record).Error; err != nil {
 			t.Fatal(err)
 		}
-	}
-	// Force an error late in the resource transaction, after asset and outbox writes.
-	if err := db.Exec("CREATE TRIGGER fail_batch_resource_delete BEFORE DELETE ON resources BEGIN SELECT RAISE(ABORT, 'forced failure'); END;").Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := svc.PurgeUserAssets("user-1", []string{"first", "second"}); err == nil {
-		t.Fatal("expected rollback")
 	}
 	assertCount := func(record any, want int64) {
 		t.Helper()
@@ -44,20 +42,35 @@ func TestPurgeAssetsBatchSharedResourcesAndHistory(t *testing.T) {
 			t.Fatalf("%T count=%d want=%d err=%v", record, count, want, err)
 		}
 	}
+
+	// 彻底删除不受任务、画布与画布历史引用拦截（产品约定）；
+	// 但事务后段失败时，素材、版本、表现、历史索引与 Outbox 必须整批回滚。
+	if err := db.Exec("CREATE TRIGGER fail_batch_resource_delete BEFORE DELETE ON resources BEGIN SELECT RAISE(ABORT, 'forced failure'); END;").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.PurgeUserAssets("user-1", []string{"first", "second"}); err == nil {
+		t.Fatal("expected rollback")
+	}
 	assertCount(&model.Asset{}, 3)
 	assertCount(&model.Resource{}, 4)
 	assertCount(&model.ResourceDeletionJob{}, 0)
+	assertCount(&model.CanvasSnapshotResource{}, 1)
 	assertCount(&model.AssetVersion{}, 2)
 	assertCount(&model.AssetRepresentation{}, 2)
 	if err := db.Exec("DROP TRIGGER fail_batch_resource_delete").Error; err != nil {
 		t.Fatal(err)
 	}
+
 	if err := svc.PurgeUserAssets("user-1", []string{"first", " second ", "first"}); err != nil {
 		t.Fatal(err)
 	}
 	assertCount(&model.Asset{}, 1)
 	assertCount(&model.Resource{}, 2)
 	assertCount(&model.ResourceDeletionJob{}, 1)
+	assertCount(&model.CanvasSnapshotResource{}, 0)
+	assertCount(&model.CanvasSnapshot{}, 1)
+	assertCount(&model.Task{}, 1)
+	assertCount(&model.CanvasProject{}, 1)
 	assertCount(&model.AssetVersion{}, 1)
 	assertCount(&model.AssetRepresentation{}, 1)
 	var job model.ResourceDeletionJob

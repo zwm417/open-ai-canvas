@@ -11,17 +11,13 @@ export const BATCH_REFERENCE_HANDLE_GAP = 40;
 export const MIN_BATCH_REFERENCE_COLUMNS = 1;
 export const MAX_BATCH_REFERENCE_COLUMNS = 10;
 const LEGACY_BATCH_TABLE_WIDTH = 900;
-const PREV_DEFAULT_BATCH_TABLE_WIDTH = 1280;
-export const CURRENT_DEFAULT_BATCH_TABLE_WIDTH = 1560;
-export const CURRENT_DEFAULT_BATCH_TABLE_HEIGHT = 680;
 
-/** 旧默认 900/1280 宽的批量创作表升级到当前默认尺寸，以及 4 种脚本/分析节点 1.5 倍升级，已经手动改过宽度的节点保持原样。 */
+/** 旧默认 900 宽的批量创作表升级到当前默认尺寸，已经手动改过宽度的节点保持原样。 */
 export function promoteLegacyBatchTableSize(node: CanvasNodeData): CanvasNodeData {
-    if (node.type === "batch-table") {
-        if (node.width === LEGACY_BATCH_TABLE_WIDTH || node.width === PREV_DEFAULT_BATCH_TABLE_WIDTH) {
-            return { ...node, width: CURRENT_DEFAULT_BATCH_TABLE_WIDTH, height: Math.max(node.height, CURRENT_DEFAULT_BATCH_TABLE_HEIGHT) };
-        }
+    if (node.type === "batch-table" && node.width === LEGACY_BATCH_TABLE_WIDTH) {
+        return { ...node, width: 1280, height: Math.max(node.height, 560) };
     }
+    // @opc-feature: canvas-node-size-upgrades [start]
     if (
         (node.type === "creation-assistant-analysis:analyzer" ||
          node.type === "video-reverse:reverse" ||
@@ -31,6 +27,7 @@ export function promoteLegacyBatchTableSize(node: CanvasNodeData): CanvasNodeDat
     ) {
         return { ...node, width: 690, height: 540 };
     }
+    // @opc-feature: canvas-node-size-upgrades [end]
     return node;
 }
 
@@ -303,12 +300,7 @@ export function createInheritedBatchRow(_operation?: CanvasBatchOperation, rows:
         };
     }
 
-    return {
-        id: rowId,
-        enabled: true,
-        inputNodeIds: [],
-        prompt: "",
-    };
+    return createBatchRow(_operation || "try_on", [...(rows.at(-1)?.inputNodeIds || [])]);
 }
 // @opc-feature: batch-table-slot-operations [end]
 

@@ -131,17 +131,7 @@ export function useCanvasGenerationBatches({ projectId, projectLoaded, nodes, no
                                 errorDetails: undefined,
                             };
                         } else if (item.status === "submitting" && !controllersRef.current.has(batchItemKey(batch.id, item.id))) {
-                            // 熔断保护：若提交结束且控制器已销毁，但未拿到任务ID或节点错误状态，增加重试计数；超过 1 次未就绪直接熔断标记为失败，彻底杜绝死循环轮询！
-                            const retries = (item.retryCount || 0) + 1;
-                            if (retries > 1 || Boolean(node?.metadata?.errorDetails) || node?.metadata?.taskStatus === "failed") {
-                                patch = {
-                                    status: "failed",
-                                    errorDetails: node?.metadata?.errorDetails || "任务提交失败，未生成有效任务",
-                                    retryCount: retries,
-                                };
-                            } else {
-                                patch = { status: "waiting", errorDetails: undefined, retryCount: retries };
-                            }
+                            patch = { status: "waiting", errorDetails: undefined };
                         }
                         if (!patch || !itemChanged(item, patch)) return item;
                         batchChanged = true;

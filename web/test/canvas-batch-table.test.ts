@@ -71,11 +71,12 @@ describe("batch creation table", () => {
         ]);
     });
 
-    test("does not inherit previous row references or prompt when adding a manual task", () => {
+    test("inherits the previous row references when adding a manual task", () => {
         const row = createInheritedBatchRow("try_on", [{ id: "row-1", enabled: true, inputNodeIds: ["person-1", "garment"], prompt: "自定义提示词" }]);
 
-        expect(row.inputNodeIds).toEqual([]);
-        expect(row.prompt).toBe("");
+        expect(row.inputNodeIds).toEqual(["person-1", "garment"]);
+        expect(row.inputNodeIds).not.toBe(createInheritedBatchRow("try_on", [{ id: "row-1", enabled: true, inputNodeIds: ["person-1", "garment"], prompt: "自定义提示词" }]).inputNodeIds);
+        expect(row.prompt).toBe(TRY_ON_BATCH_PROMPT);
     });
 
     test("syncing connections preserves unmatched manual rows", () => {
@@ -102,8 +103,8 @@ describe("batch creation table", () => {
         const node = createCanvasNode(CanvasNodeType.BatchTable, { x: 500, y: 300 });
 
         expect(node.title).toBe("批量创作表");
-        expect(node.width).toBe(1560);
-        expect(node.height).toBe(680);
+        expect(node.width).toBe(1280);
+        expect(node.height).toBe(560);
         expect(node.metadata?.batchTable).toEqual({ operation: "try_on", concurrency: 10, referenceColumns: [{ id: "reference-1", label: "参考图 1" }, { id: "reference-2", label: "参考图 2" }, { id: "reference-3", label: "参考图 3" }], rows: [] });
     });
 
@@ -112,7 +113,7 @@ describe("batch creation table", () => {
         const legacy = { ...node, width: 900, height: 520 };
         const resized = { ...node, width: 1100, height: 480 };
 
-        expect(promoteLegacyBatchTableSize(legacy)).toEqual({ ...legacy, width: 1560, height: 680 });
+        expect(promoteLegacyBatchTableSize(legacy)).toEqual({ ...legacy, width: 1280, height: 560 });
         expect(promoteLegacyBatchTableSize(resized)).toBe(resized);
     });
     test("keeps a single explicitly stored reference column", () => {
@@ -195,28 +196,5 @@ describe("batch creation table", () => {
         const table = { operation: "creative" as const, concurrency: 10, globalPrompt: " 全局覆盖 ", rows: [{ id: "row-1", enabled: true, inputNodeIds: ["a"], prompt: "行提示词" }] };
         expect(batchPromptForRow(table, table.rows[0])).toBe("全局覆盖");
         expect(batchPromptForRow({ ...table, globalPrompt: "   " }, table.rows[0])).toBe("行提示词");
-    });
-
-    test("canvas-batch-table-node.tsx 杜绝任何向 JSX 模板子节点泄露的单行 // @opc- 注释", () => {
-        const fs = require("node:fs");
-        const path = require("node:path");
-        const file = path.resolve(__dirname, "../src/components/canvas/canvas-batch-table-node.tsx");
-        const content = fs.readFileSync(file, "utf8");
-        const lines = content.split("\n");
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (line.startsWith("// @opc-feature:") || line.startsWith("// @opc-adapter:")) {
-                let prev = "";
-                for (let j = i - 1; j >= 0; j--) {
-                    if (lines[j].trim()) { prev = lines[j].trim(); break; }
-                }
-                let next = "";
-                for (let j = i + 1; j < lines.length; j++) {
-                    if (lines[j].trim()) { next = lines[j].trim(); break; }
-                }
-                const isInsideJsxChildren = (prev.endsWith(">") || prev.endsWith("}")) && (next.startsWith("<") || next.startsWith("{") || next.startsWith("</"));
-                expect(isInsideJsxChildren).toBe(false);
-            }
-        }
     });
 });

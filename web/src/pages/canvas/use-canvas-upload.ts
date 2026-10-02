@@ -171,7 +171,7 @@ export function useCanvasUpload({
         sessionBlobUrlsRef.current.add(localBlobUrl);
         const uploadStartTime = Date.now();
         try {
-            const placeholder = await createFileUploadPlaceholder(id, file, position, localBlobUrl);
+            const placeholder = await createFileUploadPlaceholder(id, file, position);
             const initialList: CanvasNodeData[] = replaceId ? nodesRef.current.map((item) => item.id === id ? {
                 ...item, width: placeholder.width, height: placeholder.height,
                 metadata: { ...item.metadata, fileUpload: "uploading" as const, fileUploadProgress: undefined, status: undefined, size: undefined, errorDetails: undefined, previewContent: localBlobUrl },

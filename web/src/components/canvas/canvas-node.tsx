@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertCircle, BookOpenCheck, CheckCircle2, ChevronRight, Clapperboard, Copy, Download, GripVertical, Image as ImageIcon, Lock, Maximize2, Music2, Pencil, RefreshCw, ScanSearch, Settings2, Star, Trash2, Type, Video, WandSparkles } from "lucide-react";
+import { AlertCircle, BookOpenCheck, CheckCircle2, ChevronRight, Clapperboard, Copy, Download, Image as ImageIcon, Lock, Maximize2, Music2, Pencil, RefreshCw, ScanSearch, Settings2, Star, Trash2, Type, UserRound, Video, WandSparkles } from "lucide-react";
 
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 
@@ -14,6 +14,7 @@ import { CanvasNodeType, type CanvasNodeData, type CanvasNodeTypeId, type Positi
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { ART_CRITIQUE_NODE_TYPE } from "@/lib/art-critique/contracts";
 import { getNodeDefinition, getNodeMinSize, shouldKeepAspectRatio } from "@/lib/canvas/node-registry";
+import { CanvasNodeContent, CanvasNodeImageInfo, CanvasNodeProducedModel } from "./canvas-node-content";
 // @opc-feature: standard-batch-table-node-import [start]
 import { STANDARD_BATCH_TABLE_NODE_TYPE } from "@/extensions/standard-batch-table/contracts";
 // @opc-feature: standard-batch-table-node-import [end]
@@ -26,8 +27,6 @@ import { CREATIVE_VOICE_TABLE_NODE_TYPE } from "@/extensions/creative-voice-tabl
 // @opc-feature: creative-storyboard-table-node-import [start]
 import { CREATIVE_STORYBOARD_TABLE_NODE_TYPE } from "@/extensions/creative-storyboard-table/contracts";
 // @opc-feature: creative-storyboard-table-node-import [end]
-import { CanvasNodeContent, CanvasNodeImageInfo } from "./canvas-node-content";
-import { CanvasNodeErrorBoundary } from "./canvas-node-error-boundary";
 
 type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 type CanvasTheme = (typeof canvasThemes)[keyof typeof canvasThemes];
@@ -108,7 +107,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     batchRecovering = false,
     batchPrimary = false,
     batchMotion,
-    onMouseDown,
+    onMouseDown: propOnMouseDown,
     onHoverStart,
     onHoverEnd,
     onConnectStart,
@@ -129,6 +128,15 @@ export const CanvasNode = React.memo(function CanvasNode({
     onContextMenu,
 }: CanvasNodeProps) {
     const theme = canvasThemes[useActiveTheme()];
+    // @opc-feature: canvas-interactive-controls-guard [start]
+    const onMouseDown = (event: React.MouseEvent, nodeId: string) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest("button, input, select, textarea, [contenteditable], [role='textbox'], [data-canvas-no-drag], .ant-select, .ant-switch, .ant-btn, .ant-input, [role='button']")) {
+            return;
+        }
+        propOnMouseDown(event, nodeId);
+    };
+    // @opc-feature: canvas-interactive-controls-guard [end]
     const [hovered, setHovered] = useState(false);
     const [isEditingContent, setIsEditingContent] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -140,6 +148,8 @@ export const CanvasNode = React.memo(function CanvasNode({
     const mediaDimensionLabel = formatMediaDimensionLabel(data, hasImageContent || hasVideoContent);
     const isComposerNode = data.type === CanvasNodeType.Config;
     const hasMediaContent = hasImageContent || hasVideoContent || hasAudioContent;
+    const producedModelStored = data.metadata?.producedModel;
+    const showProducedModel = showImageInfo && hasMediaContent && Boolean(producedModelStored);
     const isBatchRoot = data.type === CanvasNodeType.Image && Boolean(data.metadata?.isBatchRoot) && batchCount > 1;
     const isBatchChild = data.type === CanvasNodeType.Image && Boolean(data.metadata?.batchRootId);
     const showStatusTrack = Boolean(resourceLabel || data.metadata?.locked || isBatchRoot || (isBatchChild && !readOnly) || (hasMediaContent && !readOnly));
@@ -319,7 +329,6 @@ export const CanvasNode = React.memo(function CanvasNode({
                 draft={titleDraft}
                 theme={theme}
                 onDraftChange={setTitleDraft}
-                onDragStart={readOnly ? undefined : (event) => onMouseDown(event, data.id)}
                 onEdit={() => setIsEditingTitle(true)}
                 onCommit={commitTitle}
                 onCancel={() => { setTitleDraft(data.title); setIsEditingTitle(false); }}
@@ -339,15 +348,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                     "--connection-tilt-y": `${connectionTilt?.rotateY || 0}deg`,
                     transformOrigin: connectionTilt?.origin,
                 } as React.CSSProperties}
-                onMouseDown={(event) => {
-                    // @opc-feature: canvas-interactive-controls-guard [start]
-                    const target = event.target as HTMLElement | null;
-                    if (target?.closest("button, input, select, textarea, [contenteditable], [role='textbox'], [data-canvas-no-drag], .ant-select, .ant-switch, .ant-btn, .ant-input, [role='button']")) {
-                        return;
-                    }
-                    // @opc-feature: canvas-interactive-controls-guard [end]
-                    onMouseDown(event, data.id);
-                }}
+                onMouseDown={(event) => onMouseDown(event, data.id)}
                 onDoubleClick={(event) => {
                     if (isBatchRoot) {
                         event.stopPropagation();
@@ -374,6 +375,11 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onOpenTextEditor?.(data);
                         return;
                     }
+                    if (!readOnly && data.type === CanvasNodeType.Markdown) {
+                        event.stopPropagation();
+                        onOpenTextEditor?.(data);
+                        return;
+                    }
                     if (readOnly || data.type !== CanvasNodeType.Text) return;
                     event.stopPropagation();
                     setIsEditingContent(true);
@@ -396,33 +402,31 @@ export const CanvasNode = React.memo(function CanvasNode({
                     {showChrome && data.metadata?.status && data.metadata.status !== "idle" && data.type !== CanvasNodeType.Frame ? (
                         <NodeStatusBadge status={data.metadata.status} />
                     ) : null}
-                    <CanvasNodeErrorBoundary node={data} theme={theme}>
-                        <CanvasNodeContent
-                            node={data}
-                            theme={theme}
-                            renderLOD={effectiveRenderLOD}
-                            isEditingContent={isEditingContent}
-                            textareaRef={textareaRef}
-                            isBatchRoot={isBatchRoot}
-                            batchCount={batchCount}
-                            batchPreviewNodes={batchPreviewNodes}
-                            batchExpanded={batchExpanded}
-                            batchOpening={batchOpening}
-                            batchRecovering={batchRecovering}
-                            renderNodeContent={renderNodeContent}
-                            drawingProjectId={drawingProjectId}
-                            mentionReferences={mentionReferences}
-                            onContentChange={onContentChange}
-                            onStopEditing={() => setIsEditingContent(false)}
-                            onRetry={onRetry}
-                            onReloadResource={onReloadResource}
-                            onOpenTaskDetails={onOpenTaskDetails}
-                            onToggleBatch={() => onToggleBatch?.(data.id)}
-                            reduceMediaEffects={reduceMediaEffects}
-                            mediaActive={mediaActive}
-                            onMediaPlayRequest={onMediaPlayRequest}
-                        />
-                    </CanvasNodeErrorBoundary>
+                    <CanvasNodeContent
+                        node={data}
+                        theme={theme}
+                        renderLOD={effectiveRenderLOD}
+                        isEditingContent={isEditingContent}
+                        textareaRef={textareaRef}
+                        isBatchRoot={isBatchRoot}
+                        batchCount={batchCount}
+                        batchPreviewNodes={batchPreviewNodes}
+                        batchExpanded={batchExpanded}
+                        batchOpening={batchOpening}
+                        batchRecovering={batchRecovering}
+                        renderNodeContent={renderNodeContent}
+                        drawingProjectId={drawingProjectId}
+                        mentionReferences={mentionReferences}
+                        onContentChange={onContentChange}
+                        onStopEditing={() => setIsEditingContent(false)}
+                        onRetry={onRetry}
+                        onReloadResource={onReloadResource}
+                        onOpenTaskDetails={onOpenTaskDetails}
+                        onToggleBatch={() => onToggleBatch?.(data.id)}
+                        reduceMediaEffects={reduceMediaEffects}
+                        mediaActive={mediaActive}
+                        onMediaPlayRequest={onMediaPlayRequest}
+                    />
                 </div>
 
                 {showChrome && data.type === CanvasNodeType.Text && data.metadata?.workflowKind !== "character" && !readOnly ? (
@@ -496,9 +500,12 @@ export const CanvasNode = React.memo(function CanvasNode({
                         <BatchChildActionButton theme={theme} label="下载主图" icon={<Download className="size-3.5" />} onClick={() => downloadNode?.(data)} />
                     </div>
                 ) : null}
-                {showChrome && (assetTags.length || (showImageInfo && hasImageContent)) ? (
-                    <div className="pointer-events-none absolute inset-x-3 bottom-3 z-[var(--node-z-overlay)] flex items-end justify-between gap-2">
-                        {assetTags.length ? <AssetTagBadges tags={assetTags} theme={theme} /> : null}
+                {showChrome && (assetTags.length || showProducedModel || (showImageInfo && hasImageContent)) ? (
+                    <div className={`pointer-events-none absolute inset-x-3 z-[var(--node-z-overlay)] flex items-end justify-between gap-2 ${mediaActive && hasVideoContent ? "bottom-16" : "bottom-3"}`}>
+                        <div className="flex min-w-0 items-end gap-1">
+                            {assetTags.length ? <AssetTagBadges tags={assetTags} theme={theme} /> : null}
+                            {showProducedModel ? <CanvasNodeProducedModel stored={producedModelStored!} /> : null}
+                        </div>
                         {showImageInfo && hasImageContent ? <CanvasNodeImageInfo node={data} /> : null}
                     </div>
                 ) : null}
@@ -666,7 +673,7 @@ function formatMediaDimensionLabel(node: CanvasNodeData, hasVisualMediaContent: 
     return `${Math.round(width)}*${Math.round(height)}`;
 }
 
-function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, editing, draft, theme, onDragStart, onDraftChange, onEdit, onCommit, onCancel }: {
+function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, editing, draft, theme, onDraftChange, onEdit, onCommit, onCancel }: {
     node: CanvasNodeData;
     scale: number;
     dimensionLabel: string | null;
@@ -676,7 +683,6 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
     draft: string;
     theme: CanvasTheme;
     onDraftChange: (value: string) => void;
-    onDragStart?: (event: React.MouseEvent) => void;
     onEdit: () => void;
     onCommit: () => void;
     onCancel: () => void;
@@ -684,7 +690,7 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
     // 标题保持屏幕尺寸只适用于近景；远景继续反向缩放会遮住节点和连线。
     if (scale < NODE_EXTERNAL_HEADER_MIN_SCALE && !editing) return null;
     const inverseScale = 1 / Math.max(scale, 0.05);
-    const Icon = nodeTypeIcon(node.type);
+    const Icon = nodeTypeIcon(node);
     const maxHeaderWidth = Math.min(240, node.width * scale);
 
     return (
@@ -696,7 +702,7 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
                 "--canvas-node-width": `${node.width}px`,
                 borderRadius: "var(--r-sm)",
                 background: "transparent",
-                paddingInline: "var(--space-1-half)",
+                paddingInline: "0",
                 color: active ? theme.node.text : theme.node.label,
                 transform: `scale(var(--canvas-live-inverse-scale, ${inverseScale}))`,
                 transformOrigin: "left bottom",
@@ -705,23 +711,6 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
             onPointerDown={(event) => event.stopPropagation()}
         >
             <div className="flex min-w-0 items-center gap-1" style={{ maxWidth: maxHeaderWidth }}>
-                <button
-                    type="button"
-                    className="flex size-6 shrink-0 touch-none items-center justify-center rounded cursor-grab active:cursor-grabbing disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-1"
-                    aria-label={node.metadata?.locked ? "节点已锁定" : `拖动节点：${node.title}`}
-                    title={node.metadata?.locked ? "节点已锁定，请先解锁" : "拖动此处移动节点；点击名称可重命名"}
-                    disabled={!onDragStart || Boolean(node.metadata?.locked)}
-                    onPointerDown={(event) => {
-                        if (event.button !== 0) return;
-                        // HTML / SVG 正文在跨源沙箱中；捕获指针，避免经过 iframe 后丢失 move / up。
-                        event.preventDefault();
-                        event.stopPropagation();
-                        event.currentTarget.setPointerCapture(event.pointerId);
-                        onDragStart?.(event);
-                    }}
-                >
-                    {node.metadata?.locked ? <Lock className="size-3" /> : <GripVertical className="size-3" strokeWidth={1.8} />}
-                </button>
                 <Icon className="size-3 shrink-0" strokeWidth={1.8} />
                 {editing ? (
                     <input
@@ -752,7 +741,9 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
     );
 }
 
-function nodeTypeIcon(type: CanvasNodeTypeId) {
+function nodeTypeIcon(node: CanvasNodeData) {
+    if (node.metadata?.workflowKind === "character") return UserRound;
+    const type = node.type;
     if (type === CanvasNodeType.Image) return ImageIcon;
     if (type === CanvasNodeType.Video) return Video;
     if (type === CanvasNodeType.Audio) return Music2;

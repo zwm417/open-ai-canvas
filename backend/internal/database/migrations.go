@@ -15,7 +15,7 @@ import (
 )
 
 // @opc-adapter: creative-prompt-templates [start]
-const CurrentSchemaVersion int64 = 36
+const CurrentSchemaVersion int64 = 44
 // @opc-adapter: creative-prompt-templates [end]
 
 const baselineSchemaChecksum = "sha256:open-ai-canvas-schema-v1-20260830"
@@ -27,6 +27,13 @@ const resourcePlaybackChecksum = "sha256:resource-playback-v6-20260902"
 const assetLibraryFoldersChecksum = "sha256:asset-library-folders-v6-20260902"
 const logicalModelActiveCodeChecksum = "sha256:logical-model-active-code-v8-20260905"
 const creationRuntimeChecksum = "sha256:creation-runtime-v10-20260909"
+const authNotificationsChecksum = "sha256:auth-notifications-v35-20260924"
+const cloudAgentGeminiCacheChecksum = "sha256:cloud-agent-gemini-cache-v36-20260924"
+const cloudAgentGeminiCacheIdentityChecksum = "sha256:cloud-agent-gemini-cache-identity-v37-20260925"
+const prefixedIDSequenceReconcileChecksum = "sha256:prefixed-id-sequence-reconcile-v38-20260926"
+const skillLibraryCategoriesChecksum = "sha256:skill-library-categories-v39-20260926"
+const builtinSkillTombstonesChecksum = "sha256:builtin-skill-tombstones-v40-20260927"
+const resourceThumbnailChecksum = "sha256:resource-thumbnail-v41-20260927"
 
 const postgresSchemaMigrationLockID int64 = 73123910420260830
 
@@ -122,24 +129,56 @@ var schemaMigrations = []migration{
 		}
 		return nil
 	}},
-	{version: 35, name: "sms_notifications_channels", checksum: "sha256:sms-notifications-channels-v35", apply: func(tx *gorm.DB) error {
-		return tx.AutoMigrate(
-			&model.User{},
-			&model.EmailVerificationCode{},
-			&model.AuthVerification{},
-			&model.NotificationQuota{},
-			&model.SMSChannel{},
-			&model.SMSRecord{},
-		)
+	{version: 35, name: "auth_notifications", checksum: authNotificationsChecksum, apply: migrateSchemaV35},
+	{version: 36, name: "cloud_agent_gemini_cache", checksum: cloudAgentGeminiCacheChecksum, apply: func(tx *gorm.DB) error {
+		return tx.AutoMigrate(&model.CloudAgentGeminiCache{})
+	}},
+	{version: 37, name: "cloud_agent_gemini_cache_identity", checksum: cloudAgentGeminiCacheIdentityChecksum, apply: migrateCloudAgentGeminiCacheIdentity},
+	{version: 38, name: "prefixed_id_sequence_reconcile", checksum: prefixedIDSequenceReconcileChecksum, apply: migratePrefixedIDSequenceReconcile},
+	{version: 39, name: "skill_library_categories", checksum: skillLibraryCategoriesChecksum, apply: func(tx *gorm.DB) error {
+		return tx.AutoMigrate(&model.SkillLibraryCategory{}, &model.UserSkillState{})
+	}},
+	{version: 40, name: "builtin_skill_tombstones", checksum: builtinSkillTombstonesChecksum, apply: func(tx *gorm.DB) error {
+		return tx.AutoMigrate(&model.BuiltinSkillTombstone{})
+	}},
+	{version: 41, name: "resource_thumbnail", checksum: resourceThumbnailChecksum, apply: func(tx *gorm.DB) error {
+		return tx.AutoMigrate(&model.Resource{})
+	}},
+	{version: 42, name: "cloud_agent_pi_sessions", checksum: "sha256:cloud-agent-pi-sessions-v42-20260928", apply: func(tx *gorm.DB) error {
+		return tx.AutoMigrate(&model.CloudAgentPiSession{})
+	}},
+	{version: 43, name: "topup_sale_strategies", checksum: "sha256:topup-sale-strategies-v43-20260929", apply: func(tx *gorm.DB) error {
+		return tx.AutoMigrate(&model.TopupProduct{}, &model.PaymentOrder{})
 	}},
 	// @opc-adapter: creative-prompt-templates [start]
-	{version: 36, name: "creative_prompt_templates", checksum: "sha256:creative-prompt-templates-v36", apply: func(tx *gorm.DB) error {
+	{version: 44, name: "creative_prompt_templates", checksum: "sha256:creative-prompt-templates-v44", apply: func(tx *gorm.DB) error {
 		if err := tx.AutoMigrate(&model.CreativePromptTemplate{}); err != nil {
 			return err
 		}
 		return creativeprompts.SeedDefaultTemplates(tx)
 	}},
 	// @opc-adapter: creative-prompt-templates [end]
+}
+
+func migratePrefixedIDSequenceReconcile(tx *gorm.DB) error {
+	if err := tx.AutoMigrate(&model.IDSequence{}); err != nil {
+		return fmt.Errorf("创建可读 ID 序列表：%w", err)
+	}
+	return reconcilePrefixedIDSequences(tx)
+}
+
+func migrateCloudAgentGeminiCacheIdentity(tx *gorm.DB) error {
+	// v36 accidentally made cache_key globally unique while repository reads and
+	// writes are user-scoped. Remove that index before creating the explicit
+	// (user_id, cache_key) identity used by the model tags.
+	for _, name := range []string{"idx_cloud_agent_gemini_caches_cache_key", "idx_cloud_agent_gemini_cache_cache_key"} {
+		if tx.Migrator().HasIndex(&model.CloudAgentGeminiCache{}, name) {
+			if err := tx.Migrator().DropIndex(&model.CloudAgentGeminiCache{}, name); err != nil {
+				return fmt.Errorf("删除 Gemini 缓存旧唯一索引 %s：%w", name, err)
+			}
+		}
+	}
+	return tx.AutoMigrate(&model.CloudAgentGeminiCache{})
 }
 
 func migrateChannelCreditCost(tx *gorm.DB) error {
@@ -188,12 +227,10 @@ func migrateChannelModelLabel(tx *gorm.DB) error {
 }
 
 func migrateChannelModelTags(tx *gorm.DB) error {
-	if !tx.Migrator().HasColumn(&model.ChannelModel{}, "Tags") {
-		if err := tx.Migrator().AddColumn(&model.ChannelModel{}, "Tags"); err != nil {
-			return err
-		}
+	if tx.Migrator().HasColumn(&model.ChannelModel{}, "Tags") {
+		return nil
 	}
-	return tx.Exec("UPDATE channel_models SET tags = '[]' WHERE tags IS NULL OR tags = ''").Error
+	return tx.Migrator().AddColumn(&model.ChannelModel{}, "Tags")
 }
 
 func migrateOAuthStateAcceptedTerms(tx *gorm.DB) error {

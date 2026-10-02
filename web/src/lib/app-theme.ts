@@ -432,7 +432,7 @@ export function getWorkspaceAntThemeConfig(): ThemeConfig {
                 defaultShadow: "none", primaryShadow: "none", dangerShadow: "none",
                 paddingInline: 14, paddingInlineSM: 10,
             },
-            Input: { borderRadius: 12, paddingInline: 12 },
+            Input: { borderRadius: 12, paddingInline: 12, activeShadow: "none" },
             Select: {
                 borderRadius: 12,
                 colorBgElevated: "var(--user-surface-raised)", boxShadowSecondary: "none",

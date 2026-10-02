@@ -20,6 +20,7 @@ export function canvasDockStyle(theme: CanvasTheme, color: string = theme.toolba
         "--dock-command-active-text": theme.toolbar.activeText,
         "--dock-command-danger": theme.accent.danger,
         "--dock-tooltip-bg": theme.spatial.elevated,
+        "--dock-tooltip-border": theme.toolbar.border,
         "--dock-switch-track": isDark ? "#000000" : "#e4e4e7",
         "--dock-switch-border": isDark ? "rgba(255, 255, 255, 0.12)" : "transparent",
         "--dock-switch-thumb": isDark ? "#141416" : "#ffffff",

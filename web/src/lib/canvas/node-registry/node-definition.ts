@@ -66,8 +66,10 @@ export function canvasNodeDefinitionFromPlugin(pluginId: string, contribution: P
         icon: null,
         defaultTitle: contribution.defaultTitle,
         defaultSize: contribution.defaultSize,
+        // @opc-feature: plugin-canvas-node-default-metadata [start]
         defaultMetadata: { pluginId, pluginNodeId: contribution.id, pluginData: {}, content: "", ...(contribution.defaultMetadata || {}) },
         minSize: contribution.minSize || { width: Math.min(contribution.defaultSize.width, 220), height: Math.min(contribution.defaultSize.height, 160) },
+        // @opc-feature: plugin-canvas-node-default-metadata [end]
         showInCreateMenu: true,
         showOutputConnection: contribution.showOutputConnection,
         acceptsInputKind: contribution.acceptsInputKind,

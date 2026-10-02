@@ -34,29 +34,24 @@ func (s *Service) taskWorker() *taskWorkerCoordinator {
 	return newTaskWorkerCoordinator(s)
 }
 
+// wakeTaskDispatcher lets newly persisted work enter execution immediately;
+// the periodic scan remains the cross-process and missed-notification recovery path.
+func (s *Service) wakeTaskDispatcher() {
+	if s == nil || s.taskDispatcherWake == nil {
+		return
+	}
+	select {
+	case s.taskDispatcherWake <- struct{}{}:
+	default:
+	}
+}
+
 func (w *taskWorkerCoordinator) start(ctx context.Context) {
 	s := w.service
 	s.startTextReplayCleanup(ctx)
 	s.startProviderCancellationReconciliation(ctx)
 	s.startBillingReviewAudit(ctx)
 	s.startAgentMemoryCompactScheduler()
-	s.runWorkerLoop(func(ctx context.Context) {
-		ticker := time.NewTicker(2 * time.Second)
-		defer ticker.Stop()
-		for {
-			if ctx.Err() != nil {
-				return
-			}
-			if !s.IsDraining() {
-				s.advanceCloudAgents()
-			}
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-			}
-		}
-	})
 	s.runWorkerLoop(func(ctx context.Context) {
 		slots := make(chan struct{}, maxChannelConcurrencyLimit)
 		dispatch := func() {
@@ -90,7 +85,11 @@ func (w *taskWorkerCoordinator) start(ctx context.Context) {
 				}
 				slots <- struct{}{}
 				started := s.runWorkerTask(func() {
-					defer func() { <-slots; globalSlot.Release() }()
+					defer func() {
+						<-slots
+						globalSlot.Release()
+						s.wakeTaskDispatcher()
+					}()
 					if err := w.processClaimedTask(task, globalSlot); err != nil {
 						_ = s.log(task.UserID, task.ID, "error", "后台任务处理失败", err.Error())
 					}
@@ -111,6 +110,8 @@ func (w *taskWorkerCoordinator) start(ctx context.Context) {
 			select {
 			case <-ctx.Done():
 				return
+			case <-s.taskDispatcherWake:
+				dispatch()
 			case <-ticker.C:
 				dispatch()
 			}
@@ -316,7 +317,11 @@ func taskFailureMessage(err error) string {
 	if err == nil {
 		return "任务处理失败"
 	}
-	return truncateRunes(err.Error(), 2_000)
+	message := err.Error()
+	if denied := speechResourceDeniedUserMessage(message); denied != "" {
+		return denied
+	}
+	return truncateRunes(message, 2_000)
 }
 
 // taskLeaseRenewContext 给续租单独一份"不继承父 context 取消/时限"的上下文（仅 5 秒上限）。

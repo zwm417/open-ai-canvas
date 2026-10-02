@@ -55,10 +55,10 @@ test("copied flush Modal padding lives only in AppModal", () => {
     ];
     const offenders = walkSourceFiles(srcRoot)
         .filter((file) => {
-            if (relative(srcRoot, file).replace(/\\/g, "/") === "components/ui/product/app-modal/app-modal.tsx") return false;
+            if (relative(srcRoot, file) === "components/ui/product/app-modal/app-modal.tsx") return false;
             const source = readFileSync(file, "utf8");
             return banned.some((snippet) => source.includes(snippet));
         })
-        .map((file) => relative(srcRoot, file).replace(/\\/g, "/"));
+        .map((file) => relative(srcRoot, file));
     expect(offenders).toEqual([]);
 });

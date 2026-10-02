@@ -10,6 +10,7 @@ import { isSeedanceVideoConfig } from "@/lib/seedance-video";
 import { modelCapabilityConfigFor, workflowFieldCurrentValue, workflowFieldHasStoredValue, workflowFieldKey, workflowFieldRandomKey, workflowFieldSubmissionValue, workflowOutputSizeValue, workflowVideoFieldsFromJson } from "@/lib/model-capabilities";
 import { modelRequestOptions, resolveCompatibleModel, resolveModelGenerationDefaults, resolveVideoOperation, type ModelGenerationDefaults, type ModelRequirements } from "@/lib/model-selection";
 import { imageMetadata } from "@/lib/canvas/canvas-generation-task-sync";
+import { producedModelCandidateForGeneration } from "@/lib/canvas/produced-model";
 import { ensureMediaNodeMinimumSize } from "@/lib/canvas/canvas-node-size";
 import { interruptFileUpload } from "@/lib/canvas/canvas-file-upload";
 import { isCanvasWorkflowProvider, resolveCanvasWorkflowProvider } from "@/lib/canvas/canvas-workflow";
@@ -199,6 +200,7 @@ export function buildImageGenerationMetadata(type: CanvasImageGenerationType, co
         ...generationWorkflowMetadata(config),
         generationType: type,
         model: config.model,
+        producedModelCandidate: producedModelCandidateForGeneration(config),
         size: config.size,
         quality: config.quality,
         transparentBackground: config.transparentBackground,
@@ -235,10 +237,23 @@ export function buildAudioGenerationMetadata(config: AiConfig): CanvasNodeMetada
     return {
         ...generationWorkflowMetadata(config),
         model: config.model,
+        producedModelCandidate: producedModelCandidateForGeneration(config),
         audioVoice: config.audioVoice,
         audioFormat: config.audioFormat,
         audioSpeed: config.audioSpeed,
+        audioLanguage: config.audioLanguage,
+        audioDialect: config.audioDialect,
         audioInstructions: config.audioInstructions,
+        audioEmotionControlMethod: config.audioEmotionControlMethod,
+        audioEmotionRandom: config.audioEmotionRandom,
+        audioEmotionHappy: config.audioEmotionHappy,
+        audioEmotionAngry: config.audioEmotionAngry,
+        audioEmotionSad: config.audioEmotionSad,
+        audioEmotionAfraid: config.audioEmotionAfraid,
+        audioEmotionDisgusted: config.audioEmotionDisgusted,
+        audioEmotionMelancholic: config.audioEmotionMelancholic,
+        audioEmotionSurprised: config.audioEmotionSurprised,
+        audioEmotionCalm: config.audioEmotionCalm,
     };
 }
 
@@ -434,6 +449,8 @@ export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | u
         audioVoice: node?.metadata?.audioVoice ?? config.audioVoice ?? defaultConfig.audioVoice,
         audioFormat: node?.metadata?.audioFormat ?? config.audioFormat ?? defaultConfig.audioFormat,
         audioSpeed: node?.metadata?.audioSpeed ?? config.audioSpeed ?? defaultConfig.audioSpeed,
+        audioLanguage: node?.metadata?.audioLanguage ?? config.audioLanguage ?? defaultConfig.audioLanguage,
+        audioDialect: node?.metadata?.audioDialect ?? config.audioDialect ?? defaultConfig.audioDialect,
         audioInstructions: node?.metadata?.audioInstructions ?? config.audioInstructions ?? defaultConfig.audioInstructions,
         count: String(node?.metadata?.count ?? (mode === "image" ? config.canvasImageCount || config.count || defaultConfig.count : config.count || defaultConfig.count)),
     };

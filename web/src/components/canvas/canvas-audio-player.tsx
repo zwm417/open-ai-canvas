@@ -13,8 +13,8 @@ type CanvasAudioPlayerProps = {
 
 export function CanvasAudioPlayer({ node, theme }: CanvasAudioPlayerProps) {
     const { updateMetadata } = useCanvasNodeActions();
-    const subscribe = useCallback((listener: () => void) => subscribeCanvasAudioNode(node?.id, listener), [node?.id]);
-    const getSnapshot = useCallback(() => getCanvasAudioPlaybackSnapshot(node?.id), [node?.id]);
+    const subscribe = useCallback((listener: () => void) => subscribeCanvasAudioNode(node.id, listener), [node.id]);
+    const getSnapshot = useCallback(() => getCanvasAudioPlaybackSnapshot(node.id), [node.id]);
     const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
     const source = useMemo(
         () => ({

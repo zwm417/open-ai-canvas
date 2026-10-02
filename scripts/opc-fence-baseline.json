@@ -1,13 +1,21 @@
 {
   "version": "1.0",
   "description": "OPC Media-Lab 核心隐式围栏基准清单（防上游更新覆盖与二开丢失）",
-  "updatedAt": "2026-09-29T10:29:52+08:00",
-  "totalFences": 248,
+  "updatedAt": "2026-10-02T09:11:01+08:00",
+  "totalFences": 281,
   "fences": {
     "adapter:auto-derive-tier-price-configured": [
-      "backend/internal/app/channel_models.go"
+      "backend/internal/app/channel_models_pricing.go"
+    ],
+    "adapter:auto-promote-local-resource-to-oss": [
+      "backend/cmd/server/main.go",
+      "backend/internal/app/resource_access.go",
+      "backend/internal/app/resource_promotion_test.go",
+      "backend/internal/app/resource_promotion.go",
+      "backend/internal/repository/repository.go"
     ],
     "adapter:brand-identity": [
+      "backend/internal/app/appearance.go",
       "backend/internal/app/protocol_registry.go"
     ],
     "adapter:channel-model-fetch-adaptive": [
@@ -22,6 +30,25 @@
     "adapter:creation-assistant-policy": [
       "backend/internal/app/plugin_management.go"
     ],
+    "adapter:creative-prompt-templates": [
+      "backend/internal/canvas/user_data.go",
+      "backend/internal/database/migrations_test.go",
+      "backend/internal/database/migrations.go",
+      "backend/internal/database/schema.go",
+      "backend/internal/repository/repository.go"
+    ],
+    "adapter:creative-prompt-templates-bridge": [
+      "backend/internal/app/canvas_bridge.go"
+    ],
+    "adapter:creative-prompt-templates-routes": [
+      "backend/internal/handler/user_data.go"
+    ],
+    "adapter:creative-prompts-schema": [
+      "backend/cmd/migrate-sqlite-postgres/main.go"
+    ],
+    "adapter:creative-reverse-deconstruct-prompt": [
+      "backend/internal/custom/opc-infinite/deconstruct_prompt.go"
+    ],
     "adapter:cross-platform-disk-space": [
       "backend/internal/hostupdate/disk_space_posix.go",
       "backend/internal/hostupdate/disk_space_windows.go"
@@ -33,10 +60,14 @@
       "backend/internal/app/cloud_agent_policy.go"
     ],
     "adapter:custom-agent-nodes": [
+      "backend/internal/app/cloud_agent_test.go",
       "backend/internal/canvas/capability/builtin.go"
     ],
     "adapter:custom-agent-nodes-test": [
       "backend/internal/app/cloud_agent_contract_test.go"
+    ],
+    "adapter:custom-plugin-v1-test-bypass": [
+      "backend/internal/protocol/official_catalog_test.go"
     ],
     "adapter:feature-credits": [
       "backend/internal/app/feature_credits.go",
@@ -69,10 +100,36 @@
     "adapter:local_channel_and_private_upstreams": [
       "scripts/start-local.ps1"
     ],
+    "adapter:media-recovery-storage-retry": [
+      "backend/internal/app/task_media_recovery.go"
+    ],
     "adapter:model-smart-router": [
       "backend/internal/app/logical_models.go",
       "backend/internal/app/model_catalog.go",
       "backend/internal/service/aliases_consts.go"
+    ],
+    "adapter:opc-prompt-vault": [
+      "backend/internal/custom/opc-vault/vault.go"
+    ],
+    "adapter:opc-prompt-vault-test": [
+      "backend/internal/custom/opc-vault/vault_test.go"
+    ],
+    "adapter:prompt-vault-endpoints": [
+      "backend/internal/handler/user_data.go"
+    ],
+    "adapter:prompt-vault-endpoints-test": [
+      "backend/internal/handler/user_data_page_test.go"
+    ],
+    "adapter:prompt-vault-macro-injection": [
+      "backend/internal/app/provider_image.go",
+      "backend/internal/app/provider_protocol_request.go",
+      "backend/internal/app/provider_text.go",
+      "backend/internal/app/provider.go",
+      "backend/internal/handler/custom_proxy.go"
+    ],
+    "adapter:prompt-vault-macro-injection-test": [
+      "backend/internal/app/provider_test.go",
+      "backend/internal/handler/custom_proxy_test.go"
     ],
     "adapter:pure-go-sqlite": [
       "backend/internal/app/admin_channel_test.go",
@@ -94,14 +151,21 @@
     "adapter:runtime-data-isolation": [
       "scripts/start-local.ps1"
     ],
+    "adapter:seedance-protocol-alias-routing": [
+      "backend/internal/app/provider_test.go",
+      "backend/internal/app/provider_video_options.go"
+    ],
     "adapter:skill-package-metadata-bound": [
-      "backend/internal/skills/skill_packages.go"
+      "backend/internal/skills/skill_packages_archive.go"
     ],
     "adapter:smart-model-router": [
       "backend/internal/app/model_router.go"
     ],
     "adapter:storage-s3-timeout": [
       "backend/internal/storage/s3.go"
+    ],
+    "adapter:video-resolution-fallback": [
+      "backend/internal/app/provider_video_options.go"
     ],
     "adapter:video-reverse-alias-const": [
       "backend/internal/service/aliases_consts.go"
@@ -111,6 +175,9 @@
     ],
     "adapter:video-reverse-policy": [
       "backend/internal/app/plugin_management.go"
+    ],
+    "adapter:vquality-orientation-tolerance": [
+      "backend/internal/app/model_router_capability.go"
     ],
     "feature:admin-ant-dropdown-popover-zindex": [
       "web/src/pages/admin/theme/admin-ant-theme.ts"
@@ -245,7 +312,8 @@
       "web/src/styles/globals.css"
     ],
     "feature:canvas-image-eager-render": [
-      "web/src/components/canvas/canvas-node-content.tsx"
+      "web/src/components/canvas/canvas-node-content.tsx",
+      "web/src/components/canvas/canvas-node-media-content.tsx"
     ],
     "feature:canvas-interactive-controls-guard": [
       "web/src/components/canvas/canvas-node.tsx"
@@ -297,6 +365,9 @@
     "feature:channel-video-duration-resolution": [
       "web/src/lib/model-capabilities.ts"
     ],
+    "feature:concurrent-video-segment-runner": [
+      "web/src/services/video-segment-runner.ts"
+    ],
     "feature:connection-menu-pinning": [
       "web/src/components/canvas/canvas-workspace-overlays.tsx",
       "web/src/pages/canvas/use-canvas-connection-controller.ts"
@@ -335,6 +406,7 @@
       "web/src/router.tsx"
     ],
     "feature:creation-nodes-prompt-panel-mode": [
+      "web/src/components/canvas/canvas-node-prompt-config.ts",
       "web/src/components/canvas/canvas-node-prompt-panel.tsx"
     ],
     "feature:creation-workspace-dropdown": [
@@ -401,6 +473,17 @@
     "feature:creative-batch-empty-slot-ready": [
       "web/src/lib/canvas/canvas-batch-table.ts"
     ],
+    "feature:creative-prompt-templates": [
+      "web/src/components/canvas/canvas-batch-table-node.tsx",
+      "web/src/components/canvas/canvas-config-composer.tsx",
+      "web/src/components/canvas/canvas-node-image-edit-dialog.tsx",
+      "web/src/components/canvas/canvas-node-mask-edit-dialog.tsx",
+      "web/src/components/canvas/canvas-node-prompt-panel.tsx",
+      "web/src/components/canvas/canvas-preset-picker.tsx",
+      "web/src/components/canvas/canvas-script-node.tsx",
+      "web/src/components/prompts/prompt-template-modal.tsx",
+      "web/src/services/api/creative-prompt-templates.ts"
+    ],
     "feature:creative-storyboard-table-builtin": [
       "web/src/lib/plugins/builtin/index.ts"
     ],
@@ -443,11 +526,23 @@
     "feature:creative-tables-auto-sync": [
       "web/src/pages/canvas/use-canvas-connection-controller.ts"
     ],
+    "feature:creative-tables-click-guard": [
+      "web/src/pages/canvas/project.tsx"
+    ],
     "feature:creative-tables-connection-policy": [
       "web/src/lib/canvas/canvas-connection-policy.ts"
     ],
     "feature:creative-tables-connection-policy-import": [
       "web/src/lib/canvas/canvas-connection-policy.ts"
+    ],
+    "feature:creative-tables-dialog-guard": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:creative-tables-drag-guard": [
+      "web/src/pages/canvas/project.tsx"
+    ],
+    "feature:creative-tables-panel-guard": [
+      "web/src/pages/canvas/project.tsx"
     ],
     "feature:creative-voice-table-builtin": [
       "web/src/lib/plugins/builtin/index.ts"
@@ -499,6 +594,9 @@
       "web/src/services/api/custom-channel-relay.ts",
       "web/src/services/api/image-streaming.ts"
     ],
+    "feature:custom-canvas-nodes": [
+      "web/src/pages/canvas/use-canvas-viewport-controller.ts"
+    ],
     "feature:custom-node-connection": [
       "web/src/pages/canvas/use-canvas-connection-controller.ts"
     ],
@@ -525,6 +623,12 @@
     ],
     "feature:deduplicate-add-node-menu-commands": [
       "web/src/lib/canvas/tool-registry/tool-registry.ts"
+    ],
+    "feature:deep-replication-task-store": [
+      "web/src/extensions/video-workbench-skills/stores/use-deep-replication-task-store.ts"
+    ],
+    "feature:deep-replication-test": [
+      "web/src/extensions/video-workbench-skills/stores/__tests__/deep-replication.test.ts"
     ],
     "feature:desktop-local-channel": [
       "web/src/lib/desktop-local-channel.ts",
@@ -621,6 +725,9 @@
     "feature:library-icon-tokens": [
       "web/src/styles/globals.css"
     ],
+    "feature:local-first-media-resolver": [
+      "web/src/services/local-first-media-resolver.ts"
+    ],
     "feature:model-capability-resolver": [
       "web/src/stores/use-config-store.ts"
     ],
@@ -640,6 +747,9 @@
       "web/src/pages/admin/model-router/utils/real-connectivity-tester.ts",
       "web/src/pages/admin/model-router/utils/routing-engine.ts",
       "web/src/router.tsx"
+    ],
+    "feature:multi-image-video-capability-matrix": [
+      "web/src/lib/model-selection.ts"
     ],
     "feature:multi-user-scope": [
       "web/src/lib/user-scope.ts"
@@ -672,8 +782,19 @@
     "feature:prompt-library-route-entry": [
       "web/src/router.tsx"
     ],
+    "feature:prompt-vault-client": [
+      "web/src/application.tsx",
+      "web/src/lib/creation-assistant-prompts.ts",
+      "web/src/services/api/prompt-vault.ts"
+    ],
+    "feature:reference-replication-panel": [
+      "web/src/extensions/video-workbench-skills/components/reference-replication-panel.tsx"
+    ],
     "feature:remote-user-data-phase": [
       "web/src/stores/use-sync-progress-store.ts"
+    ],
+    "feature:replication-prompt-review-modal": [
+      "web/src/extensions/video-workbench-skills/components/replication-prompt-review-modal.tsx"
     ],
     "feature:request-generation-options": [
       "web/src/pages/creation-assistant/index.tsx",
@@ -697,6 +818,13 @@
     ],
     "feature:resilient-system-model-price": [
       "web/src/stores/use-config-store.ts"
+    ],
+    "feature:seedance-protocol-alias-routing": [
+      "web/src/lib/model-protocols.ts",
+      "web/src/lib/seedance-video.ts"
+    ],
+    "feature:seedance-replication-service": [
+      "web/src/extensions/video-workbench-skills/services/seedance-replication-service.ts"
     ],
     "feature:shiki-resilient-loader": [
       "web/src/components/ai/ai-message-code-block.tsx"
@@ -783,7 +911,7 @@
       "web/src/pages/video/index.tsx"
     ],
     "feature:video-hover-preview-sync": [
-      "web/src/components/canvas/canvas-node-content.tsx",
+      "web/src/components/canvas/canvas-node-media-content.tsx",
       "web/src/lib/canvas/canvas-media-preview.ts",
       "web/src/lib/canvas/canvas-video-hover-preview.ts"
     ],
@@ -848,6 +976,7 @@
     ],
     "feature:zero-overhead-local-cache": [
       "web/src/components/cached-resource-image.tsx",
+      "web/src/components/canvas/canvas-node-media-content.tsx",
       "web/src/services/file-storage.ts",
       "web/src/services/image-storage.ts"
     ]

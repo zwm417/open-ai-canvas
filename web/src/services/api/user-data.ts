@@ -113,12 +113,26 @@ export function deleteRemoteAsset(id: string) {
     return http.delete<{ id: string }>(`/assets/${encodeURIComponent(id)}`);
 }
 
+export function deleteRemoteAssets(ids: string[]) {
+    return http.post<{ ids: string[] }>("/assets/batch-delete", ids);
+}
+
 export function listRemoteCanvasProjects() {
     return http.get<{ projects: RemoteUserDataSummary[] }>("/canvas-projects");
 }
 
-export function getRemoteCanvasProject(id: string) {
-    return http.get<{ project: CanvasProject }>(`/canvas-projects/${encodeURIComponent(id)}`);
+export function getRemoteCanvasProject(id: string, knownProject?: CanvasProject) {
+    if (!knownProject || knownProject.id !== id || !Number.isSafeInteger(knownProject.revision)) {
+        return http.get<{ project: CanvasProject }>(`/canvas-projects/${encodeURIComponent(id)}`).then((result) => ({ ...result, notModified: false }));
+    }
+    const etag = `"canvas-${knownProject.revision}"`;
+    return http
+        .get<{ project: CanvasProject } | { notModified: true }>(`/canvas-projects/${encodeURIComponent(id)}`, {
+            headers: { "If-None-Match": etag },
+            validateStatus: (status) => (status >= 200 && status < 300) || status === 304,
+            allowNotModified: true,
+        })
+        .then((result) => ("notModified" in result ? { project: knownProject, notModified: true } : { ...result, notModified: false }));
 }
 
 export function upsertRemoteCanvasProject(project: CanvasProject, options?: { repairMissingResources?: boolean }) {

@@ -144,7 +144,8 @@ func (s *Service) prepareCloudAgentImageInspection(userID, canvasID string, stat
 	if node == nil {
 		return nil, BadAuthRequest("指定节点不在当前画布")
 	}
-	reference, _, err := cloudAgentReference(s.repo, userID, node)
+	// 角色卡查看的是其绑定的三视图/形象图；普通节点查看自身图片资源。
+	reference, _, err := cloudAgentMediaReference(s.repo, userID, canvas.ProjectID, node)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +166,7 @@ func (s *Service) prepareCloudAgentImageInspection(userID, canvasID string, stat
 	}
 	cacheKey := cloudAgentImageInspectionCacheKey(args.NodeID, stringValue(reference["storageKey"]), canvas.Revision)
 	if state.ImageInspectionReads != nil && state.ImageInspectionReads[cacheKey] > 0 {
-		return nil, &cloudAgentReadLoopError{ToolName: "canvas_inspect_image", Count: state.ImageInspectionReads[cacheKey] + 1}
+		return nil, &cloudAgentReadLoopError{ToolName: "canvas_inspect_image", Count: state.ImageInspectionReads[cacheKey] + 1, ReasonCode: "vision_read_guard"}
 	}
 	receipt := map[string]any{
 		"nodeId":   args.NodeID,

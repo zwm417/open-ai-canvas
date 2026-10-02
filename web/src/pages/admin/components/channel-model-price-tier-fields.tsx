@@ -1,4 +1,4 @@
-import { Alert, Button, Form, Input, InputNumber, Segmented, Select, Switch, type FormInstance } from "antd";
+import { Alert, Button, Form, Input, InputNumber, Segmented, Switch, type FormInstance } from "antd";
 import { Trash2 } from "lucide-react";
 import type { ModelCapabilityConfig } from "@/lib/model-capabilities";
 import { modelProtocolSupportsTokenBilling, type ModelProtocol } from "@/lib/model-protocols";
@@ -6,6 +6,7 @@ import type { ModelCapabilityChoice as EditableCapability } from "@/components/m
 import type { ChannelModelFormValues as FormValues } from "./channel-model-editor-form";
 import { normalizeUpstreamModelKey } from "./channel-model-price-tier-form";
 import { CreditCostFields } from "./credit-cost-fields";
+import { Select } from "@/components/ui/base/select";
 
 export function PriceTierFields({
     index,
@@ -40,6 +41,8 @@ export function PriceTierFields({
     const resolutionOptions = video?.resolutions || [];
     const tokenEnabled = modelProtocolSupportsTokenBilling(capability, protocol);
     const isVideo = capability === "video";
+    const isAudio = capability === "audio";
+    const isDurationPriced = isVideo || isAudio;
     const isImage = capability === "image";
     return (
         <article className="admin-price-tier-card">
@@ -148,7 +151,7 @@ export function PriceTierFields({
                                     className="w-full"
                                     options={[
                                         { label: "按次", value: "fixed_request" },
-                                        { label: "按秒", value: "per_second", disabled: !isVideo },
+                                        { label: "按秒", value: "per_second", disabled: !isDurationPriced },
                                         { label: isVideo ? "视频 Token" : "Token", value: "token", disabled: !tokenEnabled },
                                     ]}
                                 />

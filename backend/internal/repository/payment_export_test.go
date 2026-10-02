@@ -98,7 +98,7 @@ func TestPaymentReconciliationExportSnapshotAndRerun(t *testing.T) {
 }
 
 func TestPaymentExportKeepsSnapshotWhenRerunCompletesBetweenReads(t *testing.T) {
-	dsn := filepath.Join(t.TempDir(), "payment.db") + "?_journal_mode=WAL&_busy_timeout=5000"
+	dsn := filepath.Join(t.TempDir(), "payment.db") + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_journal_mode=WAL&_busy_timeout=5000"
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -110,8 +110,6 @@ func TestPaymentExportKeepsSnapshotWhenRerunCompletesBetweenReads(t *testing.T) 
 	for _, connection := range []*gorm.DB{db, writer} {
 		sqlDB, _ := connection.DB()
 		t.Cleanup(func() { _ = sqlDB.Close() })
-		_ = connection.Exec("PRAGMA journal_mode = WAL;").Error
-		_ = connection.Exec("PRAGMA busy_timeout = 5000;").Error
 	}
 	if err := db.AutoMigrate(&model.PaymentReconciliationRun{}, &model.PaymentReconciliationItem{}); err != nil {
 		t.Fatal(err)

@@ -39,8 +39,10 @@ const (
 )
 
 const (
+// @opc-adapter: brand-identity [start]
 	defaultAppearanceBrandName = "智影"
 	defaultAppearanceBrandSlug = "zhiying"
+	// @opc-adapter: brand-identity [end]
 	defaultAppearanceSkinID    = "classic"
 	defaultAppearanceLogoURL   = "/logo.svg"
 	defaultAppearanceVideoURL  = "https://boss-shjd.biliapi.net/updream/aniforge/video/video_bbcb00bd-650d-4249-9346-5cd21fd2484c_m1hc-u0-1pu13x-3v1s.mp4"
@@ -259,7 +261,9 @@ func (s *Service) ResetAppearance(actor *model.User) (*AdminAppearanceSetting, e
 		return nil, err
 	}
 	after := defaultAppearanceSetting()
+	// @opc-adapter: brand-identity [start]
 	if err := s.appendAdminAudit(actor, "appearance.reset", "system_setting", appearanceSettingKey, "恢复智影默认品牌标识", map[string]any{"before": before, "after": after}); err != nil {
+	// @opc-adapter: brand-identity [end]
 		return nil, err
 	}
 	return s.AdminAppearance(actor)

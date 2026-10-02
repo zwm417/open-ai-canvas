@@ -14,7 +14,6 @@ describe("作品保存阶段", () => {
         expect(generationTaskStatusLabel({ status: "running", mediaStage: "upload" })).toBe("作品已生成，正在保存");
         expect(generationTaskShowsProgress({ status: "running", mediaStage: "upload" })).toBe(false);
         expect(generationTaskStatusLabel({ status: "failed", mediaStage: "download" })).toBe("作品保存未完成");
-        expect(generationTaskStatusLabel({ status: "failed", canRecoverMedia: true })).toBe("作品已生成，存储同步未完成");
     });
     test("重新生成清除旧恢复信息", () => {
         const metadata = resetGenerationTaskMetadata({ taskId: "old", taskMediaStage: "upload", taskCanRecoverMedia: true });

@@ -45,12 +45,7 @@ func TestPluginViewIncludesDocumentationForEveryOfficialProtocol(t *testing.T) {
 		}
 		packageIDs[pkg.Manifest.Metadata.ID] = true
 	}
-	for _, manifest := range bundledPaymentPluginManifests() {
-		if !packageIDs[manifest.Metadata.ID] {
-			bundledCount++
-		}
-	}
-	for _, manifest := range bundledSMSPluginManifests() {
+	for _, manifest := range append(bundledPaymentPluginManifests(), bundledSMSPluginManifests()...) {
 		if !packageIDs[manifest.Metadata.ID] {
 			bundledCount++
 		}

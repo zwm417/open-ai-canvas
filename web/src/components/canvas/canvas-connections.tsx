@@ -70,18 +70,12 @@ export const ConnectionPath = React.memo(function ConnectionPath({
                 data-connection-id={connection.id}
                 d={pathD}
                 stroke="transparent"
-                strokeWidth="20"
+                strokeWidth="16"
                 vectorEffect="non-scaling-stroke"
                 fill="none"
                 style={{ cursor: "pointer", pointerEvents: "stroke" }}
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
-                onPointerDown={(event) => {
-                    event.stopPropagation();
-                }}
-                onMouseDown={(event) => {
-                    event.stopPropagation();
-                }}
                 onClick={(event) => {
                     event.stopPropagation();
                     onSelect();
