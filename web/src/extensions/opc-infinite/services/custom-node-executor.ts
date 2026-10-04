@@ -1054,7 +1054,7 @@ async function executeConfigScript(execution: CanvasGenerationExecution) {
             { ...generationConfig, model: effectiveModel, systemPrompt: effectiveSystemPrompt },
             [{ role: "user", content: [{ type: "text", text: promptBundle.userPrompt }] }],
             () => undefined,
-            { signal: controller.signal, temperature: 0.85, presence_penalty: 0.2 },
+            { signal: controller.signal, temperature: 0.85, presence_penalty: 0.2, scene: "config_script" },
         );
     } catch (err) {
         if (deductedMicrocredits > 0) {
@@ -1326,7 +1326,7 @@ async function executeRefScript(execution: CanvasGenerationExecution) {
             { ...generationConfig, model: effectiveModel, systemPrompt: effectiveSystemPrompt },
             [{ role: "user", content: classicContentParts }],
             () => undefined,
-            { signal: controller.signal, temperature: 0.85, presence_penalty: 0.2 },
+            { signal: controller.signal, temperature: 0.85, presence_penalty: 0.2, scene: "ref_script" },
         );
     } catch (err) {
         if (deductedMicrocredits > 0) {

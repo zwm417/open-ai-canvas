@@ -438,7 +438,7 @@ export function CreationAssistantScriptNodeContent({ node, theme }: Props) {
                     streamedScriptAccumulator += delta;
                     reportStream(streamedScriptAccumulator);
                 },
-                { temperature: 0.85, presence_penalty: 0.2, signal: controller.signal },
+                { temperature: 0.85, presence_penalty: 0.2, signal: controller.signal, scene: "config_script" },
             );
 
             if (!isCurrentExecution(node.id, currentExecutionId)) return;

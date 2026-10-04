@@ -7,11 +7,11 @@ export function aiApiUrl(config: Pick<AiConfig, "baseUrl">, path: string) {
     return buildApiUrl(config.baseUrl, path);
 }
 
-export function aiHeaders(config: Pick<AiConfig, "apiKey" | "baseUrl">, contentType?: string) {
+export function aiHeaders(config: Pick<AiConfig, "apiKey" | "baseUrl">, contentType?: string, scene?: string) {
     return {
         Authorization: `Bearer ${config.apiKey}`,
         ...(contentType ? { "Content-Type": contentType } : {}),
-        ...(isSystemProxyBaseUrl(config.baseUrl) ? { "X-Canvas-Scene": "image", "X-Idempotency-Key": createClientId() } : {}),
+        ...(isSystemProxyBaseUrl(config.baseUrl) ? { "X-Canvas-Scene": scene || "image", "X-Idempotency-Key": createClientId() } : {}),
     };
 }
 
@@ -40,11 +40,12 @@ export function geminiApiUrl(config: Pick<AiConfig, "baseUrl" | "model">, action
     return `${baseUrl}/models/${encodeURIComponent(geminiModelName(config.model))}:${action}`;
 }
 
-export function geminiHeaders(config: Pick<AiConfig, "apiKey">) {
+export function geminiHeaders(config: Pick<AiConfig, "apiKey"> & Partial<Pick<AiConfig, "baseUrl">>, scene?: string) {
     return {
         "x-goog-api-key": config.apiKey,
         Authorization: `Bearer ${config.apiKey}`,
         "Content-Type": "application/json",
+        ...(config.baseUrl && isSystemProxyBaseUrl(config.baseUrl) ? { "X-Canvas-Scene": scene || "text", "X-Idempotency-Key": createClientId() } : {}),
     };
 }
 // @opc-feature: gemini-endpoint-normalization [end]
@@ -56,7 +57,10 @@ export async function postChannelJSON<T>(config: Parameters<typeof createChannel
 export async function postGeminiJSON(config: Parameters<typeof createChannelTransport>[0] & Pick<AiConfig, "model">, body: unknown, options?: RequestOptions) {
     return createChannelTransport(config, "image").postJson<GeminiPayload>(geminiApiUrl(config, "generateContent"), body, {
         ...options,
-        headers: geminiHeaders(config),
+        headers: {
+            ...geminiHeaders(config, options?.scene),
+            ...options?.headers,
+        },
     });
 }
 

@@ -850,56 +850,61 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                             素材数量 {totalCount} / 15
                         </span>
                         <div className="flex items-center gap-1.5">
-                            <Tooltip title="从剪切板粘贴" mouseEnterDelay={0.2}>
+                            <Tooltip title="从剪切板粘贴" placement="top" mouseEnterDelay={0.15}>
                                 <Button
                                     type="text"
                                     size="small"
                                     className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
                                     icon={<ClipboardPaste className="size-3.5" />}
                                     onClick={handlePasteFromClipboard}
+                                    aria-label="从剪切板粘贴"
                                 />
                             </Tooltip>
                             {handleOpenPromptModal && (
-                                <Tooltip title="提示词模板" mouseEnterDelay={0.2}>
+                                <Tooltip title="提示词模板" placement="top" mouseEnterDelay={0.15}>
                                     <Button
                                         type="text"
                                         size="small"
                                         className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
                                         icon={<Sparkles className="size-3.5 text-amber-500" />}
                                         onClick={handleOpenPromptModal}
+                                        aria-label="提示词模板"
                                     />
                                 </Tooltip>
                             )}
                             {handleSavePromptModal && (
-                                <Tooltip title="保存为模板" mouseEnterDelay={0.2}>
+                                <Tooltip title="保存为模板" placement="top" mouseEnterDelay={0.15}>
                                     <Button
                                         type="text"
                                         size="small"
                                         className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
                                         icon={<BookmarkPlus className="size-3.5 text-amber-500" />}
                                         onClick={handleSavePromptModal}
+                                        aria-label="保存为模板"
                                     />
                                 </Tooltip>
                             )}
                             {onOpenAssetPicker && (
-                                <Tooltip title="查看我的资产" mouseEnterDelay={0.2}>
+                                <Tooltip title="查看我的资产" placement="top" mouseEnterDelay={0.15}>
                                     <Button
                                         type="text"
                                         size="small"
                                         className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
                                         icon={<FolderPlus className="size-3.5" />}
                                         onClick={onOpenAssetPicker}
+                                        aria-label="查看我的资产"
                                     />
                                 </Tooltip>
                             )}
                             {totalCount > 0 && (
-                                <Tooltip title="清空素材" mouseEnterDelay={0.2}>
+                                <Tooltip title="清空素材" placement="top" mouseEnterDelay={0.15}>
                                     <Button
                                         type="text"
                                         size="small"
                                         className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-red-500 dark:hover:!text-red-400"
                                         icon={<Trash2 className="size-3.5" />}
                                         onClick={handleClearAllReferences}
+                                        aria-label="清空素材"
                                     />
                                 </Tooltip>
                             )}
@@ -1225,7 +1230,7 @@ function PanelReferenceTile({
 
             {/* 悬停浮层：替换与删除 */}
             <div className="absolute inset-0 z-20 hidden items-center justify-center gap-1 rounded-xl bg-black/45 group-hover:flex group-focus:flex">
-                <Tooltip title="替换素材">
+                <Tooltip title="替换素材" placement="top" mouseEnterDelay={0.15}>
                     <button
                         type="button"
                         className="grid size-7 place-items-center rounded-full bg-white/90 text-stone-800 shadow-sm transition hover:bg-white cursor-pointer"
@@ -1233,13 +1238,12 @@ function PanelReferenceTile({
                             e.stopPropagation();
                             onReplace();
                         }}
-                        title="替换素材"
                         aria-label="替换素材"
                     >
                         <RefreshCw className="size-3.5" />
                     </button>
                 </Tooltip>
-                <Tooltip title="移除素材">
+                <Tooltip title="移除素材" placement="top" mouseEnterDelay={0.15}>
                     <button
                         type="button"
                         className="grid size-7 place-items-center rounded-full bg-white/90 text-red-600 shadow-sm transition hover:bg-white cursor-pointer"
@@ -1247,7 +1251,6 @@ function PanelReferenceTile({
                             e.stopPropagation();
                             onRemove();
                         }}
-                        title="移除素材"
                         aria-label="移除素材"
                     >
                         <Trash2 className="size-3.5" />

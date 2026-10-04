@@ -18,9 +18,11 @@ export function FeatureCreditBadge({
     className,
     size = "normal",
 }: FeatureCreditBadgeProps) {
-    const { isEnabled, formattedCost, costCredits, hasSufficientBalance, costMicrocredits } = useFeatureCredit(scene, model);
+    const { isEnabled, formattedCost, costCredits, hasSufficientBalance, costMicrocredits, featureConfig } = useFeatureCredit(scene, model);
 
-    if (!isEnabled || costMicrocredits <= 0) {
+    const isMultiplier = featureConfig?.mode === "token_multiplier";
+
+    if (!isEnabled || (!isMultiplier && costMicrocredits <= 0)) {
         return null;
     }
 
@@ -28,7 +30,7 @@ export function FeatureCreditBadge({
 
     if (!hasSufficientBalance) {
         return (
-            <Tooltip title={`积分余额不足！需要 ${costCredits} 积分，请先在右上角钱包充值或签到`}>
+            <Tooltip title={isMultiplier ? "当前积分余额不足，请先在右上角钱包充值或签到" : `积分余额不足！需要 ${costCredits} 积分，请先在右上角钱包充值或签到`}>
                 <span
                     className={cn(
                         "inline-flex items-center gap-1 rounded-full border border-red-300 bg-red-50 text-red-700 font-medium dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300 transition-colors",
@@ -44,7 +46,7 @@ export function FeatureCreditBadge({
     }
 
     return (
-        <Tooltip title={`执行该功能将扣减 ${costCredits} 积分，失败将自动退款`}>
+        <Tooltip title={isMultiplier ? `按实际 Token 消耗与场景倍率结算（${formattedCost}），生成时自动扣除` : `执行该功能将扣减 ${costCredits} 积分，失败将自动退款`}>
             <span
                 className={cn(
                     "inline-flex items-center gap-1 rounded-full border border-amber-300/80 bg-amber-50/80 text-amber-800 font-medium dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-300 shadow-sm transition-colors",

@@ -295,7 +295,7 @@ export default function CreationAssistantPage() {
                 [{ role: "user", content: prompts.userPrompt }],
                 () => undefined,
                 // @opc-feature: request-generation-options [start]
-                { temperature: 0.85, presence_penalty: 0.2 },
+                { temperature: 0.85, presence_penalty: 0.2, scene: "directing_assistant" },
                 // @opc-feature: request-generation-options [end]
             );
             updateAssistant({ script: normalizeCreationAssistantScript(script.trim(), assetReferenceMap), stage: "result" });

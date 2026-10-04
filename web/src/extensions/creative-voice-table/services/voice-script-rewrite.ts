@@ -161,7 +161,9 @@ export async function rewriteVoiceScript(params: VoiceScriptRewriteParams): Prom
                 { role: "user", content: userPrompt },
             ],
             onDelta || (() => {}),
-            { signal }
+            // @opc-feature: feature-credits [start]
+            { signal, scene: "voice_script_rewrite" }
+            // @opc-feature: feature-credits [end]
         );
 
         let cleaned = rawResponse

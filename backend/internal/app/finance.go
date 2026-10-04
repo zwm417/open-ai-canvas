@@ -623,14 +623,21 @@ func (s *Service) newBillingOrderWithPriceTier(userID string, taskID string, ide
 	default:
 		return nil, BadAuthRequest("当前模型计费方式暂不支持")
 	}
-	policy, err := s.creditPolicy()
-	if err != nil {
-		return nil, err
+	// @opc-adapter: feature-credits [start]
+	var multiplierBPS int64
+	if sceneMultiplier, ok := s.ResolveModelSceneMultiplier(modelKey, scene); ok && sceneMultiplier > 0 {
+		multiplierBPS = sceneMultiplier
+	} else {
+		policy, err := s.creditPolicy()
+		if err != nil {
+			return nil, err
+		}
+		multiplierBPS = policy.DefaultMultiplierBPS
+		if configured := policy.ModelMultiplierBPS[modelKey]; configured > 0 {
+			multiplierBPS = configured
+		}
 	}
-	multiplierBPS := policy.DefaultMultiplierBPS
-	if configured := policy.ModelMultiplierBPS[modelKey]; configured > 0 {
-		multiplierBPS = configured
-	}
+	// @opc-adapter: feature-credits [end]
 	if tier.BillingMode == "token" {
 		amount, err = tokenEstimateAmount(&model.ChannelModel{InputTokenPriceMicrocredits: tier.InputTokenPriceMicrocredits, OutputTokenPriceMicrocredits: tier.OutputTokenPriceMicrocredits, CachedTokenPriceMicrocredits: tier.CachedTokenPriceMicrocredits}, tokenEstimate, multiplierBPS)
 	} else {

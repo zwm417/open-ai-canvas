@@ -352,6 +352,9 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
                     signal: controller.signal,
                     temperature: 0.85,
                     presence_penalty: 0.2,
+                    // @opc-feature: feature-credits [start]
+                    scene: "video_director",
+                    // @opc-feature: feature-credits [end]
                 },
             );
 
@@ -536,13 +539,16 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
                             {uploadedImages.map((img) => (
                                 <div key={img.id} className="relative size-12 rounded-xl overflow-hidden border border-black/[0.06] group">
                                     <img src={img.dataUrl} alt={img.name} className="size-full object-cover" />
-                                    <button
-                                        type="button"
-                                        onClick={() => setUploadedImages((prev) => prev.filter((i) => i.id !== img.id))}
-                                        className="absolute inset-0 flex items-center justify-center bg-rose-600/80 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                    >
-                                        <X className="size-3.5" />
-                                    </button>
+                                    <Tooltip title="移除图片" placement="top" mouseEnterDelay={0.15}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setUploadedImages((prev) => prev.filter((i) => i.id !== img.id))}
+                                            className="absolute inset-0 flex items-center justify-center bg-rose-600/80 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                            aria-label="移除图片"
+                                        >
+                                            <X className="size-3.5" />
+                                        </button>
+                                    </Tooltip>
                                 </div>
                             ))}
                         </div>
@@ -560,13 +566,16 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
                             {uploadedAudios.map((aud) => (
                                 <div key={aud.id} className="relative flex size-12 flex-col items-center justify-center rounded-xl bg-stone-100 dark:bg-[#2c2c2e] border border-black/[0.06] group text-[10px]">
                                     <span className="truncate max-w-[40px] font-mono text-[9px]">{aud.name}</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setUploadedAudios((prev) => prev.filter((a) => a.id !== aud.id))}
-                                        className="absolute inset-0 flex items-center justify-center bg-rose-600/80 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                    >
-                                        <X className="size-3.5" />
-                                    </button>
+                                    <Tooltip title="移除音频" placement="top" mouseEnterDelay={0.15}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setUploadedAudios((prev) => prev.filter((a) => a.id !== aud.id))}
+                                            className="absolute inset-0 flex items-center justify-center bg-rose-600/80 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                            aria-label="移除音频"
+                                        >
+                                            <X className="size-3.5" />
+                                        </button>
+                                    </Tooltip>
                                 </div>
                             ))}
                         </div>
@@ -574,50 +583,54 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
 
                     {/* 右侧：项目原有的四大操作入口（从剪切板粘贴、提示词模板、保存为模板、查看我的资产） */}
                     <div className="flex items-center gap-1.5 shrink-0 self-start pt-1">
-                        <Tooltip title="从剪切板粘贴" mouseEnterDelay={0.2}>
+                        <Tooltip title="从剪切板粘贴" placement="top" mouseEnterDelay={0.15}>
                             <Button
                                 type="text"
                                 size="small"
                                 className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
                                 icon={<ClipboardPaste className="size-3.5" />}
                                 onClick={handleAddFromClipboard}
+                                aria-label="从剪切板粘贴"
                             />
                         </Tooltip>
                         {onOpenPromptDialog && (
-                            <Tooltip title="提示词模板" mouseEnterDelay={0.2}>
+                            <Tooltip title="提示词模板" placement="top" mouseEnterDelay={0.15}>
                                 <Button
                                     type="text"
                                     size="small"
                                     className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
                                     icon={<Sparkles className="size-3.5 text-amber-500" />}
                                     onClick={onOpenPromptDialog}
+                                    aria-label="提示词模板"
                                 />
                             </Tooltip>
                         )}
                         {onSavePromptDialog && (
-                            <Tooltip title="保存为模板" mouseEnterDelay={0.2}>
+                            <Tooltip title="保存为模板" placement="top" mouseEnterDelay={0.15}>
                                 <Button
                                     type="text"
                                     size="small"
                                     className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
                                     icon={<BookmarkPlus className="size-3.5 text-amber-500" />}
                                     onClick={onSavePromptDialog}
+                                    aria-label="保存为模板"
                                 />
                             </Tooltip>
                         )}
                         {onOpenAssetPicker && (
-                            <Tooltip title="查看我的资产" mouseEnterDelay={0.2}>
+                            <Tooltip title="查看我的资产" placement="top" mouseEnterDelay={0.15}>
                                 <Button
                                     type="text"
                                     size="small"
                                     className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
                                     icon={<FolderPlus className="size-3.5" />}
                                     onClick={onOpenAssetPicker}
+                                    aria-label="查看我的资产"
                                 />
                             </Tooltip>
                         )}
                         {(uploadedImages.length > 0 || uploadedAudios.length > 0) && (
-                            <Tooltip title="清空素材" mouseEnterDelay={0.2}>
+                            <Tooltip title="清空素材" placement="top" mouseEnterDelay={0.15}>
                                 <Button
                                     type="text"
                                     size="small"
@@ -627,6 +640,7 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
                                         setUploadedImages([]);
                                         setUploadedAudios([]);
                                     }}
+                                    aria-label="清空素材"
                                 />
                             </Tooltip>
                         )}

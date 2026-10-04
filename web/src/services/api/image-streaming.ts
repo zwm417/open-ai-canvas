@@ -17,7 +17,7 @@ import {
 import { aiApiUrl, aiHeaders, geminiApiUrl, geminiHeaders } from "@/services/api/image-transport";
 
 export async function requestStreamingResponse(config: AiConfig, body: Record<string, unknown>, onDelta?: (text: string) => void, options?: RequestOptions): Promise<ToolResponseResult> {
-    const request = channelRequest(config, aiApiUrl(config, "/responses"), { ...aiHeaders(config, "application/json"), Accept: "text/event-stream" });
+    const request = channelRequest(config, aiApiUrl(config, "/responses"), { ...aiHeaders(config, "application/json", options?.scene), Accept: "text/event-stream", ...options?.headers });
     const response = await executeChannelFetch(request, {
         method: "POST",
         headers: request.headers,
@@ -50,7 +50,7 @@ export async function requestStreamingResponse(config: AiConfig, body: Record<st
 }
 
 export async function requestStreamingChatCompletion(config: AiConfig, body: Record<string, unknown>, onDelta?: (text: string) => void, options?: RequestOptions): Promise<ToolResponseResult> {
-    const request = channelRequest(config, aiApiUrl(config, "/chat/completions"), { ...aiHeaders(config, "application/json"), Accept: "text/event-stream" });
+    const request = channelRequest(config, aiApiUrl(config, "/chat/completions"), { ...aiHeaders(config, "application/json", options?.scene), Accept: "text/event-stream", ...options?.headers });
     const response = await executeChannelFetch(request, {
         method: "POST",
         headers: request.headers,
@@ -85,7 +85,7 @@ export async function requestStreamingChatCompletion(config: AiConfig, body: Rec
 }
 
 export async function requestStreamingClaude(config: AiConfig, body: Record<string, unknown>, onDelta?: (text: string) => void, options?: RequestOptions): Promise<ToolResponseResult> {
-    const request = channelRequest(config, aiApiUrl(config, "/messages"), { ...aiHeaders(config, "application/json"), Accept: "text/event-stream" });
+    const request = channelRequest(config, aiApiUrl(config, "/messages"), { ...aiHeaders(config, "application/json", options?.scene), Accept: "text/event-stream", ...options?.headers });
     const response = await executeChannelFetch(request, {
         method: "POST",
         headers: request.headers,
@@ -151,7 +151,7 @@ function parseClaudeResult(payload: Record<string, unknown>): ToolResponseResult
 }
 
 export async function requestGeminiStreamingResponse(config: AiConfig, body: Record<string, unknown>, onDelta?: (text: string) => void, options?: RequestOptions): Promise<ToolResponseResult> {
-    const request = channelRequest(config, `${geminiApiUrl(config, "streamGenerateContent")}?alt=sse`, geminiHeaders(config));
+    const request = channelRequest(config, `${geminiApiUrl(config, "streamGenerateContent")}?alt=sse`, { ...geminiHeaders(config, options?.scene), ...options?.headers });
     const response = await executeChannelFetch(request, {
         method: "POST",
         headers: request.headers,

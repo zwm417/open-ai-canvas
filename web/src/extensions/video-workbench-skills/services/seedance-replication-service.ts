@@ -239,7 +239,7 @@ ${supplementaryNotes.trim() ? supplementaryNotes.trim() : "无特殊补充，请
                 accumulated += chunk;
                 onDelta?.(chunk);
             },
-            { signal },
+            { signal, scene: "video_replication" },
         );
 
         const finalText = rawResponse || accumulated;

@@ -12522,17 +12522,60 @@ html:not(.dark) .creation-history-drawer-root {
     backdrop-filter: none !important;
 }
 
-/* Tooltip 必须使用同一套浮层背景/前景语义色。Ant Design 会让它继承
-   colorTextLightSolid（实心按钮文字色），深色主题下会形成深底深字。 */
+/* @opc-feature: ant-tooltip-commercial-governance [start] */
+/* Tooltip 商业级高对比度与层级治理规范：
+   1. 统一浮层层级 z-index: 10000，杜绝被工作台侧边栏、卡片大图预览、抽屉或对话框遮挡；
+   2. 亮暗主题统一对齐 Linear / Figma / Apple 工业级微标签标准（高对比深色微胶囊 + 晶莹外边框 + 柔和投影），彻底消除白色浮层在浅色背景上无边界融叠问题；
+   3. 箭头背景、外边框与主内容区无缝咬合，杜绝断裂或杂色错位；
+   4. pointer-events: none 防止浮层本身抢断鼠标交互。 */
 :where(.ant-tooltip) {
-    --ant-tooltip-arrow-background-color: var(--popover) !important;
-    --ant-tooltip-overlay-color: var(--popover-foreground) !important;
+    z-index: 10000 !important;
+    --ant-tooltip-arrow-background-color: #18181b !important;
+    --ant-tooltip-overlay-color: #fafafa !important;
 }
 
-:where(.ant-tooltip-container, .ant-tooltip-inner) {
-    background: var(--popover) !important;
-    color: var(--popover-foreground) !important;
+:where(.ant-tooltip-container, .ant-tooltip-inner),
+.ant-tooltip .ant-tooltip-inner {
+    background: #18181b !important;
+    color: #fafafa !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: var(--r-md, 6px) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+    font-weight: 500 !important;
+    padding: 5px 9px !important;
+    pointer-events: none !important;
+    user-select: none !important;
 }
+
+.ant-tooltip .ant-tooltip-arrow::before {
+    background: #18181b !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+}
+
+.dark :where(.ant-tooltip),
+[data-theme="dark"] :where(.ant-tooltip) {
+    --ant-tooltip-arrow-background-color: #27272a !important;
+    --ant-tooltip-overlay-color: #f4f4f5 !important;
+}
+
+.dark :where(.ant-tooltip-container, .ant-tooltip-inner),
+.dark .ant-tooltip .ant-tooltip-inner,
+[data-theme="dark"] :where(.ant-tooltip-container, .ant-tooltip-inner),
+[data-theme="dark"] .ant-tooltip .ant-tooltip-inner {
+    background: #27272a !important;
+    color: #f4f4f5 !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .ant-tooltip .ant-tooltip-arrow::before,
+[data-theme="dark"] .ant-tooltip .ant-tooltip-arrow::before {
+    background: #27272a !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+}
+/* @opc-feature: ant-tooltip-commercial-governance [end] */
 
 :where(.ant-select-item-option, .ant-dropdown-menu-item, .ant-dropdown-menu-submenu-title, .ant-cascader-menu-item, .ant-mentions-dropdown-menu-item) {
     min-height: 36px;

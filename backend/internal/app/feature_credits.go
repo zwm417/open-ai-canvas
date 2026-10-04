@@ -14,40 +14,156 @@ import (
 // @opc-adapter: feature-credits [start]
 const FeatureCreditSettingKey = "feature_credit_settings"
 
+type FeatureSceneMeta struct {
+	Scene                  string    `json:"scene"`
+	Title                  string    `json:"title"`
+	Description            string    `json:"description"`
+	Category               string    `json:"category"` // "video_workbench", "creation_assistant", "image_workbench", "voice", "canvas"
+	Capability             string    `json:"capability"` // "text", "image", "video"
+	RecommendedMultipliers []float64 `json:"recommendedMultipliers,omitempty"`
+}
+
 type FeatureCreditItem struct {
-	Scene             string `json:"scene"`
-	Enabled           bool   `json:"enabled"`
-	Mode              string `json:"mode"`              // "fixed" or "model_price"
-	FixedMicrocredits int64  `json:"fixedMicrocredits"` // 每次执行固定微积分 (1 积分 = 1,000,000 microcredits)
-	DefaultModel      string `json:"defaultModel"`
+	Scene                 string `json:"scene"`
+	Enabled               bool   `json:"enabled"`
+	Mode                  string `json:"mode"`                  // "fixed", "model_price", or "token_multiplier"
+	FixedMicrocredits     int64  `json:"fixedMicrocredits"`     // 每次执行固定微积分 (1 积分 = 1,000,000 microcredits)
+	MultiplierBasisPoints int64  `json:"multiplierBasisPoints"` // 场景基准倍率 (10,000 = 1.0x)
+	DefaultModel          string `json:"defaultModel"`
 }
 
 type FeatureCreditSettings struct {
-	Features map[string]FeatureCreditItem `json:"features"`
+	Features              map[string]FeatureCreditItem `json:"features"`
+	ModelSceneMultipliers map[string]map[string]int64  `json:"modelSceneMultipliers,omitempty"` // modelKey -> scene -> BPS
+	SceneCatalog          []FeatureSceneMeta           `json:"sceneCatalog,omitempty"`          // 权威场景元数据下发
+}
+
+var SystemFeatureSceneCatalog = []FeatureSceneMeta{
+	{
+		Scene:                  "video_director",
+		Title:                  "生视频工作台 · 编导分镜生成",
+		Description:            "工作流卡片（口播/带货/到店/剧情等）内置编导助手时间线分镜与思考链生成",
+		Category:               "video_workbench",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "video_replication",
+		Title:                  "生视频工作台 · 深度复刻推演",
+		Description:            "参考视频端侧抽帧拼图与用户素材因果演进推演，生成 Seedance-2.0 专用提示词",
+		Category:               "video_workbench",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.5, 2.0, 2.5},
+	},
+	{
+		Scene:                  "directing_assistant",
+		Title:                  "创造助手 · 全案原创分镜脚本",
+		Description:            "编导中枢多模态素材批次分析与原创短剧分镜脚本生成",
+		Category:               "creation_assistant",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "material_analysis",
+		Title:                  "创造助手 · 素材多模态洞察分析",
+		Description:            "多模态图像/视频/音频特征拆解与核心洞察分析",
+		Category:               "creation_assistant",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "video_reverse",
+		Title:                  "参考视频抽帧反推算子",
+		Description:            "逐秒密集抽帧与多模态反推镜头结构与提示词",
+		Category:               "creation_assistant",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "image_prompt_optimize",
+		Title:                  "生图工作台 · 技能提示词优化",
+		Description:            "生图工作流技能卡片规范与素材插槽智能润色融合",
+		Category:               "image_workbench",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "voice_script_rewrite",
+		Title:                  "台词配音表 · 分镜台词口语化改写",
+		Description:            "分镜原文台词口语化节奏改写与 ±2 字严格字数约束",
+		Category:               "voice",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "config_script",
+		Title:                  "画布节点 · 配置生成脚本",
+		Description:            "按平台规格、风格与时长规则自动分段生成脚本",
+		Category:               "canvas",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "ref_script",
+		Title:                  "画布节点 · 参考生脚本",
+		Description:            "结合参考反推与自定义配置生成时间线分镜脚本",
+		Category:               "canvas",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:       "image_workbench",
+		Title:       "生图工作台 · 图像生成",
+		Description: "独立生图工作台的批次与单图渲染生成",
+		Category:    "image_workbench",
+		Capability:  "image",
+	},
+	{
+		Scene:       "video_workbench",
+		Title:       "生视频工作台 · 视频生成",
+		Description: "独立生视频工作台的分段生成与成片导出",
+		Category:    "video_workbench",
+		Capability:  "video",
+	},
 }
 
 var DefaultFeatureScenes = []string{
-	"image_workbench",
-	"video_workbench",
+	"video_director",
+	"video_replication",
 	"directing_assistant",
 	"material_analysis",
-	"config_script",
 	"video_reverse",
+	"image_prompt_optimize",
+	"voice_script_rewrite",
+	"config_script",
 	"ref_script",
+	"image_workbench",
+	"video_workbench",
 }
 
 func defaultFeatureCreditSettings() FeatureCreditSettings {
-	features := make(map[string]FeatureCreditItem, len(DefaultFeatureScenes))
-	for _, scene := range DefaultFeatureScenes {
-		features[scene] = FeatureCreditItem{
-			Scene:             scene,
-			Enabled:           false,
-			Mode:              "fixed",
-			FixedMicrocredits: 0,
-			DefaultModel:      "",
+	features := make(map[string]FeatureCreditItem, len(SystemFeatureSceneCatalog))
+	for _, meta := range SystemFeatureSceneCatalog {
+		mode := "fixed"
+		enabled := false
+		if meta.Capability == "text" {
+			mode = "token_multiplier"
+			enabled = true
+		}
+		features[meta.Scene] = FeatureCreditItem{
+			Scene:                 meta.Scene,
+			Enabled:               enabled,
+			Mode:                  mode,
+			FixedMicrocredits:     0,
+			MultiplierBasisPoints: 10_000,
+			DefaultModel:          "",
 		}
 	}
-	return FeatureCreditSettings{Features: features}
+	return FeatureCreditSettings{
+		Features:              features,
+		ModelSceneMultipliers: make(map[string]map[string]int64),
+		SceneCatalog:          SystemFeatureSceneCatalog,
+	}
 }
 
 func (s *Service) featureCreditSettings() (FeatureCreditSettings, error) {
@@ -65,12 +181,24 @@ func (s *Service) featureCreditSettings() (FeatureCreditSettings, error) {
 	if settings.Features == nil {
 		settings.Features = make(map[string]FeatureCreditItem)
 	}
+	if settings.ModelSceneMultipliers == nil {
+		settings.ModelSceneMultipliers = make(map[string]map[string]int64)
+	}
 	defaults := defaultFeatureCreditSettings()
 	for k, v := range defaults.Features {
-		if _, exists := settings.Features[k]; !exists {
+		if currentItem, exists := settings.Features[k]; !exists {
 			settings.Features[k] = v
+		} else {
+			if currentItem.MultiplierBasisPoints <= 0 {
+				currentItem.MultiplierBasisPoints = 10_000
+			}
+			if currentItem.Mode == "" {
+				currentItem.Mode = v.Mode
+			}
+			settings.Features[k] = currentItem
 		}
 	}
+	settings.SceneCatalog = SystemFeatureSceneCatalog
 	return settings, nil
 }
 
@@ -99,11 +227,44 @@ func (s *Service) UpdateFeatureCreditSettings(actor *model.User, settings Featur
 		if item.FixedMicrocredits < 0 || item.FixedMicrocredits > 100_000_000*CreditScale {
 			return FeatureCreditSettings{}, BadAuthRequest("积分消耗超出允许范围")
 		}
-		if item.Mode != "fixed" && item.Mode != "model_price" {
+		if item.MultiplierBasisPoints < 0 || item.MultiplierBasisPoints > 1_000_000 {
+			return FeatureCreditSettings{}, BadAuthRequest("倍率设置超出允许范围")
+		}
+		if item.MultiplierBasisPoints == 0 {
+			item.MultiplierBasisPoints = 10_000
+		}
+		if item.Mode != "fixed" && item.Mode != "model_price" && item.Mode != "token_multiplier" {
 			item.Mode = "fixed"
 		}
 		item.Scene = scene
 		settings.Features[scene] = item
+	}
+
+	if settings.ModelSceneMultipliers != nil {
+		cleanedMultipliers := make(map[string]map[string]int64)
+		for modelKey, sceneMap := range settings.ModelSceneMultipliers {
+			cleanModel := strings.TrimSpace(modelKey)
+			if cleanModel == "" {
+				continue
+			}
+			cleanedSceneMap := make(map[string]int64)
+			for scene, bps := range sceneMap {
+				cleanScene := strings.TrimSpace(scene)
+				if cleanScene == "" {
+					continue
+				}
+				if bps < 0 || bps > 1_000_000 {
+					return FeatureCreditSettings{}, BadAuthRequest("模型场景倍率超出允许范围 (0~100倍)")
+				}
+				if bps > 0 {
+					cleanedSceneMap[cleanScene] = bps
+				}
+			}
+			if len(cleanedSceneMap) > 0 {
+				cleanedMultipliers[cleanModel] = cleanedSceneMap
+			}
+		}
+		settings.ModelSceneMultipliers = cleanedMultipliers
 	}
 
 	encoded, err := json.Marshal(settings)
@@ -127,6 +288,7 @@ func (s *Service) UpdateFeatureCreditSettings(actor *model.User, settings Featur
 	if err := s.appendAdminAudit(actor, "feature_credits.update", "system_setting", FeatureCreditSettingKey, "更新功能积分配置", settings); err != nil {
 		return FeatureCreditSettings{}, err
 	}
+	settings.SceneCatalog = SystemFeatureSceneCatalog
 	return settings, nil
 }
 
@@ -156,8 +318,24 @@ func (s *Service) DeductFeatureCredits(user *model.User, req DeductFeatureCredit
 	if err != nil {
 		return nil, err
 	}
-	item, ok := settings.Features[req.Scene]
+	cleanScene := strings.TrimSpace(req.Scene)
+	var item FeatureCreditItem
+	var ok bool
+	if item, ok = settings.Features[cleanScene]; !ok {
+		for sKey, fItem := range settings.Features {
+			if strings.EqualFold(strings.TrimSpace(sKey), cleanScene) {
+				item = fItem
+				ok = true
+				break
+			}
+		}
+	}
 	if !ok || !item.Enabled {
+		return &DeductFeatureCreditsResponse{Charged: false, DeductedMicrocredits: 0}, nil
+	}
+
+	// 若计费模式为 token_multiplier，实际扣费交由系统代理按真实 Token 消耗与场景倍率结算，免去前置扣费
+	if item.Mode == "token_multiplier" {
 		return &DeductFeatureCreditsResponse{Charged: false, DeductedMicrocredits: 0}, nil
 	}
 
@@ -245,5 +423,61 @@ func (s *Service) RefundFeatureCredits(user *model.User, req RefundFeatureCredit
 		return nil, err
 	}
 	return account, nil
+}
+
+func cleanModelKey(key string) string {
+	k := strings.TrimSpace(key)
+	k = strings.TrimPrefix(k, "models/")
+	return strings.ToLower(k)
+}
+
+func (s *Service) ResolveModelSceneMultiplier(modelKey string, scene string) (int64, bool) {
+	settings, err := s.featureCreditSettings()
+	if err != nil {
+		return 0, false
+	}
+	cleanScene := strings.TrimSpace(scene)
+	if cleanScene == "" {
+		return 0, false
+	}
+
+	var sceneItem *FeatureCreditItem
+	if item, ok := settings.Features[cleanScene]; ok {
+		sceneItem = &item
+	} else {
+		for sKey, item := range settings.Features {
+			if strings.EqualFold(strings.TrimSpace(sKey), cleanScene) {
+				sceneItem = &item
+				break
+			}
+		}
+	}
+
+	// 核心防护：若该功能场景未启用计费，或其计费模式不是 token_multiplier，则绝不应用场景倍率附加费
+	if sceneItem == nil || !sceneItem.Enabled || sceneItem.Mode != "token_multiplier" {
+		return 0, false
+	}
+
+	targetModel := cleanModelKey(modelKey)
+
+	// 1. 优先在 ModelSceneMultipliers 查找 (精确匹配或 cleanModelKey 匹配)
+	if len(settings.ModelSceneMultipliers) > 0 {
+		for mKey, sceneMap := range settings.ModelSceneMultipliers {
+			if cleanModelKey(mKey) == targetModel || mKey == modelKey {
+				for sKey, bps := range sceneMap {
+					if strings.EqualFold(strings.TrimSpace(sKey), cleanScene) && bps > 0 {
+						return bps, true
+					}
+				}
+			}
+		}
+	}
+
+	// 2. 回退到该功能场景自身配置的基准倍率
+	if sceneItem.MultiplierBasisPoints > 0 {
+		return sceneItem.MultiplierBasisPoints, true
+	}
+
+	return 0, false
 }
 // @opc-adapter: feature-credits [end]

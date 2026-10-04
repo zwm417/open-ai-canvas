@@ -75,7 +75,9 @@ export async function optimizeSkillPrompt(params: SkillPromptOptimizeParams): Pr
                 { role: "user", content: userMessage },
             ],
             onDelta || (() => {}),
-            { signal }
+            // @opc-feature: feature-credits [start]
+            { signal, scene: "image_prompt_optimize" }
+            // @opc-feature: feature-credits [end]
         );
 
         const cleaned = rawResponse

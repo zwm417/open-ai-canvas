@@ -408,6 +408,7 @@ export async function analyzePreparedReverseVideo({
                 signal,
                 maxTokens: 16384,
                 max_tokens: 16384,
+                scene: "video_reverse",
             } as any);
             lastError = undefined;
             break;

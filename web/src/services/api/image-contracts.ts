@@ -112,6 +112,8 @@ export type RequestOptions = {
     onReasoning?: (text: string) => void;
     temperature?: number;
     presence_penalty?: number;
+    scene?: string;
+    headers?: Record<string, string>;
     [key: string]: unknown;
 };
 // @opc-feature: request-generation-options [end]

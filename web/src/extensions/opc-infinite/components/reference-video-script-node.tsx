@@ -837,7 +837,7 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
                 { ...config, model: effectiveScriptModel, systemPrompt: effectiveSystemPrompt },
                 [{ role: "user", content: finalContentParts }],
                 handleDelta,
-                { temperature: 0.85, presence_penalty: 0.2, signal: controller.signal },
+                { temperature: 0.85, presence_penalty: 0.2, signal: controller.signal, scene: "ref_script" },
             );
 
             clearInterval(progressTimer);

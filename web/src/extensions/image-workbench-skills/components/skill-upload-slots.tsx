@@ -169,22 +169,24 @@ export const SkillUploadSlots: React.FC<SkillUploadSlotsProps> = ({
                 </span>
 
                 <div className="flex items-center gap-1.5">
-                    <Tooltip title="从剪切板粘贴" mouseEnterDelay={0.2}>
+                    <Tooltip title="从剪切板粘贴" placement="top" mouseEnterDelay={0.15}>
                         <button
                             type="button"
                             onClick={handlePasteClipboard}
                             className="flex size-7 items-center justify-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-[#2c2c2e] dark:hover:text-stone-200 transition-colors cursor-pointer"
+                            aria-label="从剪切板粘贴"
                         >
                             <ClipboardPaste className="size-3.5" />
                         </button>
                     </Tooltip>
 
                     {onOpenPromptDialog && (
-                        <Tooltip title="提示词模板" mouseEnterDelay={0.2}>
+                        <Tooltip title="提示词模板" placement="top" mouseEnterDelay={0.15}>
                             <button
                                 type="button"
                                 onClick={onOpenPromptDialog}
                                 className="flex size-7 items-center justify-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-[#2c2c2e] dark:hover:text-stone-200 transition-colors cursor-pointer"
+                                aria-label="提示词模板"
                             >
                                 <Sparkles className="size-3.5 text-amber-500" />
                             </button>
@@ -192,11 +194,12 @@ export const SkillUploadSlots: React.FC<SkillUploadSlotsProps> = ({
                     )}
 
                     {onSavePromptDialog && (
-                        <Tooltip title="保存为模板" mouseEnterDelay={0.2}>
+                        <Tooltip title="保存为模板" placement="top" mouseEnterDelay={0.15}>
                             <button
                                 type="button"
                                 onClick={onSavePromptDialog}
                                 className="flex size-7 items-center justify-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-[#2c2c2e] dark:hover:text-stone-200 transition-colors cursor-pointer"
+                                aria-label="保存为模板"
                             >
                                 <BookmarkPlus className="size-3.5 text-amber-500" />
                             </button>
@@ -204,11 +207,12 @@ export const SkillUploadSlots: React.FC<SkillUploadSlotsProps> = ({
                     )}
 
                     {onOpenAssetPicker && (
-                        <Tooltip title="查看我的资产" mouseEnterDelay={0.2}>
+                        <Tooltip title="查看我的资产" placement="top" mouseEnterDelay={0.15}>
                             <button
                                 type="button"
                                 onClick={onOpenAssetPicker}
                                 className="flex size-7 items-center justify-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-[#2c2c2e] dark:hover:text-stone-200 transition-colors cursor-pointer"
+                                aria-label="查看我的资产"
                             >
                                 <FolderPlus className="size-3.5" />
                             </button>
@@ -216,11 +220,12 @@ export const SkillUploadSlots: React.FC<SkillUploadSlotsProps> = ({
                     )}
 
                     {uploadedCount > 0 && (
-                        <Tooltip title="清空素材" mouseEnterDelay={0.2}>
+                        <Tooltip title="清空素材" placement="top" mouseEnterDelay={0.15}>
                             <button
                                 type="button"
                                 onClick={onClearAllSlots}
                                 className="flex size-7 items-center justify-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-red-500 dark:hover:bg-[#2c2c2e] dark:hover:text-red-400 transition-colors cursor-pointer"
+                                aria-label="清空素材"
                             >
                                 <Trash2 className="size-3.5" />
                             </button>
@@ -289,59 +294,67 @@ export const SkillUploadSlots: React.FC<SkillUploadSlotsProps> = ({
 
                                                 {/* 悬停操作浮层 */}
                                                 <div className="absolute inset-0 hidden items-center justify-center gap-1 bg-black/50 backdrop-blur-[1px] group-hover/card:flex">
-                                                    <button
-                                                        type="button"
-                                                        title="查看大图"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setPreviewLargeUrl(file.previewUrl || file.dataUrl);
-                                                        }}
-                                                        className="grid size-6 place-items-center rounded-full bg-white/90 text-stone-800 shadow transition hover:bg-white cursor-pointer"
-                                                    >
-                                                        <ZoomIn className="size-3" />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        title="替换此图"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            replacingTargetRef.current = { slotId: slot.id, fileId: file.id };
-                                                            replaceSpecificRefs.current["specific"]?.click();
-                                                        }}
-                                                        className="grid size-6 place-items-center rounded-full bg-white/90 text-stone-800 shadow transition hover:bg-white cursor-pointer"
-                                                    >
-                                                        <RefreshCw className="size-3" />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        title="删除此素材"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (onRemoveSlotFile) {
-                                                                onRemoveSlotFile(slot.id, file.id);
-                                                            } else {
-                                                                onClearSlot(slot.id);
-                                                            }
-                                                        }}
-                                                        className="grid size-6 place-items-center rounded-full bg-white/90 text-red-600 shadow transition hover:bg-white cursor-pointer"
-                                                    >
-                                                        <Trash2 className="size-3" />
-                                                    </button>
+                                                    <Tooltip title="查看大图" placement="top" mouseEnterDelay={0.15}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setPreviewLargeUrl(file.previewUrl || file.dataUrl);
+                                                            }}
+                                                            className="grid size-6 place-items-center rounded-full bg-white/90 text-stone-800 shadow transition hover:bg-white cursor-pointer"
+                                                            aria-label="查看大图"
+                                                        >
+                                                            <ZoomIn className="size-3" />
+                                                        </button>
+                                                    </Tooltip>
+                                                    <Tooltip title="替换此图" placement="top" mouseEnterDelay={0.15}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                replacingTargetRef.current = { slotId: slot.id, fileId: file.id };
+                                                                replaceSpecificRefs.current["specific"]?.click();
+                                                            }}
+                                                            className="grid size-6 place-items-center rounded-full bg-white/90 text-stone-800 shadow transition hover:bg-white cursor-pointer"
+                                                            aria-label="替换此图"
+                                                        >
+                                                            <RefreshCw className="size-3" />
+                                                        </button>
+                                                    </Tooltip>
+                                                    <Tooltip title="删除素材" placement="top" mouseEnterDelay={0.15}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (onRemoveSlotFile) {
+                                                                    onRemoveSlotFile(slot.id, file.id);
+                                                                } else {
+                                                                    onClearSlot(slot.id);
+                                                                }
+                                                            }}
+                                                            className="grid size-6 place-items-center rounded-full bg-white/90 text-red-600 shadow transition hover:bg-white cursor-pointer"
+                                                            aria-label="删除素材"
+                                                        >
+                                                            <Trash2 className="size-3" />
+                                                        </button>
+                                                    </Tooltip>
                                                 </div>
                                             </div>
                                         );
                                     })}
 
                                     {/* 向该槽位继续追加素材按钮 */}
-                                    <button
-                                        type="button"
-                                        onClick={() => appendInputRefs.current[slot.id]?.click()}
-                                        className="flex size-20 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border hover:border-amber-500 hover:bg-amber-50/30 dark:hover:bg-amber-950/20 text-muted-foreground transition-all cursor-pointer"
-                                        title="向此槽位追加折叠素材"
-                                    >
-                                        <Plus className="size-4" />
-                                        <span className="text-[10px]">追加</span>
-                                    </button>
+                                    <Tooltip title="追加素材" placement="top" mouseEnterDelay={0.15}>
+                                        <button
+                                            type="button"
+                                            onClick={() => appendInputRefs.current[slot.id]?.click()}
+                                            className="flex size-20 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border hover:border-amber-500 hover:bg-amber-50/30 dark:hover:bg-amber-950/20 text-muted-foreground transition-all cursor-pointer"
+                                            aria-label="向此槽位追加素材"
+                                        >
+                                            <Plus className="size-4" />
+                                            <span className="text-[10px]">追加</span>
+                                        </button>
+                                    </Tooltip>
                                 </div>
                             </div>
                         );
@@ -419,31 +432,33 @@ export const SkillUploadSlots: React.FC<SkillUploadSlotsProps> = ({
 
                                                 {/* 悬浮操作浮层 */}
                                                 <div className="absolute inset-0 z-20 hidden items-center justify-center gap-1 rounded-xl bg-black/45 group-hover:flex">
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            fileInputRefs.current[slot.id]?.click();
-                                                        }}
-                                                        className="grid size-7 place-items-center rounded-full bg-white/90 text-stone-800 shadow-sm transition hover:bg-white cursor-pointer"
-                                                        title="替换图片"
-                                                        aria-label="替换图片"
-                                                    >
-                                                        <RefreshCw className="size-3.5" />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onClearSlot(slot.id);
-                                                            if (previewSlotId === slot.id) setPreviewSlotId(null);
-                                                        }}
-                                                        className="grid size-7 place-items-center rounded-full bg-white/90 text-red-600 shadow-sm transition hover:bg-white cursor-pointer"
-                                                        title="删除素材"
-                                                        aria-label="删除素材"
-                                                    >
-                                                        <Trash2 className="size-3.5" />
-                                                    </button>
+                                                    <Tooltip title="替换图片" placement="top" mouseEnterDelay={0.15}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                fileInputRefs.current[slot.id]?.click();
+                                                            }}
+                                                            className="grid size-7 place-items-center rounded-full bg-white/90 text-stone-800 shadow-sm transition hover:bg-white cursor-pointer"
+                                                            aria-label="替换图片"
+                                                        >
+                                                            <RefreshCw className="size-3.5" />
+                                                        </button>
+                                                    </Tooltip>
+                                                    <Tooltip title="删除素材" placement="top" mouseEnterDelay={0.15}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                onClearSlot(slot.id);
+                                                                if (previewSlotId === slot.id) setPreviewSlotId(null);
+                                                            }}
+                                                            className="grid size-7 place-items-center rounded-full bg-white/90 text-red-600 shadow-sm transition hover:bg-white cursor-pointer"
+                                                            aria-label="删除素材"
+                                                        >
+                                                            <Trash2 className="size-3.5" />
+                                                        </button>
+                                                    </Tooltip>
                                                 </div>
                                             </div>
                                         )

@@ -2687,44 +2687,48 @@ export default function VideoPage() {
                                 <div className="mb-2 flex items-center justify-between gap-3">
                                     <span className="text-xs font-medium text-stone-500 dark:text-stone-400">{referenceCount} / 15</span>
                                     <div className="flex items-center gap-1.5">
-                                        <Tooltip title="从剪切板粘贴" mouseEnterDelay={0.2}>
+                                        <Tooltip title="从剪切板粘贴" placement="top" mouseEnterDelay={0.15}>
                                             <Button
                                                 type="text"
                                                 size="small"
                                                 className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
                                                 icon={<ClipboardPaste className="size-3.5" />}
                                                 onClick={() => void addReferencesFromClipboard()}
+                                                aria-label="从剪切板粘贴"
                                             />
                                         </Tooltip>
-                                        <Tooltip title="提示词模板" mouseEnterDelay={0.2}>
+                                        <Tooltip title="提示词模板" placement="top" mouseEnterDelay={0.15}>
                                             <Button
                                                 type="text"
                                                 size="small"
                                                 className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
                                                 icon={<Sparkles className="size-3.5 text-amber-500" />}
                                                 onClick={() => { setPromptDialogMode("select"); setPromptDialogOpen(true); }}
+                                                aria-label="提示词模板"
                                             />
                                         </Tooltip>
-                                        <Tooltip title="保存为模板" mouseEnterDelay={0.2}>
+                                        <Tooltip title="保存为模板" placement="top" mouseEnterDelay={0.15}>
                                             <Button
                                                 type="text"
                                                 size="small"
                                                 className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
                                                 icon={<BookmarkPlus className="size-3.5 text-amber-500" />}
                                                 onClick={() => { setPromptDialogMode("save"); setPromptDialogOpen(true); }}
+                                                aria-label="保存为模板"
                                             />
                                         </Tooltip>
-                                        <Tooltip title="查看我的资产" mouseEnterDelay={0.2}>
+                                        <Tooltip title="查看我的资产" placement="top" mouseEnterDelay={0.15}>
                                             <Button
                                                 type="text"
                                                 size="small"
                                                 className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
                                                 icon={<FolderPlus className="size-3.5" />}
                                                 onClick={() => setAssetPickerOpen(true)}
+                                                aria-label="查看我的资产"
                                             />
                                         </Tooltip>
                                         {referenceItems.length > 0 && (
-                                            <Tooltip title="清空素材" mouseEnterDelay={0.2}>
+                                            <Tooltip title="清空素材" placement="top" mouseEnterDelay={0.15}>
                                                 <Button
                                                     type="text"
                                                     size="small"
@@ -2739,6 +2743,7 @@ export default function VideoPage() {
                                                         });
                                                         setPreviewReferenceId(null);
                                                     }}
+                                                    aria-label="清空素材"
                                                 />
                                             </Tooltip>
                                         )}
@@ -3200,7 +3205,7 @@ function ReferenceTile({
             )}
 
             <div className={`absolute inset-0 z-20 hidden items-center justify-center gap-1 rounded-xl bg-black/45 ${item.uploading ? "" : "group-hover:flex group-focus:flex"}`}>
-                <Tooltip title={replaceLabel}>
+                <Tooltip title={replaceLabel} placement="top" mouseEnterDelay={0.15}>
                     <button
                         type="button"
                         className="grid size-7 place-items-center rounded-full bg-white/90 text-stone-800 shadow-sm transition hover:bg-white cursor-pointer"
@@ -3208,13 +3213,12 @@ function ReferenceTile({
                             event.stopPropagation();
                             onReplace();
                         }}
-                        title={replaceLabel}
                         aria-label={replaceLabel}
                     >
                         <RefreshCw className="size-3.5" />
                     </button>
                 </Tooltip>
-                <Tooltip title={removeLabel}>
+                <Tooltip title={removeLabel} placement="top" mouseEnterDelay={0.15}>
                     <button
                         type="button"
                         className="grid size-7 place-items-center rounded-full bg-white/90 text-red-600 shadow-sm transition hover:bg-white cursor-pointer"
@@ -3222,7 +3226,6 @@ function ReferenceTile({
                             event.stopPropagation();
                             onRemove();
                         }}
-                        title={removeLabel}
                         aria-label={removeLabel}
                     >
                         <Trash2 className="size-3.5" />
