@@ -10,6 +10,7 @@ import {
     fetchCreativeReversePrompt,
     formatShotManifestToReadableScript,
     parseDirectorJson,
+    parseMarkdownMasterSlots,
     parseMarkdownShots,
     stripJsonCodeBlocks,
 } from "../prompts/hypit-director-prompts";
@@ -24,9 +25,10 @@ import { ModelPicker } from "@/components/model-picker";
 import { FeatureCreditBadge } from "@/components/feature-credit-badge";
 import { useFeatureCredit } from "@/hooks/use-feature-credit";
 import { usePluginStore } from "@/stores/use-plugin-store";
-import { scopedLocalStorage } from "@/lib/user-scope";
+import { getActiveUserScope, scopedLocalStorage } from "@/lib/user-scope";
 import { getCachedResourceBlob } from "@/services/resource-blob-cache";
 import { deleteStoredMedia, getMediaBlob, setMediaBlob } from "@/services/file-storage";
+import { evictLocalFirstMedia, peekLocalFirstMedia, primeLocalFirstMedia, resolveLocalFirstMedia } from "@/services/local-first-media-resolver";
 import { resolveResourceUrl } from "@/services/api/resources";
 import {
     analyzePreparedReverseVideo,
@@ -45,6 +47,17 @@ import {
     type ReverseTrackDeconstruct,
     type VideoSamplingMode,
 } from "../services/video-reverse-contracts";
+import {
+    failNodeTask,
+    finishNodeTask,
+    isCurrentExecution,
+    reconcileOrphanedClientNodeState,
+    recordTaskDeduction,
+    startNodeTask,
+    updateNodeTaskProgress,
+    updateNodeTaskStreamedText,
+    useNodeTask,
+} from "../services/opc-task-hub";
 
 type SavedPromptPreset = {
     id: string;
@@ -193,8 +206,30 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
     const [localUrl, setLocalUrl] = useState<string>("");
     const [gridSize, setGridSize] = useState<ReverseGridSize>(meta.gridSize || "auto");
     const [includeMiddleFrames, setIncludeMiddleFrames] = useState<boolean>(meta.includeMiddleFrames !== false);
-    const [sceneThreshold, setSceneThreshold] = useState<number>(meta.sceneThreshold ?? 0.20);
-    const [minSceneGapSec, setMinSceneGapSec] = useState<number>(meta.minSceneGapSec ?? 0.3);
+    const [classicSceneThreshold, setClassicSceneThreshold] = useState<number>(() => {
+        if (meta.classic?.sceneThreshold !== undefined) return meta.classic.sceneThreshold;
+        if (!isDualTrackNode && meta.activeTab === "classic" && meta.sceneThreshold !== undefined) return meta.sceneThreshold;
+        return 0.20;
+    });
+    const [classicMinSceneGapSec, setClassicMinSceneGapSec] = useState<number>(() => {
+        if (meta.classic?.minSceneGapSec !== undefined) return meta.classic.minSceneGapSec;
+        if (!isDualTrackNode && meta.activeTab === "classic" && meta.minSceneGapSec !== undefined) return meta.minSceneGapSec;
+        return 0.3;
+    });
+
+    const [deconstructSceneThreshold, setDeconstructSceneThreshold] = useState<number>(() => {
+        if (meta.deconstruct?.sceneThreshold !== undefined) return meta.deconstruct.sceneThreshold;
+        if (!isDualTrackNode && meta.activeTab === "deconstruct" && meta.sceneThreshold !== undefined) return meta.sceneThreshold;
+        return 0.15;
+    });
+    const [deconstructMinSceneGapSec, setDeconstructMinSceneGapSec] = useState<number>(() => {
+        if (meta.deconstruct?.minSceneGapSec !== undefined) return meta.deconstruct.minSceneGapSec;
+        if (!isDualTrackNode && meta.activeTab === "deconstruct" && meta.minSceneGapSec !== undefined) return meta.minSceneGapSec;
+        return 0.25;
+    });
+
+    const sceneThreshold = activeTab === "classic" ? classicSceneThreshold : deconstructSceneThreshold;
+    const minSceneGapSec = activeTab === "classic" ? classicMinSceneGapSec : deconstructMinSceneGapSec;
 
     // 当前活跃轨派生脚本、提示词与抽帧拼图
     const currentActiveScript = activeTab === "classic"
@@ -219,6 +254,8 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
         const nextReplacePrompt = tab === "classic" ? classicReplacePrompt : deconstructReplacePrompt;
         const nextPromptRules = tab === "classic" ? classicPromptRules : deconstructPromptRules;
         const nextSamplingMode = tab === "classic" ? classicSamplingMode : "deconstruct";
+        const nextSceneThreshold = tab === "classic" ? classicSceneThreshold : deconstructSceneThreshold;
+        const nextMinSceneGapSec = tab === "classic" ? classicMinSceneGapSec : deconstructMinSceneGapSec;
 
         updateMetadata?.(node.id, {
             content: nextActiveScript || "",
@@ -231,6 +268,8 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                 replaceBuiltInPrompt: nextReplacePrompt,
                 promptRules: nextPromptRules,
                 samplingMode: nextSamplingMode,
+                sceneThreshold: nextSceneThreshold,
+                minSceneGapSec: nextMinSceneGapSec,
                 contactSheets: nextContactSheets,
             },
         });
@@ -267,12 +306,15 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
     const [savedRulePresets, setSavedRulePresets] = useState<SavedPromptPreset[]>(() => readSavedPresets(RULE_PRESETS_STORAGE_KEY));
     const [savedPromptPresets, setSavedPromptPresets] = useState<SavedPromptPreset[]>(() => readSavedPresets(PROMPT_PRESETS_STORAGE_KEY));
 
-    // 运行状态与节流进度（本地驱动，主线程零卡顿）
-    const isNodeExecuting = meta.status === "running" || node.metadata?.status === "loading" || node.metadata?.taskStatus === "running";
+    // 运行状态与节流进度（本地驱动，主线程零卡顿，Task Hub 自持）
+    const hubTask = useNodeTask<ReverseAnalysisProgress>(node.id);
+    const isNodeExecuting = hubTask.isRunning;
     const [running, setRunning] = useState<boolean>(isNodeExecuting);
     const [localProgress, setLocalProgress] = useState<ReverseAnalysisProgress | null>(null);
+    const effectiveProgress = hubTask.progress || localProgress;
     const [errorMsg, setErrorMsg] = useState<string>(meta.errorDetails || "");
     const [streamedScript, setStreamedScript] = useState<string>("");
+    const effectiveStreamedScript = hubTask.streamedText || streamedScript;
     const [copied, setCopied] = useState<boolean>(false);
 
     useEffect(() => {
@@ -304,25 +346,45 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
         if (meta.classic?.samplingMode) setClassicSamplingMode(meta.classic.samplingMode);
         if (meta.classic?.samplingFps !== undefined) setClassicSamplingFps(meta.classic.samplingFps);
 
-        // 同步创意反推轨
+        // 同步创意反推轨（优先直出大模型原生完整图纸，严禁二次重编译损耗）
+        const rawP = meta.deconstruct?.rawPrompt || meta.rawPrompt;
         if (meta.deconstruct?.prompt !== undefined) {
-            setDeconstructPrompt(meta.deconstruct.prompt);
+            const promptCandidate = meta.deconstruct.prompt;
+            if (!meta.isUserEditedScript && rawP && rawP.length > promptCandidate.length && rawP.includes("## 一、") && !promptCandidate.includes("## 一、")) {
+                setDeconstructPrompt(rawP);
+            } else {
+                setDeconstructPrompt(promptCandidate);
+            }
+        } else if (rawP !== undefined) {
+            setDeconstructPrompt(rawP);
         } else if (!isDual && meta.activeTab === "deconstruct" && (meta.prompt || node.metadata?.content)) {
             setDeconstructPrompt(meta.prompt || node.metadata?.content || "");
         } else if (isDual && meta.deconstruct === undefined) {
             setDeconstructPrompt("");
         }
-        if (meta.deconstruct?.shotManifest !== undefined) {
-            setShotManifest(meta.deconstruct.shotManifest);
-        } else if (!isDual && meta.shotManifest) {
-            setShotManifest(meta.shotManifest);
+
+        let currentShots = meta.deconstruct?.shotManifest !== undefined ? meta.deconstruct.shotManifest : (!isDual ? meta.shotManifest : undefined);
+        if (currentShots && currentShots.length > 0 && rawP) {
+            const hasEmptyVisual = currentShots.every((s: any) => !s.visualAction && !s.visualContent);
+            if (hasEmptyVisual) {
+                const refreshed = parseMarkdownShots(rawP);
+                if (refreshed.length > 0) {
+                    currentShots = refreshed;
+                }
+            }
+        }
+        if (currentShots !== undefined) {
+            setShotManifest(currentShots);
         } else if (isDual && meta.deconstruct === undefined) {
             setShotManifest([]);
         }
-        if (meta.deconstruct?.originalMasterSlots || meta.deconstruct?.coreElements) {
-            setOriginalMasterSlots(meta.deconstruct.originalMasterSlots || meta.deconstruct.coreElements);
-        } else if (!isDual && (meta.coreElements || meta.originalMasterSlots)) {
-            setOriginalMasterSlots(meta.coreElements || meta.originalMasterSlots);
+
+        let currentSlots = meta.deconstruct?.originalMasterSlots || meta.deconstruct?.coreElements || (!isDual ? (meta.coreElements || meta.originalMasterSlots) : undefined);
+        if (!currentSlots && rawP) {
+            currentSlots = parseMarkdownMasterSlots(rawP);
+        }
+        if (currentSlots) {
+            setOriginalMasterSlots(currentSlots);
         } else if (isDual && meta.deconstruct === undefined) {
             setOriginalMasterSlots(undefined);
         }
@@ -334,19 +396,66 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
         if (meta.deconstruct?.replaceBuiltInPrompt !== undefined) setDeconstructReplacePrompt(meta.deconstruct.replaceBuiltInPrompt);
         if (meta.deconstruct?.promptRules !== undefined) setDeconstructPromptRules(meta.deconstruct.promptRules);
 
-        const activeRunning = meta.status === "running" || node.metadata?.status === "loading" || node.metadata?.taskStatus === "running";
-        setRunning(activeRunning);
+        setRunning(hubTask.isRunning);
         if (meta.activeTab) setActiveTab(meta.activeTab);
         if (meta.wordLevelAudio !== undefined) setWordLevelAudio(meta.wordLevelAudio);
         if (meta.userTouchedAsr !== undefined) setUserTouchedAsr(meta.userTouchedAsr);
         if (meta.localAsrEnabled !== undefined) setLocalAsrEnabled(meta.localAsrEnabled);
         if (meta.localAsrFeedback !== undefined) setLocalAsrFeedback(meta.localAsrFeedback);
         if (meta.errorDetails !== undefined) setErrorMsg(meta.errorDetails);
-        if (meta.gridSize) setGridSize(meta.gridSize);
-        if (meta.includeMiddleFrames !== undefined) setIncludeMiddleFrames(meta.includeMiddleFrames);
-        if (meta.sceneThreshold !== undefined) setSceneThreshold(meta.sceneThreshold);
-        if (meta.minSceneGapSec !== undefined) setMinSceneGapSec(meta.minSceneGapSec);
-    }, [meta, node.metadata?.content, node.metadata?.prompt, node.metadata?.status, node.metadata?.taskStatus]);
+        if (meta.classic?.sceneThreshold !== undefined) {
+            setClassicSceneThreshold(meta.classic.sceneThreshold);
+        } else if (!isDual && meta.activeTab === "classic" && meta.sceneThreshold !== undefined) {
+            setClassicSceneThreshold(meta.sceneThreshold);
+        }
+        if (meta.classic?.minSceneGapSec !== undefined) {
+            setClassicMinSceneGapSec(meta.classic.minSceneGapSec);
+        } else if (!isDual && meta.activeTab === "classic" && meta.minSceneGapSec !== undefined) {
+            setClassicMinSceneGapSec(meta.minSceneGapSec);
+        }
+
+        if (meta.deconstruct?.sceneThreshold !== undefined) {
+            setDeconstructSceneThreshold(meta.deconstruct.sceneThreshold);
+        } else if (!isDual && meta.activeTab === "deconstruct" && meta.sceneThreshold !== undefined) {
+            setDeconstructSceneThreshold(meta.sceneThreshold);
+        }
+        if (meta.deconstruct?.minSceneGapSec !== undefined) {
+            setDeconstructMinSceneGapSec(meta.deconstruct.minSceneGapSec);
+        } else if (!isDual && meta.activeTab === "deconstruct" && meta.minSceneGapSec !== undefined) {
+            setDeconstructMinSceneGapSec(meta.minSceneGapSec);
+        }
+    }, [hubTask.isRunning, meta, node.metadata?.content, node.metadata?.prompt]);
+
+    // 挂载期自主健康对账与孤儿态自愈（彻底解决 F5 刷新/异常崩溃导致的无取消按钮永久死锁）
+    useEffect(() => {
+        const hasValidResult = Boolean(
+            classicPrompt ||
+            deconstructPrompt ||
+            (shotManifest && shotManifest.length > 0) ||
+            node.metadata?.content
+        );
+
+        reconcileOrphanedClientNodeState({
+            nodeId: node.id,
+            isTaskRunning: hubTask.isRunning,
+            persistedStatus: node.metadata?.status,
+            persistedTaskStatus: node.metadata?.taskStatus,
+            subStatus: meta.status,
+            hasValidResult,
+            onHeal: (healedStatus) => {
+                setRunning(false);
+                setLocalProgress(null);
+                updateMetadata?.(node.id, {
+                    status: healedStatus,
+                    taskStatus: "idle",
+                    videoReverse: {
+                        ...meta,
+                        status: healedStatus,
+                    },
+                });
+            },
+        });
+    }, [node.id, hubTask.isRunning]);
 
     const handleResultScriptChange = (nextText: string) => {
         if (activeTab === "classic") {
@@ -390,13 +499,12 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
         }
     };
 
-    // 释放本地上传视频的临时 ObjectURL
+    // 本地上传视频的临时 ObjectURL 在文件重新选取时由 handleFileSelect 负责释放，卸载时不主动撤销以保障后台自持任务
     useEffect(() => {
         return () => {
-            if (localUrl) URL.revokeObjectURL(localUrl);
-            abortControllerRef.current?.abort();
+            // 注意：组件因画布缩放 LOD 剔除或平移卸载时不主动中止任务，保证后台无头自持执行
         };
-    }, [localUrl]);
+    }, []);
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -415,8 +523,36 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
             setErrorMsg("插件已在插件中心停用，请先在插件中心启用后再运行反推");
             return;
         }
-        setLocalProgress({ stage: "frames", percent: 0, message: "正在启动视频反推..." });
+        const initialProgress: ReverseAnalysisProgress = { stage: "frames", percent: 0, message: "正在启动视频反推..." };
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        const initialUserScope = getActiveUserScope();
+        const currentExecutionId = `${node.id}_${Date.now()}_${nanoid(6)}`;
+        const deductKey = `deduct:video_reverse:${node.id}:${currentExecutionId}`;
+        const refundKey = `refund:video_reverse:${node.id}:${currentExecutionId}`;
+
+        let deductedMicrocredits = 0;
+        const refundIfDeducted = async () => {
+            if (deductedMicrocredits > 0) {
+                const amount = deductedMicrocredits;
+                deductedMicrocredits = 0;
+                try {
+                    await featureCredit.refund(amount, selectedModel, "反推任务中止退款", refundKey, deductKey);
+                } catch (e) {
+                    console.warn("[video-reverse] refund error on abort:", e);
+                }
+            }
+        };
+
         setRunning(true);
+        startNodeTask(node.id, "video-reverse", initialProgress, {
+            executionId: currentExecutionId,
+            userScope: initialUserScope,
+            controller,
+            onAbortRefund: refundIfDeducted,
+        });
+
         updateMetadata?.(node.id, {
             status: "loading",
             taskStatus: "running",
@@ -424,22 +560,32 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
             videoReverse: {
                 ...meta,
                 status: "running",
+                activeExecutionId: currentExecutionId,
             },
         });
 
-        const controller = new AbortController();
-        abortControllerRef.current = controller;
-
-        let deductedMicrocredits = 0;
+        const reportProgress = (p: ReverseAnalysisProgress) => {
+            if (!isCurrentExecution(node.id, currentExecutionId)) return;
+            setLocalProgress(p);
+            updateNodeTaskProgress(node.id, p, undefined, currentExecutionId);
+        };
+        let streamedScriptAccumulator = "";
+        const reportStream = (text: string) => {
+            if (!isCurrentExecution(node.id, currentExecutionId)) return;
+            setStreamedScript(text);
+            updateNodeTaskStreamedText(node.id, text, currentExecutionId);
+        };
         try {
-            const deductRes = await featureCredit.deduct(selectedModel, "画布视频反推");
+            const deductRes = await featureCredit.deduct(selectedModel, "画布视频反推", deductKey);
             deductedMicrocredits = deductRes.deductedMicrocredits;
+            recordTaskDeduction(node.id, deductedMicrocredits, deductKey, currentExecutionId);
         } catch (creditErr) {
             const msg = creditErr instanceof Error ? creditErr.message : "积分扣减失败";
             staticMessage.error(msg);
             setErrorMsg(msg);
             setRunning(false);
             setLocalProgress(null);
+            failNodeTask(node.id, msg, currentExecutionId);
             updateMetadata?.(node.id, {
                 status: (classicPrompt || deconstructPrompt || shotManifest.length > 0) ? "success" : "idle",
                 taskStatus: "idle",
@@ -506,13 +652,12 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
 
         if (!sourceInput) {
             window.clearInterval(watchdogInterval);
-            if (deductedMicrocredits > 0) {
-                void featureCredit.refund(deductedMicrocredits, selectedModel, "反推未成功积分返还");
-            }
+            await refundIfDeducted();
             staticMessage.warning("请先选择本地视频或在画布中连线上游视频节点");
             setErrorMsg("请先选择本地视频或在画布中连线上游视频节点");
             setRunning(false);
             setLocalProgress(null);
+            failNodeTask(node.id, "请先选择本地视频或在画布中连线上游视频节点", currentExecutionId);
             updateMetadata?.(node.id, {
                 status: (classicPrompt || deconstructPrompt || shotManifest.length > 0) ? "success" : "idle",
                 taskStatus: "idle",
@@ -534,22 +679,22 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
             prepared = await prepareReverseVideo(sourceInput, gridSize, (progress) => {
                 lastActivityTime = Date.now();
                 if (!controller.signal.aborted) {
-                    setLocalProgress(progress);
+                    reportProgress(progress);
                 }
             }, {
                 track: isDeconstruct ? "deconstruct" : "classic",
                 samplingPolicy: isDeconstruct
                     ? {
                         mode: "deconstruct",
-                        sceneChangeThreshold: sceneThreshold,
-                        minSceneGapSec,
+                        sceneChangeThreshold: deconstructSceneThreshold,
+                        minSceneGapSec: deconstructMinSceneGapSec,
                     }
                     : {
                         mode: classicSamplingMode,
                         fps: classicSamplingFps,
                         includeMiddleFrames,
-                        sceneChangeThreshold: sceneThreshold,
-                        minSceneGapSec,
+                        sceneChangeThreshold: classicSceneThreshold,
+                        minSceneGapSec: classicMinSceneGapSec,
                     },
                 localAsrEnabled: effectiveAsrEnabled,
                 signal: controller.signal,
@@ -590,13 +735,14 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                 onProgress: (progress) => {
                     lastActivityTime = Date.now();
                     if (!controller.signal.aborted) {
-                        setLocalProgress(progress);
+                        reportProgress(progress);
                     }
                 },
                 onDelta: (delta) => {
                     lastActivityTime = Date.now();
                     if (!controller.signal.aborted) {
-                        setStreamedScript((prev) => prev + delta);
+                        streamedScriptAccumulator += delta;
+                        reportStream(streamedScriptAccumulator);
                     }
                 },
                 signal: controller.signal,
@@ -628,6 +774,11 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                         scene: rawSlots.scene,
                     };
                     setOriginalMasterSlots(parsedMasterSlots);
+                } else {
+                    parsedMasterSlots = parseMarkdownMasterSlots(result.prompt);
+                    if (parsedMasterSlots) {
+                        setOriginalMasterSlots(parsedMasterSlots);
+                    }
                 }
             }
 
@@ -641,9 +792,10 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                 : undefined;
             if (asrFeedbackText) setLocalAsrFeedback(asrFeedbackText);
 
-            // 提取结构化分镜并无缝接入板块五“逐镜头全息工程图纸”，杜绝裸露 JSON 与空缺
+            // 提取结构化分镜并直出大模型原生全息图纸，杜绝裸露 JSON 与二次重编译损耗
+            const isJsonOutput = result.prompt.trim().startsWith("{");
             const userFacingScript = isDeconstruct
-                ? formatShotManifestToReadableScript(parsedShots, result.prompt)
+                ? (isJsonOutput ? formatShotManifestToReadableScript(parsedShots, result.prompt) : result.prompt)
                 : result.prompt;
 
             if (isDeconstruct) {
@@ -651,17 +803,21 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
             } else {
                 setClassicPrompt(userFacingScript);
             }
-            setLocalProgress({ stage: "analysis", percent: 100, message: isDeconstruct ? "创意反推完成" : "经典反推完成" });
+            reportProgress({ stage: "analysis", percent: 92, message: isDeconstruct ? "正在保存创意反推证据拼图..." : "正在保存经典反推证据拼图..." });
 
             const trackKey = isDeconstruct ? "deconstruct" : "classic";
+            if (getActiveUserScope() !== initialUserScope) {
+                throw new Error("检测到当前登录账号已切换，为防止跨租户数据污染，已中止数据保存并退还积分");
+            }
             const newContactSheets = prepared?.pages
                 ? await Promise.all(
                       prepared.pages.map(async (p) => {
-                          const storageKey = `reverse_sheet_${node.id}_${trackKey}_${p.pageIndex}`;
+                          if (controller.signal.aborted) throw new Error("任务已取消");
+                          const storageKey = `media:${initialUserScope}:reverse_sheet:${node.id}:${currentExecutionId}:${trackKey}:${p.pageIndex}`;
                           await setMediaBlob(storageKey, p.blob);
                           return {
                               pageIndex: p.pageIndex,
-                              url: p.url,
+                              url: "", // 不把当前会话易失的 blob: URL 写入持久化 metadata，由 ContactSheetItem 0ms 探查与平滑水合
                               storageKey,
                               localFilePath: p.localFilePath,
                               frameStart: p.frameStart,
@@ -672,6 +828,12 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                   )
                 : undefined;
 
+            // Fencing 守门员：若代次已被新任务顶替，严禁回写脏数据
+            if (!isCurrentExecution(node.id, currentExecutionId)) {
+                console.warn(`[video-reverse] 丢弃已失效执行代次的元数据回写: ${currentExecutionId}`);
+                return;
+            }
+
             const nextClassicTrack: ReverseTrackClassic | undefined = isDeconstruct ? meta.classic : {
                 prompt: userFacingScript,
                 customRules: classicCustomRules,
@@ -680,8 +842,8 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                 samplingMode: classicSamplingMode,
                 samplingFps: classicSamplingFps,
                 includeMiddleFrames,
-                sceneThreshold,
-                minSceneGapSec,
+                sceneThreshold: classicSceneThreshold,
+                minSceneGapSec: classicMinSceneGapSec,
                 contactSheets: newContactSheets,
                 updatedAt: Date.now(),
             };
@@ -695,6 +857,8 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                 customRules: deconstructCustomRules,
                 promptRules: deconstructPromptRules,
                 replaceBuiltInPrompt: deconstructReplacePrompt,
+                sceneThreshold: deconstructSceneThreshold,
+                minSceneGapSec: deconstructMinSceneGapSec,
                 wordLevelAudio,
                 contactSheets: newContactSheets,
                 updatedAt: Date.now(),
@@ -710,13 +874,14 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                 videoReverse: {
                     ...meta,
                     status: "success",
+                    activeExecutionId: currentExecutionId,
                     model: selectedModel,
                     gridSize,
                     samplingMode: isDeconstruct ? "deconstruct" : classicSamplingMode,
                     samplingFps: isDeconstruct ? undefined : classicSamplingFps,
                     includeMiddleFrames,
-                    sceneThreshold,
-                    minSceneGapSec,
+                    sceneThreshold: isDeconstruct ? deconstructSceneThreshold : classicSceneThreshold,
+                    minSceneGapSec: isDeconstruct ? deconstructMinSceneGapSec : classicMinSceneGapSec,
                     customRules: isDeconstruct ? deconstructCustomRules : classicCustomRules,
                     replaceBuiltInPrompt: isDeconstruct ? deconstructReplacePrompt : classicReplacePrompt,
                     promptRules: isDeconstruct ? deconstructPromptRules : classicPromptRules,
@@ -739,34 +904,42 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                     errorDetails: undefined,
                 },
             });
+
+            reportProgress({ stage: "analysis", percent: 100, message: isDeconstruct ? "创意反推完成" : "经典反推完成" });
+            finishNodeTask(node.id, currentExecutionId);
+            setRunning(false);
+            setLocalProgress(null);
+            setStreamedScript("");
         } catch (error) {
             window.clearInterval(watchdogInterval);
-            if (deductedMicrocredits > 0) {
-                try {
-                    await featureCredit.refund(deductedMicrocredits, selectedModel, "反推未成功积分返还");
-                } catch (refundErr) {
-                    console.error("[video-reverse] 积分返还异常:", refundErr);
-                }
-            }
-            // 极简 UI 提示：面向商业化用户统一输出极简明确提示，绝不展现内部生涩技术词汇与堆栈
-            staticMessage.error("反推未成功，积分已返还");
-            setErrorMsg("反推未成功，积分已返还");
-            console.warn("[video-reverse] 反推未成功:", error);
+            await refundIfDeducted();
+            if (!isCurrentExecution(node.id, currentExecutionId)) return;
 
+            const errorReason = isTimedOut ? "反推超时未成功" : (error instanceof Error ? error.message : String(error));
             const hasAnyResult = Boolean(classicPrompt || deconstructPrompt || shotManifest.length > 0);
             updateMetadata?.(node.id, {
-                status: hasAnyResult ? "success" : "idle",
+                status: hasAnyResult ? "success" : "error",
                 taskStatus: "idle",
                 isClientMockTask: true,
                 videoReverse: {
                     ...meta,
-                    status: hasAnyResult ? "success" : "idle",
+                    status: hasAnyResult ? "success" : "error",
                     errorDetails: isTimedOut ? "反推超时未成功" : (error instanceof Error ? error.message : String(error)),
                 },
             });
+
+            failNodeTask(node.id, errorReason, currentExecutionId);
+            setRunning(false);
+            setLocalProgress(null);
+            setStreamedScript("");
+            // 极简 UI 提示：面向商业化用户统一输出极简明确提示，绝不展现内部生涩技术词汇与堆栈
+            staticMessage.error("反推未成功，积分已返还");
+            setErrorMsg("反推未成功，积分已返还");
+            console.warn("[video-reverse] 反推未成功:", error);
         } finally {
             window.clearInterval(watchdogInterval);
             setStreamedScript("");
+            setLocalProgress(null);
             if (prepared) disposePreparedReverseVideo(prepared, { retainPages: true });
             if (abortControllerRef.current === controller) {
                 setRunning(false);
@@ -867,16 +1040,17 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
 
     return (
         <div
-            className="flex h-full min-h-0 w-full flex-col gap-3.5 overflow-y-auto rounded-[inherit] p-4 text-sm"
+            className="relative flex h-full min-h-0 w-full flex-col rounded-[inherit] overflow-hidden text-sm"
             style={{ background: theme.node.panel, color: theme.node.text }}
             data-canvas-no-zoom
-            data-canvas-no-drag
-            onWheel={(e) => e.stopPropagation()}
         >
             <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFileSelect} className="hidden" />
 
-            {/* 顶部标题、模式切换与状态栏 (同一排紧凑排列) */}
-            <div className="flex items-center justify-between border-b pb-2.5 gap-2.5" style={{ borderColor: theme.node.stroke }}>
+            {/* 顶部标题、模式切换与状态栏 (画布拖拽把手) */}
+            <div
+                className="flex h-12 shrink-0 cursor-grab items-center justify-between border-b px-4 gap-2.5 active:cursor-grabbing select-none"
+                style={{ borderColor: theme.node.stroke, background: theme.node.panel }}
+            >
                 <div className="flex items-center gap-2.5 min-w-0">
                     <div className="flex items-center gap-2 font-bold text-base shrink-0">
                         <Sparkles className="size-5 text-amber-500" />
@@ -885,7 +1059,12 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                     </div>
 
                     {/* 模式切换 (紧随文字同一排，严格四字按钮) */}
-                    <div className="flex items-center rounded-lg p-0.5 border shrink-0" style={{ background: theme.node.panel, borderColor: theme.node.stroke }}>
+                    <div
+                        className="flex items-center rounded-lg p-0.5 border shrink-0"
+                        style={{ background: theme.node.panel, borderColor: theme.node.stroke }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                    >
                         <button
                             type="button"
                             onClick={() => handleTabChange("classic")}
@@ -920,10 +1099,12 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                         </button>
                     </div>
 
-                    <FeatureCreditBadge scene="video_reverse" model={selectedModel} size="small" />
+                    <div onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+                        <FeatureCreditBadge scene="video_reverse" model={selectedModel} size="small" />
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 ml-auto">
+                <div className="flex items-center gap-2 shrink-0 ml-auto" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
                     {running ? (
                         <span className="flex items-center gap-1.5 text-amber-500 text-xs font-medium">
                             <Loader2 className="size-4 animate-spin" />
@@ -937,6 +1118,16 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                     ) : null}
                 </div>
             </div>
+
+            {/* 可滚动内容区域 */}
+            <div
+                data-canvas-wheel-scroll
+                data-canvas-no-drag
+                className="thin-scrollbar flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto p-4 select-text"
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                onWheel={(e) => e.stopPropagation()}
+            >
 
             {/* 模型选择 */}
             <div className="flex items-center gap-2 min-w-0">
@@ -1083,8 +1274,21 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                                 max={1}
                                 step={0.05}
                                 disabled={running}
-                                value={sceneThreshold}
-                                onChange={(e) => setSceneThreshold(Number(e.target.value) || 0.20)}
+                                value={classicSceneThreshold}
+                                onChange={(e) => {
+                                    const val = Number(e.target.value) || 0.20;
+                                    setClassicSceneThreshold(val);
+                                    updateMetadata?.(node.id, {
+                                        videoReverse: {
+                                            ...meta,
+                                            sceneThreshold: val,
+                                            classic: {
+                                                ...meta.classic,
+                                                sceneThreshold: val,
+                                            },
+                                        },
+                                    });
+                                }}
                                 className="h-7 w-14 rounded-md border px-1.5 text-center text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                                 style={inputBaseStyle}
                             />
@@ -1149,8 +1353,21 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                                 max={1}
                                 step={0.05}
                                 disabled={running}
-                                value={sceneThreshold}
-                                onChange={(e) => setSceneThreshold(Number(e.target.value) || 0.20)}
+                                value={deconstructSceneThreshold}
+                                onChange={(e) => {
+                                    const val = Number(e.target.value) || 0.15;
+                                    setDeconstructSceneThreshold(val);
+                                    updateMetadata?.(node.id, {
+                                        videoReverse: {
+                                            ...meta,
+                                            sceneThreshold: val,
+                                            deconstruct: {
+                                                ...meta.deconstruct,
+                                                sceneThreshold: val,
+                                            },
+                                        },
+                                    });
+                                }}
                                 className="h-7 w-14 rounded-md border px-1.5 text-center text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                                 style={inputBaseStyle}
                             />
@@ -1231,34 +1448,43 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                 <span className="text-xs text-amber-500 font-semibold shrink-0 ml-2">编辑</span>
             </button>
 
-            {/* 进度显示条与实时流式推演 */}
-            {localProgress ? (
+            {/* 进度显示条与实时流式推演（严格仅在运行态展现，终态自动收敛清空） */}
+            {(running || isNodeExecuting) && effectiveProgress ? (
                 <div className="flex flex-col gap-2 rounded-xl border p-2.5 text-xs" style={{ background: theme.node.fill, borderColor: theme.node.stroke }}>
                     <div className="flex items-center justify-between">
                         <span className="font-semibold flex items-center gap-2" style={{ color: theme.accent.primary }}>
-                            <Loader2 className="size-4 animate-spin text-amber-500 shrink-0" />
-                            <span>{activeTab === "deconstruct" ? "创意反推处理中" : "视频反推处理中"}</span>
+                            {effectiveProgress.percent >= 100 ? (
+                                <>
+                                    <Check className="size-4 text-emerald-500 shrink-0" />
+                                    <span className="text-emerald-500">{activeTab === "deconstruct" ? "创意反推已完成" : "视频反推已完成"}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Loader2 className="size-4 animate-spin text-amber-500 shrink-0" />
+                                    <span>{activeTab === "deconstruct" ? "创意反推处理中" : "视频反推处理中"}</span>
+                                </>
+                            )}
                         </span>
-                        <span className="font-mono font-semibold">{localProgress.percent}%</span>
+                        <span className={`font-mono font-semibold ${effectiveProgress.percent >= 100 ? "text-emerald-500" : ""}`}>{effectiveProgress.percent}%</span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
                         <div
-                            className="h-full bg-amber-500 transition-all duration-300"
-                            style={{ width: `${localProgress.percent}%` }}
+                            className={`h-full transition-all duration-300 ${effectiveProgress.percent >= 100 ? "bg-emerald-500" : "bg-amber-500"}`}
+                            style={{ width: `${effectiveProgress.percent}%` }}
                         />
                     </div>
-                    {localProgress.message ? (
+                    {effectiveProgress.message ? (
                         <div className="text-xs text-stone-500 dark:text-stone-400 truncate flex items-center gap-1.5">
-                            <span>{localProgress.message}</span>
+                            <span>{effectiveProgress.message}</span>
                         </div>
                     ) : null}
-                    {streamedScript ? (
+                    {effectiveStreamedScript ? (
                         <div className="mt-1.5 rounded-lg bg-stone-900/5 dark:bg-stone-900/40 p-2 font-mono text-xs text-stone-600 dark:text-stone-300 max-h-32 overflow-y-auto thin-scrollbar break-all leading-relaxed border border-stone-200/50 dark:border-stone-800/50">
                             <div className="flex items-center justify-between text-stone-400 mb-1.5 text-xs">
-                                <span>⚡ 实时推演输出 ({streamedScript.length} 字)</span>
+                                <span>⚡ 实时推演输出 ({effectiveStreamedScript.length} 字)</span>
                                 <span className="animate-pulse text-amber-500 font-semibold">写入中...</span>
                             </div>
-                            <div className="whitespace-pre-wrap">{streamedScript.slice(-300)}</div>
+                            <div className="whitespace-pre-wrap">{effectiveStreamedScript.slice(-300)}</div>
                         </div>
                     ) : null}
                 </div>
@@ -1410,6 +1636,20 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                                         <div className="text-xs leading-relaxed font-normal text-neutral-800 dark:text-neutral-200">
                                             {shot.visualAction || shot.visualContent || shot.visualSubject || "（画面详情）"}
                                         </div>
+
+                                        {shot.performanceTiming ? (
+                                            <div className="text-[11px] text-stone-500 dark:text-stone-400 font-mono flex items-start gap-1">
+                                                <span className="shrink-0 text-amber-500/80">⏱️</span>
+                                                <span className="leading-snug">{shot.performanceTiming}</span>
+                                            </div>
+                                        ) : null}
+
+                                        {shot.physicalFeedback ? (
+                                            <div className="text-[11px] text-stone-500 dark:text-stone-400 flex items-start gap-1">
+                                                <span className="shrink-0 text-amber-500/80">🔬</span>
+                                                <span className="leading-snug">{shot.physicalFeedback}</span>
+                                            </div>
+                                        ) : null}
 
                                         {shot.dialogue ? (
                                             <div className="flex items-start gap-1.5 rounded-lg bg-stone-100/80 dark:bg-stone-800/50 px-2 py-1.5 text-xs text-stone-700 dark:text-stone-300">
@@ -1563,33 +1803,34 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                     <span>清空</span>
                 </button>
 
-                <div className="flex items-center gap-2">
+                <button
+                    type="button"
+                    onClick={runAnalysis}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    disabled={running}
+                    className={`flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-semibold text-white shadow-sm transition-all select-none ${
+                        running
+                            ? "bg-amber-500/75 cursor-not-allowed opacity-80"
+                            : "bg-amber-500 hover:bg-amber-600 active:scale-95 cursor-pointer"
+                    }`}
+                >
                     {running ? (
-                        <button
-                            type="button"
-                            disabled
-                            onMouseDown={(e) => e.stopPropagation()}
-                            className="flex h-9 items-center gap-2 rounded-lg bg-neutral-300 dark:bg-neutral-700 px-4 text-sm font-medium text-neutral-500 dark:text-neutral-400 cursor-not-allowed border-none shadow-none select-none"
-                        >
-                            <Loader2 className="size-3.5 animate-spin text-neutral-400 dark:text-neutral-500" />
-                            <span>反推中</span>
-                        </button>
+                        <>
+                            <Loader2 className="size-3.5 animate-spin text-white" />
+                            <span>{activeTab === "deconstruct" ? "创意反推中..." : "经典反推中..."}</span>
+                        </>
                     ) : (
-                        <button
-                            type="button"
-                            onClick={runAnalysis}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            className="flex h-9 items-center gap-2 rounded-lg bg-amber-500 px-4 text-sm font-semibold text-white shadow-sm transition-transform hover:bg-amber-600 active:scale-95 cursor-pointer"
-                        >
+                        <>
                             <Play className="size-3.5 fill-current" />
                             <span>
                                 {activeTab === "deconstruct"
                                     ? ((shotManifest.length > 0 || deconstructPrompt) ? "重新创意反推" : "开始创意反推")
                                     : (classicPrompt ? "重新经典反推" : "开始经典反推")}
                             </span>
-                        </button>
+                        </>
                     )}
-                </div>
+                </button>
+            </div>
             </div>
 
             {/* 提示词编辑弹窗 */}
@@ -1770,11 +2011,20 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
 }
 
 function ContactSheetItem({ sheet }: { sheet: NonNullable<ReverseMeta["contactSheets"]>[number] }) {
-    const [resolvedUrl, setResolvedUrl] = useState<string>(sheet.url || "");
+    // 杜绝盲信过期 blob: URL，优先 0ms 探查多级缓存内存 LRU (Tier 1)，实现首帧秒开
+    const initialUrl = useMemo(() => {
+        if (sheet.url && !sheet.url.startsWith("blob:")) return sheet.url;
+        if (sheet.storageKey) {
+            const memHit = peekLocalFirstMedia(sheet.storageKey);
+            if (memHit) return memHit;
+        }
+        return "";
+    }, [sheet.url, sheet.storageKey]);
+
+    const [resolvedUrl, setResolvedUrl] = useState<string>(initialUrl);
 
     useEffect(() => {
         let active = true;
-        let createdUrl = "";
 
         const restoreImage = async () => {
             // 1. 如果已有非 blob URL 直接使用
@@ -1783,34 +2033,46 @@ function ContactSheetItem({ sheet }: { sheet: NonNullable<ReverseMeta["contactSh
                 return;
             }
 
-            // 2. 从本地 IndexedDB 缓存持久化恢复 (Web 与桌面通用)
+            // 2. 0ms 同步探查多级缓存内存 LRU (Tier 1)
             if (sheet.storageKey) {
-                try {
-                    const blob = await getMediaBlob(sheet.storageKey);
-                    if (blob && active) {
-                        createdUrl = URL.createObjectURL(blob);
-                        setResolvedUrl(createdUrl);
-                        return;
-                    }
-                } catch {}
+                const memHit = peekLocalFirstMedia(sheet.storageKey);
+                if (memHit && active) {
+                    setResolvedUrl(memHit);
+                    return;
+                }
             }
 
-            // 3. 桌面环境从磁盘本地路径恢复 (Electron)
+            // 3. 桌面环境从磁盘本地路径探测恢复 (Electron Tier 0) 并统一注入 Tier 1 内存
             if (sheet.localFilePath && typeof window !== "undefined") {
                 const bridge = (window as any).desktopBridge;
                 if (bridge?.readMediaFile) {
                     try {
                         const fileRes = await bridge.readMediaFile(sheet.localFilePath);
                         if (fileRes?.success && fileRes.blob && active) {
-                            createdUrl = URL.createObjectURL(fileRes.blob);
-                            setResolvedUrl(createdUrl);
+                            const url = URL.createObjectURL(fileRes.blob);
+                            primeLocalFirstMedia(sheet.storageKey || sheet.localFilePath, url, fileRes.blob, "image");
+                            setResolvedUrl(url);
                             return;
                         }
                     } catch {}
                 }
             }
 
-            if (sheet.url && active) {
+            // 4. 标准多级缓存统一水合 (Tier 1 LRU -> Tier 2 CacheStorage / IndexedDB mediaStore)
+            if (sheet.storageKey) {
+                try {
+                    const res = await resolveLocalFirstMedia(sheet.storageKey, {
+                        mediaType: "image",
+                        fallbackUrl: sheet.url && !sheet.url.startsWith("blob:") ? sheet.url : undefined,
+                    });
+                    if (res?.url && active) {
+                        setResolvedUrl(res.url);
+                        return;
+                    }
+                } catch {}
+            }
+
+            if (sheet.url && !sheet.url.startsWith("blob:") && active) {
                 setResolvedUrl(sheet.url);
             }
         };
@@ -1819,9 +2081,6 @@ function ContactSheetItem({ sheet }: { sheet: NonNullable<ReverseMeta["contactSh
 
         return () => {
             active = false;
-            if (createdUrl) {
-                try { URL.revokeObjectURL(createdUrl); } catch {}
-            }
         };
     }, [sheet.url, sheet.storageKey, sheet.localFilePath]);
 
@@ -1835,7 +2094,7 @@ function ContactSheetItem({ sheet }: { sheet: NonNullable<ReverseMeta["contactSh
                 {resolvedUrl ? (
                     <a
                         href={resolvedUrl}
-                        download={`contact_sheet_p${sheet.pageIndex}.jpg`}
+                        download={`contact_sheet_p${sheet.pageIndex}.webp`}
                         className="flex items-center gap-1 text-amber-500 hover:text-amber-600 font-medium transition-colors cursor-pointer"
                         title="下载此拼图"
                     >

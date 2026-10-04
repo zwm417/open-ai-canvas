@@ -28,6 +28,16 @@ import {
 import { MaterialAnalysisResultDialog } from "./material-analysis-result-dialog";
 import { PromptEditorModal } from "./prompt-editor-modal";
 import type { CreationAssistantFileSummary, CreationAssistantInsightSection } from "@/stores/use-creation-assistant-store";
+import {
+    failNodeTask,
+    finishNodeTask,
+    isCurrentExecution,
+    reconcileOrphanedClientNodeState,
+    recordTaskDeduction,
+    startNodeTask,
+    updateNodeTaskProgress,
+    useNodeTask,
+} from "../services/opc-task-hub";
 
 type Props = {
     node: CanvasNodeData;
@@ -48,8 +58,12 @@ export function MaterialAnalysisNodeContent({ node, theme }: Props) {
         return (node.metadata?.materialAnalysis as MaterialAnalysisMeta) || {};
     }, [node.metadata?.materialAnalysis]);
 
-    const [running, setRunning] = useState<boolean>(meta.status === "running");
-    const [progress, setProgress] = useState<{ percent: number; message: string }>({ percent: 0, message: "就绪" });
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const hubTask = useNodeTask<{ percent: number; message: string }>(node.id);
+    const isNodeExecuting = hubTask.isRunning;
+    const [running, setRunning] = useState<boolean>(isNodeExecuting);
+    const [progress, setProgress] = useState<{ percent: number; message: string } | null>(null);
+    const effectiveProgress = hubTask.progress || progress;
     const [errorMsg, setErrorMsg] = useState<string>(meta.errorDetails || "");
     const [editorModalOpen, setEditorModalOpen] = useState(false);
     const [localSources, setLocalSources] = useState<NonNullable<MaterialAnalysisMeta["localSources"]>>(meta.localSources || []);
@@ -81,17 +95,46 @@ export function MaterialAnalysisNodeContent({ node, theme }: Props) {
     const featureCredit = useFeatureCredit("material_analysis", selectedModel);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const abortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
-        setRunning(meta.status === "running");
+        setRunning(hubTask.isRunning);
         if (meta.errorDetails !== undefined) setErrorMsg(meta.errorDetails);
         if (meta.localSources) setLocalSources(meta.localSources);
         if (meta.autoConnectDownstream !== undefined) setAutoConnectDownstream(meta.autoConnectDownstream);
         if (meta.customRules !== undefined) setCustomRules(meta.customRules);
         if (meta.replaceBuiltInPrompt !== undefined) setReplacePrompt(Boolean(meta.replaceBuiltInPrompt));
         if (meta.promptRules !== undefined) setPromptRules(meta.promptRules);
-    }, [meta]);
+    }, [hubTask.isRunning, meta]);
+
+    // 挂载期自主健康对账与孤儿态自愈（消灭 F5 刷新/异常崩溃导致的无取消按钮永久死锁）
+    useEffect(() => {
+        const hasValidResult = Boolean(
+            meta.result ||
+            node.metadata?.content ||
+            node.metadata?.prompt
+        );
+
+        reconcileOrphanedClientNodeState({
+            nodeId: node.id,
+            isTaskRunning: hubTask.isRunning,
+            persistedStatus: node.metadata?.status,
+            persistedTaskStatus: node.metadata?.taskStatus,
+            subStatus: meta.status,
+            hasValidResult,
+            onHeal: (healedStatus) => {
+                setRunning(false);
+                setProgress({ percent: 0, message: "就绪" });
+                updateMetadata?.(node.id, {
+                    status: healedStatus,
+                    taskStatus: "idle",
+                    materialAnalysis: {
+                        ...meta,
+                        status: healedStatus,
+                    },
+                });
+            },
+        });
+    }, [node.id, hubTask.isRunning]);
 
     const handleToggleAutoConnect = (checked: boolean) => {
         setAutoConnectDownstream(checked);
@@ -306,23 +349,74 @@ export function MaterialAnalysisNodeContent({ node, theme }: Props) {
             return;
         }
 
-        abortControllerRef.current?.abort();
         const controller = new AbortController();
         abortControllerRef.current = controller;
 
-        setRunning(true);
-        setErrorMsg("");
-        setProgress({ percent: 10, message: "正在整理素材列表..." });
+        const currentExecutionId = `${node.id}_${Date.now()}_${nanoid(6)}`;
+        const deductKey = `deduct:material_analysis:${node.id}:${currentExecutionId}`;
+        const refundKey = `refund:material_analysis:${node.id}:${currentExecutionId}`;
 
         let deductedMicrocredits = 0;
+        const refundIfDeducted = async () => {
+            if (deductedMicrocredits > 0) {
+                const amount = deductedMicrocredits;
+                deductedMicrocredits = 0;
+                try {
+                    await featureCredit.refund(amount, selectedModel, "素材分析任务中止退款", refundKey, deductKey);
+                } catch (e) {
+                    console.warn("[material-analysis] refund error on abort:", e);
+                }
+            }
+        };
+
+        setRunning(true);
+        setErrorMsg("");
+        const initialProgress = { percent: 10, message: "正在整理素材列表..." };
+        setProgress(initialProgress);
+        startNodeTask(node.id, "material-analysis", initialProgress, {
+            executionId: currentExecutionId,
+            controller,
+            onAbortRefund: refundIfDeducted,
+        });
+
+        updateMetadata?.(node.id, {
+            status: "loading",
+            taskStatus: "running",
+            isClientMockTask: true,
+            materialAnalysis: {
+                ...meta,
+                status: "running",
+                activeExecutionId: currentExecutionId,
+                errorDetails: undefined,
+            },
+        });
+
+        const reportProgress = (p: { percent: number; message: string }) => {
+            if (!isCurrentExecution(node.id, currentExecutionId)) return;
+            setProgress(p);
+            updateNodeTaskProgress(node.id, p, undefined, currentExecutionId);
+        };
+
         try {
-            const deductRes = await featureCredit.deduct(selectedModel, "画布素材分析");
+            const deductRes = await featureCredit.deduct(selectedModel, "画布素材分析", deductKey);
             deductedMicrocredits = deductRes.deductedMicrocredits;
+            recordTaskDeduction(node.id, deductedMicrocredits, deductKey, currentExecutionId);
         } catch (creditErr) {
             const msg = creditErr instanceof Error ? creditErr.message : "积分扣减失败";
             setErrorMsg(msg);
             setRunning(false);
             setProgress({ percent: 0, message: "积分不足" });
+            failNodeTask(node.id, msg, currentExecutionId);
+            updateMetadata?.(node.id, {
+                status: meta.result ? "success" : "idle",
+                taskStatus: "idle",
+                isClientMockTask: true,
+                materialAnalysis: {
+                    ...meta,
+                    status: meta.result ? "success" : "idle",
+                    errorDetails: msg,
+                },
+            });
             return;
         }
 
@@ -385,29 +479,15 @@ export function MaterialAnalysisNodeContent({ node, theme }: Props) {
                 }
             });
 
-            if (controller.signal.aborted) {
-                if (deductedMicrocredits > 0) {
-                    void featureCredit.refund(deductedMicrocredits, selectedModel, "素材分析取消退款");
-                }
-                return;
-            }
-
             // 针对视频进行抽帧与音频准备
             const videoItems = analysisFiles.filter((f) => f.kind === "video").map((f) => f.item as ReferenceVideo);
             let videoAnalyses: any[] = [];
             if (videoItems.length > 0) {
-                setProgress({ percent: 30, message: "正在对视频素材进行密集抽帧与特征提取..." });
+                reportProgress({ percent: 30, message: "正在对视频素材进行密集抽帧与特征提取..." });
                 videoAnalyses = await prepareCreationAssistantVideos(videoItems);
             }
 
-            if (controller.signal.aborted) {
-                if (deductedMicrocredits > 0) {
-                    void featureCredit.refund(deductedMicrocredits, selectedModel, "素材分析取消退款");
-                }
-                return;
-            }
-
-            setProgress({ percent: 65, message: "正在调用 AI 大模型进行商品洞察与逐秒拆解..." });
+            reportProgress({ percent: 65, message: "正在调用 AI 大模型进行商品洞察与逐秒拆解..." });
 
             const effectiveAnalysisModel = selectedModel || config.textModel || config.model;
             const result = await analyzeCreationAssistantBatch(
@@ -418,17 +498,11 @@ export function MaterialAnalysisNodeContent({ node, theme }: Props) {
                     customRules: customRules || undefined,
                     replaceBuiltInPrompt: replacePrompt,
                     promptRules: promptRules || undefined,
+                    signal: controller.signal,
                 },
             );
 
-            if (controller.signal.aborted) {
-                if (deductedMicrocredits > 0) {
-                    void featureCredit.refund(deductedMicrocredits, selectedModel, "素材分析取消退款");
-                }
-                return;
-            }
-
-            setProgress({ percent: 100, message: "素材分析完成" });
+            reportProgress({ percent: 100, message: "素材分析完成" });
 
             // 按照标准规范为素材生成 @图片N、@视频N、@音频N 引用代号
             const kindCounters: Record<string, number> = { image: 0, video: 0, audio: 0 };
@@ -467,7 +541,12 @@ export function MaterialAnalysisNodeContent({ node, theme }: Props) {
                 }),
             ].join("\n");
 
+            if (!isCurrentExecution(node.id, currentExecutionId)) return;
+
             updateMetadata?.(node.id, {
+                status: "success",
+                taskStatus: "succeeded",
+                isClientMockTask: true,
                 content: summaryText,
                 prompt: summaryText,
                 composerContent: summaryText,
@@ -493,22 +572,32 @@ export function MaterialAnalysisNodeContent({ node, theme }: Props) {
                 },
             });
 
+            finishNodeTask(node.id, currentExecutionId);
+            setRunning(false);
+            setProgress(null);
+
             message.success("素材分析完成！");
         } catch (error) {
-            if (deductedMicrocredits > 0) {
-                void featureCredit.refund(deductedMicrocredits, selectedModel, "素材分析失败退款");
-            }
-            if (controller.signal.aborted) return;
+            await refundIfDeducted();
+            if (!isCurrentExecution(node.id, currentExecutionId)) return;
             const msg = error instanceof Error ? error.message : String(error);
             setErrorMsg(msg);
+            const hasAnyResult = Boolean(meta.result || node.metadata?.content);
             updateMetadata?.(node.id, {
+                status: hasAnyResult ? "success" : "error",
+                taskStatus: "idle",
+                isClientMockTask: true,
                 materialAnalysis: {
                     ...meta,
-                    status: "error",
+                    status: hasAnyResult ? "success" : "error",
                     errorDetails: msg,
                 },
             });
+            failNodeTask(node.id, msg, currentExecutionId);
+            setRunning(false);
+            setProgress(null);
         } finally {
+            setProgress(null);
             if (abortControllerRef.current === controller) {
                 setRunning(false);
                 abortControllerRef.current = null;
@@ -543,12 +632,6 @@ export function MaterialAnalysisNodeContent({ node, theme }: Props) {
         }
     };
 
-    const cancelAnalysis = () => {
-        abortControllerRef.current?.abort();
-        setRunning(false);
-        setProgress({ percent: 0, message: "已取消" });
-    };
-
     const exportJson = () => {
         if (!meta.result) {
             message.warning("暂无分析结果可导出");
@@ -568,24 +651,37 @@ export function MaterialAnalysisNodeContent({ node, theme }: Props) {
 
     return (
         <div
-            className="flex h-full min-h-0 w-full flex-col gap-3.5 overflow-y-auto rounded-[inherit] p-4 text-sm"
+            className="relative flex h-full min-h-0 w-full flex-col rounded-[inherit] overflow-hidden text-sm"
             style={{ background: theme.node.panel, color: theme.node.text }}
             data-canvas-no-zoom
-            data-canvas-no-drag
-            onWheel={(e) => e.stopPropagation()}
         >
             <input ref={fileInputRef} type="file" multiple accept="image/*,video/*,audio/*" onChange={handleFileUpload} className="hidden" />
 
-            {/* 顶部标题栏 */}
-            <div className="flex items-center justify-between border-b pb-2.5" style={{ borderColor: theme.node.stroke }}>
+            {/* 顶部标题栏（画布拖拽把手） */}
+            <div
+                className="flex h-12 shrink-0 cursor-grab items-center justify-between border-b px-4 active:cursor-grabbing select-none"
+                style={{ borderColor: theme.node.stroke, background: theme.node.panel }}
+            >
                 <div className="flex items-center gap-2">
                     <ScanSearch className="size-5 text-amber-500" />
                     <span className="font-bold text-base">素材分析</span>
                 </div>
-                <Tag color={running ? "processing" : meta.status === "success" ? "success" : meta.status === "error" ? "error" : "default"} className="m-0 text-xs px-2.5 py-0.5">
-                    {running ? "分析中" : meta.status === "success" ? "已完成" : meta.status === "error" ? "失败" : "就绪"}
-                </Tag>
+                <div onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+                    <Tag color={running ? "processing" : meta.status === "success" ? "success" : meta.status === "error" ? "error" : "default"} className="m-0 text-xs px-2.5 py-0.5">
+                        {running ? "分析中" : meta.status === "success" ? "已完成" : meta.status === "error" ? "失败" : "就绪"}
+                    </Tag>
+                </div>
             </div>
+
+            {/* 可滚动内容区域 */}
+            <div
+                data-canvas-wheel-scroll
+                data-canvas-no-drag
+                className="thin-scrollbar flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto p-4 select-text"
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                onWheel={(e) => e.stopPropagation()}
+            >
 
             {/* 模型选择与积分徽标 */}
             <div className="flex items-center justify-between gap-2.5">
@@ -706,17 +802,21 @@ export function MaterialAnalysisNodeContent({ node, theme }: Props) {
                 <span className="text-xs text-amber-500 font-semibold shrink-0 ml-2">编辑</span>
             </button>
 
-            {/* 运行进度 */}
-            {running ? (
+            {/* 运行进度（严格仅在运行态展现，终态自动收敛清空） */}
+            {(running || isNodeExecuting) && effectiveProgress ? (
                 <div className="flex flex-col gap-2 rounded-xl border p-2.5 bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900">
                     <div className="flex items-center justify-between text-xs font-medium text-amber-700 dark:text-amber-300">
                         <span className="flex items-center gap-1.5">
-                            <LoaderCircle className="size-3.5 animate-spin" />
-                            <span>{progress.message}</span>
+                            {effectiveProgress.percent >= 100 ? (
+                                <Check className="size-3.5 text-emerald-500" />
+                            ) : (
+                                <LoaderCircle className="size-3.5 animate-spin" />
+                            )}
+                            <span className={effectiveProgress.percent >= 100 ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}>{effectiveProgress.message}</span>
                         </span>
-                        <span>{progress.percent}%</span>
+                        <span className={effectiveProgress.percent >= 100 ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}>{effectiveProgress.percent}%</span>
                     </div>
-                    <Progress percent={progress.percent} showInfo={false} strokeColor="#f59e0b" size="default" />
+                    <Progress percent={effectiveProgress.percent} showInfo={false} strokeColor={effectiveProgress.percent >= 100 ? "#10b981" : "#f59e0b"} size="default" />
                 </div>
             ) : null}
 
@@ -795,28 +895,30 @@ export function MaterialAnalysisNodeContent({ node, theme }: Props) {
                     <span>清空</span>
                 </button>
 
-                <div className="flex items-center gap-2">
+                <button
+                    type="button"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={runAnalysis}
+                    disabled={running}
+                    className={`flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-semibold text-white shadow-sm transition-all select-none ${
+                        running
+                            ? "bg-amber-500/75 cursor-not-allowed opacity-80"
+                            : "bg-amber-500 hover:bg-amber-600 active:scale-95 cursor-pointer"
+                    }`}
+                >
                     {running ? (
-                        <button
-                            type="button"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={cancelAnalysis}
-                            className="flex h-9 items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-4 text-sm text-rose-600 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-400 cursor-pointer"
-                        >
-                            <span>取消</span>
-                        </button>
+                        <>
+                            <LoaderCircle className="size-4 animate-spin text-white" />
+                            <span>素材分析中...</span>
+                        </>
                     ) : (
-                        <button
-                            type="button"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={runAnalysis}
-                            className="flex h-9 items-center gap-2 rounded-lg bg-amber-500 px-4 text-sm font-semibold text-white shadow-sm transition-transform hover:bg-amber-600 active:scale-95 cursor-pointer"
-                        >
+                        <>
                             <Play className="size-3.5 fill-current" />
                             <span>{meta.result ? "重新分析" : "开始分析"}</span>
-                        </button>
+                        </>
                     )}
-                </div>
+                </button>
+            </div>
             </div>
 
             {/* 素材分析结果弹窗 */}

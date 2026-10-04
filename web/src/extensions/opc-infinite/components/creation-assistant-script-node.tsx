@@ -43,6 +43,18 @@ import {
     type ConfigScriptMeta,
     type MaterialAnalysisMeta,
 } from "../services/creation-assistant-contracts";
+import { nanoid } from "nanoid";
+import {
+    failNodeTask,
+    finishNodeTask,
+    isCurrentExecution,
+    reconcileOrphanedClientNodeState,
+    recordTaskDeduction,
+    startNodeTask,
+    updateNodeTaskProgress,
+    updateNodeTaskStreamedText,
+    useNodeTask,
+} from "../services/opc-task-hub";
 import { VIDEO_REVERSE_NODE_TYPE } from "../services/video-reverse-contracts";
 import { PromptEditorModal } from "./prompt-editor-modal";
 import { ScriptReferencePreview } from "./script-reference-preview";
@@ -114,14 +126,17 @@ export function CreationAssistantScriptNodeContent({ node, theme }: Props) {
 
     const featureCredit = useFeatureCredit("config_script", selectedModel);
 
-    const [running, setRunning] = useState<boolean>(meta.status === "running");
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const hubTask = useNodeTask<{ percent: number; message: string }>(node.id);
+    const isNodeExecuting = hubTask.isRunning;
+    const [running, setRunning] = useState<boolean>(isNodeExecuting);
+    const [progress, setProgress] = useState<{ percent: number; message: string } | null>(null);
+    const effectiveProgress = hubTask.progress || progress;
     const [errorMsg, setErrorMsg] = useState<string>(meta.errorDetails || "");
     const [scriptResult, setScriptResult] = useState<string>(meta.result?.script || meta.prompt || node.metadata?.content || node.metadata?.prompt || "");
     const [configExpanded, setConfigExpanded] = useState<boolean>(false);
     const [expandedModalOpen, setExpandedModalOpen] = useState<boolean>(false);
     const [copied, setCopied] = useState<boolean>(false);
-
-    const abortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
         const text = meta.result?.script || meta.prompt || node.metadata?.content || node.metadata?.prompt || "";
@@ -137,9 +152,40 @@ export function CreationAssistantScriptNodeContent({ node, theme }: Props) {
         if (meta.customRules !== undefined) setCustomRules(meta.customRules);
         if (meta.customPrompt !== undefined) setCustomPrompt(meta.customPrompt);
         if (meta.useCustomPrompt !== undefined) setUseCustomPrompt(Boolean(meta.useCustomPrompt));
-        setRunning(meta.status === "running");
+        setRunning(hubTask.isRunning);
         if (meta.errorDetails !== undefined) setErrorMsg(meta.errorDetails);
-    }, [meta, node.metadata?.content, node.metadata?.prompt]);
+    }, [hubTask.isRunning, meta, node.metadata?.content, node.metadata?.prompt]);
+
+    // 挂载期自主健康对账与孤儿态自愈（消灭 F5 刷新/异常崩溃导致的无取消按钮永久死锁）
+    useEffect(() => {
+        const hasValidResult = Boolean(
+            scriptResult ||
+            meta.result?.script ||
+            node.metadata?.content ||
+            node.metadata?.prompt
+        );
+
+        reconcileOrphanedClientNodeState({
+            nodeId: node.id,
+            isTaskRunning: hubTask.isRunning,
+            persistedStatus: node.metadata?.status,
+            persistedTaskStatus: node.metadata?.taskStatus,
+            subStatus: meta.status,
+            hasValidResult,
+            onHeal: (healedStatus) => {
+                setRunning(false);
+                setProgress(null);
+                updateMetadata?.(node.id, {
+                    status: healedStatus,
+                    taskStatus: "idle",
+                    configScript: {
+                        ...meta,
+                        status: healedStatus,
+                    },
+                });
+            },
+        });
+    }, [node.id, hubTask.isRunning]);
 
     // 发现上游输入来源
     const upstreamAnalysis = useMemo(() => {
@@ -205,6 +251,9 @@ export function CreationAssistantScriptNodeContent({ node, theme }: Props) {
     const handleScriptChange = (nextText: string) => {
         setScriptResult(nextText);
         updateMetadata?.(node.id, {
+            status: "success",
+            taskStatus: "succeeded",
+            isClientMockTask: true,
             content: nextText,
             prompt: nextText,
             composerContent: nextText,
@@ -233,21 +282,79 @@ export function CreationAssistantScriptNodeContent({ node, theme }: Props) {
     };
 
     const runGenerate = async () => {
-        abortControllerRef.current?.abort();
         const controller = new AbortController();
         abortControllerRef.current = controller;
 
-        setRunning(true);
-        setErrorMsg("");
+        const currentExecutionId = `${node.id}_${Date.now()}_${nanoid(6)}`;
+        const deductKey = `deduct:config_script:${node.id}:${currentExecutionId}`;
+        const refundKey = `refund:config_script:${node.id}:${currentExecutionId}`;
 
         let deductedMicrocredits = 0;
+        const refundIfDeducted = async () => {
+            if (deductedMicrocredits > 0) {
+                const amount = deductedMicrocredits;
+                deductedMicrocredits = 0;
+                try {
+                    await featureCredit.refund(amount, selectedModel, "配置生成脚本任务中止退款", refundKey, deductKey);
+                } catch (e) {
+                    console.warn("[creation-assistant-script] refund error on abort:", e);
+                }
+            }
+        };
+
+        setRunning(true);
+        setErrorMsg("");
+        const initProgress = { percent: 10, message: "正在解析编导配置与素材引用..." };
+        setProgress(initProgress);
+        startNodeTask(node.id, "creation-assistant-script", initProgress, {
+            executionId: currentExecutionId,
+            controller,
+            onAbortRefund: refundIfDeducted,
+        });
+
+        updateMetadata?.(node.id, {
+            status: "loading",
+            taskStatus: "running",
+            isClientMockTask: true,
+            configScript: {
+                ...meta,
+                status: "running",
+                activeExecutionId: currentExecutionId,
+                errorDetails: undefined,
+            },
+        });
+
+        const reportProgress = (p: { percent: number; message: string }) => {
+            if (!isCurrentExecution(node.id, currentExecutionId)) return;
+            setProgress(p);
+            updateNodeTaskProgress(node.id, p, undefined, currentExecutionId);
+        };
+        let streamedScriptAccumulator = "";
+        const reportStream = (text: string) => {
+            if (!isCurrentExecution(node.id, currentExecutionId)) return;
+            setScriptResult(text);
+            updateNodeTaskStreamedText(node.id, text, currentExecutionId);
+        };
+
         try {
-            const deductRes = await featureCredit.deduct(selectedModel, "画布配置生成脚本");
+            const deductRes = await featureCredit.deduct(selectedModel, "画布配置生成脚本", deductKey);
             deductedMicrocredits = deductRes.deductedMicrocredits;
+            recordTaskDeduction(node.id, deductedMicrocredits, deductKey, currentExecutionId);
         } catch (creditErr) {
             const msg = creditErr instanceof Error ? creditErr.message : "积分扣减失败";
             setErrorMsg(msg);
             setRunning(false);
+            failNodeTask(node.id, msg, currentExecutionId);
+            updateMetadata?.(node.id, {
+                status: scriptResult ? "success" : "idle",
+                taskStatus: "idle",
+                isClientMockTask: true,
+                configScript: {
+                    ...meta,
+                    status: scriptResult ? "success" : "idle",
+                    errorDetails: msg,
+                },
+            });
             return;
         }
 
@@ -316,12 +423,7 @@ export function CreationAssistantScriptNodeContent({ node, theme }: Props) {
                 });
             }
 
-            if (controller.signal.aborted) {
-                if (deductedMicrocredits > 0) {
-                    void featureCredit.refund(deductedMicrocredits, selectedModel, "配置生成脚本取消退款");
-                }
-                return;
-            }
+            reportProgress({ percent: 45, message: "正在调用大模型生成视频提示词..." });
 
             // 5. 提示词替换与模型调用
             const effectiveSystemPrompt = useCustomPrompt && customPrompt.trim()
@@ -332,45 +434,47 @@ export function CreationAssistantScriptNodeContent({ node, theme }: Props) {
             const response = await requestImageQuestion(
                 { ...config, model: effectiveScriptModel, systemPrompt: effectiveSystemPrompt },
                 [{ role: "user", content: [{ type: "text", text: promptBundle.userPrompt }] }],
-                () => undefined,
-                { signal: controller.signal, temperature: 0.85, presence_penalty: 0.2 },
+                (delta: string) => {
+                    streamedScriptAccumulator += delta;
+                    reportStream(streamedScriptAccumulator);
+                },
+                { temperature: 0.85, presence_penalty: 0.2, signal: controller.signal },
             );
 
-            if (controller.signal.aborted) {
-                if (deductedMicrocredits > 0) {
-                    void featureCredit.refund(deductedMicrocredits, selectedModel, "配置生成脚本取消退款");
-                }
-                return;
-            }
+            if (!isCurrentExecution(node.id, currentExecutionId)) return;
 
             const cleanScript = normalizeCreationAssistantScript(response, assetReferenceMap);
             handleScriptChange(cleanScript);
+            finishNodeTask(node.id, currentExecutionId);
+            setRunning(false);
+            setProgress(null);
             message.success("视频提示词生成成功！");
         } catch (error) {
-            if (deductedMicrocredits > 0) {
-                void featureCredit.refund(deductedMicrocredits, selectedModel, "配置生成脚本失败退款");
-            }
-            if (controller.signal.aborted) return;
+            await refundIfDeducted();
+            if (!isCurrentExecution(node.id, currentExecutionId)) return;
             const msg = error instanceof Error ? error.message : String(error);
             setErrorMsg(msg);
+            const hasAnyResult = Boolean(scriptResult || meta.result?.script);
             updateMetadata?.(node.id, {
+                status: hasAnyResult ? "success" : "error",
+                taskStatus: "idle",
+                isClientMockTask: true,
                 configScript: {
                     ...meta,
-                    status: "error",
+                    status: hasAnyResult ? "success" : "error",
                     errorDetails: msg,
                 },
             });
+            failNodeTask(node.id, msg, currentExecutionId);
+            setRunning(false);
+            setProgress(null);
         } finally {
+            setProgress(null);
             if (abortControllerRef.current === controller) {
                 setRunning(false);
                 abortControllerRef.current = null;
             }
         }
-    };
-
-    const cancelGenerate = () => {
-        abortControllerRef.current?.abort();
-        setRunning(false);
     };
 
     const handleExportToTextNode = async () => {
@@ -414,19 +518,20 @@ export function CreationAssistantScriptNodeContent({ node, theme }: Props) {
 
     return (
         <div
-            className="flex h-full min-h-0 w-full flex-col gap-3.5 overflow-y-auto rounded-[inherit] p-4 text-sm"
+            className="relative flex h-full min-h-0 w-full flex-col rounded-[inherit] overflow-hidden text-sm"
             style={{ background: theme.node.panel, color: theme.node.text }}
             data-canvas-no-zoom
-            data-canvas-no-drag
-            onWheel={(e) => e.stopPropagation()}
         >
-            {/* 顶部标题栏与上游状态合并 */}
-            <div className="flex items-center justify-between border-b pb-2.5" style={{ borderColor: theme.node.stroke }}>
+            {/* 顶部标题栏与上游状态合并（画布拖拽把手） */}
+            <div
+                className="flex h-12 shrink-0 cursor-grab items-center justify-between border-b px-4 active:cursor-grabbing select-none"
+                style={{ borderColor: theme.node.stroke, background: theme.node.panel }}
+            >
                 <div className="flex items-center gap-2 min-w-0">
                     <Sparkles className="size-5 text-amber-500 shrink-0" />
                     <span className="font-bold text-base truncate">配置生成脚本</span>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
                     {upstreamAnalysis ? (
                         <Tag color="cyan" className="m-0 text-xs px-2 py-0.5 leading-tight">
                             已接分析
@@ -452,6 +557,16 @@ export function CreationAssistantScriptNodeContent({ node, theme }: Props) {
                     </Tag>
                 </div>
             </div>
+
+            {/* 可滚动内容区域 */}
+            <div
+                data-canvas-wheel-scroll
+                data-canvas-no-drag
+                className="thin-scrollbar flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto p-4 select-text"
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                onWheel={(e) => e.stopPropagation()}
+            >
 
             {/* 模型选择与积分徽标 */}
             <div className="flex items-center justify-between gap-2.5">
@@ -738,28 +853,30 @@ export function CreationAssistantScriptNodeContent({ node, theme }: Props) {
                     <span>清空</span>
                 </button>
 
-                <div className="flex items-center gap-2">
+                <button
+                    type="button"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={runGenerate}
+                    disabled={running}
+                    className={`flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-semibold text-white shadow-sm transition-all select-none ${
+                        running
+                            ? "bg-amber-500/75 cursor-not-allowed opacity-80"
+                            : "bg-amber-500 hover:bg-amber-600 active:scale-95 cursor-pointer"
+                    }`}
+                >
                     {running ? (
-                        <button
-                            type="button"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={cancelGenerate}
-                            className="flex h-9 items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-4 text-sm text-rose-600 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-400 cursor-pointer"
-                        >
-                            <span>取消</span>
-                        </button>
+                        <>
+                            <LoaderCircle className="size-4 animate-spin text-white" />
+                            <span>生成提示词中...</span>
+                        </>
                     ) : (
-                        <button
-                            type="button"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={runGenerate}
-                            className="flex h-9 items-center gap-2 rounded-lg bg-amber-500 px-4 text-sm font-semibold text-white shadow-sm transition-transform hover:bg-amber-600 active:scale-95 cursor-pointer"
-                        >
+                        <>
                             <Play className="size-3.5 fill-current" />
                             <span>{scriptResult ? "重新生成视频提示词" : "生成视频提示词"}</span>
-                        </button>
+                        </>
                     )}
-                </div>
+                </button>
+            </div>
             </div>
 
             {/* 放大编辑弹窗 */}

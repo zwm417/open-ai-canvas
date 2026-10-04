@@ -45,7 +45,7 @@ export function useFeatureCredit(scene: string, selectedModel?: string) {
         return `${costCredits} 积分`;
     }, [isEnabled, costMicrocredits, costCredits]);
 
-    const deduct = async (modelOverride?: string, note?: string): Promise<DeductFeatureCreditsResult> => {
+    const deduct = async (modelOverride?: string, note?: string, referenceKey?: string): Promise<DeductFeatureCreditsResult> => {
         if (!isEnabled || costMicrocredits <= 0) {
             return { charged: false, deductedMicrocredits: 0 };
         }
@@ -57,18 +57,29 @@ export function useFeatureCredit(scene: string, selectedModel?: string) {
             model: modelOverride || selectedModel || featureConfig?.defaultModel,
             amountMicrocredits: costMicrocredits,
             note,
+            referenceKey,
         });
         refreshWallet();
         return res;
     };
 
-    const refund = async (amount: number, modelOverride?: string, note?: string) => {
+    const refund = async (
+        amount: number,
+        modelOverride?: string,
+        note?: string,
+        referenceKey?: string,
+        originalReferenceKey?: string,
+        originalDeductionId?: string,
+    ) => {
         if (!amount || amount <= 0) return;
         await refundFeatureCredits({
             amountMicrocredits: amount,
             scene,
             model: modelOverride || selectedModel || featureConfig?.defaultModel,
             note,
+            referenceKey,
+            originalReferenceKey,
+            originalDeductionId,
         });
         refreshWallet();
     };

@@ -199,10 +199,21 @@ export function useCanvasConnectionController({
         }
     }, [updateConnectionReplaceHover]);
 
+    // @opc-feature: canvas-connection-menu-cleanup [start]
     const closeConnectionCreateMenu = useCallback(() => {
+        batchConnectionPointerIdRef.current = null;
+        batchConnectionPointerStartRef.current = null;
         pendingConnectionCreateRef.current = null;
         setPendingConnectionCreate(null);
+        if (typeof window !== "undefined") {
+            try {
+                window.getSelection()?.removeAllRanges();
+            } catch {
+                // ignore
+            }
+        }
     }, []);
+    // @opc-feature: canvas-connection-menu-cleanup [end]
 
     const cancelPendingConnectionCreate = useCallback(() => {
         closeConnectionCreateMenu();
@@ -644,6 +655,15 @@ export function useCanvasConnectionController({
         setPendingConnectionCreate(pending);
         setMouseWorld(position);
         clearBatchConnection();
+        // @opc-feature: canvas-connection-menu-cleanup [start]
+        if (typeof window !== "undefined") {
+            try {
+                window.getSelection()?.removeAllRanges();
+            } catch {
+                // ignore
+            }
+        }
+        // @opc-feature: canvas-connection-menu-cleanup [end]
         return true;
     }, [clearBatchConnection, message, nodesRef, screenToCanvas]);
 

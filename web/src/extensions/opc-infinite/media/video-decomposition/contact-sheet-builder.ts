@@ -159,7 +159,7 @@ export async function buildContactSheets(
                     column: (index % columns) + 1,
                 });
             }
-            const blob = await canvasToBlob(canvas, options.quality ?? 0.9);
+            const blob = await canvasToBlob(canvas, options.quality ?? 0.82);
             sheets.push({ sheetIndex: sheets.length + 1, frameStart: sheetFrames[0].index, frameEnd: sheetFrames[sheetFrames.length - 1].index, blob, url: URL.createObjectURL(blob), width: canvas.width, height: canvas.height, frames: sheetFrames });
         }
     } catch (error) {
@@ -178,8 +178,8 @@ function loadImage(url: string) {
     });
 }
 
-function canvasToBlob(canvas: HTMLCanvasElement, quality: number) {
+function canvasToBlob(canvas: HTMLCanvasElement, quality = 0.82) {
     return new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("总拼图导出失败"))), "image/jpeg", Math.min(1, Math.max(0.1, quality)));
+        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("总拼图导出失败"))), "image/webp", Math.min(1, Math.max(0.1, quality)));
     });
 }

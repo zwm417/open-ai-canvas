@@ -6,6 +6,9 @@ import {
     extractResourceStorageKey,
     extractVideoAudio,
     shouldEnableAnonymousCors,
+    evaluateDeconstructBudget,
+    normalizeSceneChangeThreshold,
+    computeLaplacianSharpness,
 } from "../src/extensions/opc-infinite/media/video-decomposition/frame-sampler";
 import {
     chunkFrameManifest,
@@ -103,5 +106,46 @@ describe("Video decomposition and frame sampling", () => {
         expect(extractResourceStorageKey("https://example.com/unrelated.mp4")).toBe("");
         expect(extractResourceStorageKey("")).toBe("");
         expect(extractResourceStorageKey(null as any)).toBe("");
+    });
+
+    test("Creative deconstruct 4-point browser optimization contract", () => {
+        // 1. 创意反推动态预算默认门槛提高至 0.15 灵敏度
+        const budget = evaluateDeconstructBudget(37);
+        expect(budget.sceneThreshold).toBe(0.15);
+        expect(normalizeSceneChangeThreshold(undefined, budget.sceneThreshold)).toBe(0.15);
+        expect(normalizeSceneChangeThreshold(undefined)).toBe(0.20); // 经典模式保持 0.20
+
+        // 2. 双轨采样策略隔离：deconstruct 模式默认 0.15 / 0.25s，经典模式默认 0.20 / 0.3s
+        const deconstructPolicy = normalizeVideoSamplingPolicy({ mode: "deconstruct" });
+        expect(deconstructPolicy.sceneChangeThreshold).toBe(0.15);
+        expect(deconstructPolicy.minSceneGapSec).toBe(0.25);
+
+        const classicPolicy = normalizeVideoSamplingPolicy({ mode: "seconds_and_scene" });
+        expect(classicPolicy.sceneChangeThreshold).toBe(0.20);
+        expect(classicPolicy.minSceneGapSec).toBe(0.3);
+
+        const customPolicy = normalizeVideoSamplingPolicy({ mode: "deconstruct", sceneChangeThreshold: 0.18, minSceneGapSec: 0.4 });
+        expect(customPolicy.sceneChangeThreshold).toBe(0.18);
+        expect(customPolicy.minSceneGapSec).toBe(0.4);
+
+        // 3. 特征画幅自适应与拉普拉斯边缘算子步长推导 (36x64 竖屏与 64x36 横屏)
+        const mockVerticalSig = new Uint8ClampedArray(36 * 64 * 4);
+        for (let i = 0; i < mockVerticalSig.length; i += 4) {
+            mockVerticalSig[i] = (i % 255);
+            mockVerticalSig[i + 1] = ((i + 50) % 255);
+            mockVerticalSig[i + 2] = ((i + 100) % 255);
+            mockVerticalSig[i + 3] = 255;
+        }
+        // 显式传参
+        const sharpness1 = computeLaplacianSharpness(mockVerticalSig, 36, 64);
+        expect(sharpness1).toBeGreaterThanOrEqual(0);
+        // 省略宽高自动推导 36x64
+        const sharpness2 = computeLaplacianSharpness(mockVerticalSig);
+        expect(sharpness2).toBe(sharpness1);
+
+        // 横屏 64x36 自动推导
+        const mockHorizontalSig = new Uint8ClampedArray(64 * 36 * 4);
+        const sharpness3 = computeLaplacianSharpness(mockHorizontalSig);
+        expect(sharpness3).toBe(0);
     });
 });

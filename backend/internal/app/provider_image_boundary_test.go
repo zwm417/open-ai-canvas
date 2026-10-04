@@ -13,7 +13,7 @@ import (
 func TestOpenAIImageRejectsInvalidSizeBeforeSubmission(t *testing.T) {
 	for _, size := range []string{"banana", "7:0", "0x1024", "-1x1024", "4097x1024", "1024x5000"} {
 		t.Run(size, func(t *testing.T) {
-			_, err := runImageTask(context.Background(), canvasGenerationInput{Mode: "image", Config: providerConfig{InterfaceType: "openai-image", BaseURL: "https://api.ddcat.pronhubcn.com/v1", Size: size}})
+			_, err := runImageTask(context.Background(), canvasGenerationInput{Mode: "image", Config: providerConfig{InterfaceType: "openai-image", BaseURL: "https://api.openai.com/v1", Size: size}})
 			if err == nil || !strings.Contains(err.Error(), "尺寸") {
 				t.Fatalf("expected local size rejection: %v", err)
 			}

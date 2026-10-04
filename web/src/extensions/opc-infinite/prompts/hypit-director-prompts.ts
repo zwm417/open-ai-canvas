@@ -518,6 +518,7 @@ export function stripJsonCodeBlocks(text: string): string {
 /**
  * 从工业级全息 Markdown 文本中自动解析并提取结构化镜头列表 (CreativeReplicationShot[])
  * 完美支持纯 Markdown 格式的“逐镜头全息工程图纸”向下游多维表格与自动化管线流转
+ * 具备多行缩进、子列表、段落自动聚合能力，杜绝“画面内容”因分项换行而解析为空
  */
 export function parseMarkdownShots(text: string): CreativeReplicationShot[] {
     if (!text || typeof text !== "string") return [];
@@ -552,38 +553,122 @@ export function parseMarkdownShots(text: string): CreativeReplicationShot[] {
         enrichShotTiming(shot);
 
         const lines = block.split(/\r?\n/);
+        let currentKey: string | null = null;
+
+        const assignProp = (key: string, val: string, isAppend: boolean) => {
+            const cleanVal = val.trim();
+            if (!cleanVal) return;
+            if (/景别机位|景别|机位/.test(key)) {
+                shot.camera = isAppend && shot.camera ? `${shot.camera} | ${cleanVal}` : cleanVal;
+            } else if (/画面内容|画面/.test(key)) {
+                shot.visualAction = isAppend && shot.visualAction ? `${shot.visualAction}；${cleanVal}` : cleanVal;
+                shot.visualContent = shot.visualAction;
+            } else if (/表演时序|微动作时序|微动作/.test(key)) {
+                shot.performanceTiming = isAppend && shot.performanceTiming ? `${shot.performanceTiming} -> ${cleanVal}` : cleanVal;
+            } else if (/物理反馈|力学/.test(key)) {
+                shot.physicalFeedback = isAppend && shot.physicalFeedback ? `${shot.physicalFeedback}；${cleanVal}` : cleanVal;
+            } else if (/原片台词|台词|对白/.test(key)) {
+                shot.dialogue = isAppend && shot.dialogue ? `${shot.dialogue} ${cleanVal}` : cleanVal;
+                shot.lines = shot.dialogue;
+            } else if (/语言与语速|语调|语速/.test(key)) {
+                shot.voiceTone = isAppend && shot.voiceTone ? `${shot.voiceTone} | ${cleanVal}` : cleanVal;
+                const wtMatch = cleanVal.match(/时间轴[：:]\s*([^\s|]+(?:\s+\[[^\]]+\]|\s+\d+(?:\.\d+)?s\[[^\]]+\])*)/i) || cleanVal.match(/时间轴[：:]\s*([^|]+)/i);
+                if (wtMatch) {
+                    shot.wordTimings = wtMatch[1].trim();
+                }
+            } else if (/视听氛围|音效|光影/.test(key)) {
+                shot.soundFx = isAppend && shot.soundFx ? `${shot.soundFx} · ${cleanVal}` : cleanVal;
+            } else if (/剪辑与功能|剪辑|功能|叙事/.test(key)) {
+                shot.narrativeFunction = isAppend && shot.narrativeFunction ? `${shot.narrativeFunction} · ${cleanVal}` : cleanVal;
+            } else if (/吸睛钩子|钩子/.test(key)) {
+                shot.hookType = isAppend && shot.hookType ? `${shot.hookType} · ${cleanVal}` : cleanVal;
+            } else if (/置换锚点|核心锚点|锚点/.test(key)) {
+                shot.focalAnchor = isAppend && shot.focalAnchor ? `${shot.focalAnchor} · ${cleanVal}` : cleanVal;
+                shot.productAnchor = shot.focalAnchor;
+            } else if (/转场/.test(key)) {
+                shot.transition = isAppend && shot.transition ? `${shot.transition} · ${cleanVal}` : cleanVal;
+            }
+        };
+
         for (const line of lines) {
             const propMatch = line.match(/^-\s*\*\*([^*]+)\*\*[：:]\s*(.*)$/);
             if (propMatch) {
-                const key = propMatch[1].trim();
+                currentKey = propMatch[1].trim();
                 const val = propMatch[2].trim();
-                if (/景别机位|景别|机位/.test(key)) {
-                    shot.camera = val;
-                } else if (/画面内容|画面/.test(key)) {
-                    shot.visualAction = val;
-                } else if (/表演时序|微动作时序|微动作/.test(key)) {
-                    shot.performanceTiming = val;
-                } else if (/物理反馈|力学/.test(key)) {
-                    shot.physicalFeedback = val;
-                } else if (/原片台词|台词|对白/.test(key)) {
-                    shot.dialogue = val;
-                    shot.lines = val;
-                } else if (/语言与语速|语调|语速/.test(key)) {
-                    shot.voiceTone = val;
-                    const wtMatch = val.match(/时间轴[：:]\s*([^\s|]+(?:\s+\[[^\]]+\]|\s+\d+(?:\.\d+)?s\[[^\]]+\])*)/i) || val.match(/时间轴[：:]\s*([^|]+)/i);
-                    if (wtMatch) {
-                        shot.wordTimings = wtMatch[1].trim();
-                    }
-                } else if (/视听氛围|音效/.test(key)) {
-                    shot.soundFx = val;
-                } else if (/剪辑与功能|剪辑|功能/.test(key)) {
-                    shot.narrativeFunction = val;
+                assignProp(currentKey, val, false);
+            } else if (currentKey && line.trim()) {
+                const sub = line.trim().replace(/^[*•-]\s*/, "").replace(/^\d+[\.、]\s*/, "");
+                if (sub) {
+                    assignProp(currentKey, sub, true);
                 }
             }
         }
         shots.push(shot);
     }
     return shots;
+}
+
+/**
+ * 从全片 Markdown 文本中自动解析提取视听核心要素 (originalMasterSlots)
+ */
+export function parseMarkdownMasterSlots(text: string): {
+    character?: string;
+    actor?: string;
+    focalObject?: string;
+    product?: string;
+    scene?: string;
+} | undefined {
+    if (!text || typeof text !== "string") return undefined;
+    const slots: any = {};
+
+    // 场域 / 空间
+    const mScene = text.match(/-\s*\*\*(?:场景空间几何|场景空间|空间场域|场景|场域)\*\*[：:]\s*([^\n\r]+)/);
+    if (mScene && mScene[1]) {
+        slots.scene = mScene[1].trim();
+    }
+
+    // 商品 / 道具 / 核心客体
+    const mProdBlock = text.match(/-\s*\*\*(?:陈设与道具资产清单|陈设与道具|焦点物品|核心商品|商品|道具)\*\*[：:]\s*([^\n\r]*)/);
+    if (mProdBlock) {
+        const sameLine = mProdBlock[1]?.trim();
+        if (sameLine) {
+            slots.product = sameLine;
+            slots.focalObject = sameLine;
+        } else {
+            const afterIndex = (mProdBlock.index || 0) + mProdBlock[0].length;
+            const rest = text.slice(afterIndex);
+            const firstItemMatch = rest.match(/^\s*(?:[1-9][\.、]|\*|-)\s*([^\n\r]+)/);
+            if (firstItemMatch && firstItemMatch[1]) {
+                const prodVal = firstItemMatch[1].trim();
+                slots.product = prodVal;
+                slots.focalObject = prodVal;
+            }
+        }
+    }
+
+    // 人物 / 演员 / 表演主体
+    const mCharBlock = text.match(/-\s*\*\*(?:主体\/人物|人物|演员|表演主体|表演时序轨迹)\*\*[：:]\s*([^\n\r]*)/);
+    if (mCharBlock) {
+        const sameLine = mCharBlock[1]?.trim();
+        if (sameLine) {
+            slots.character = sameLine;
+            slots.actor = sameLine;
+        } else {
+            const afterIndex = (mCharBlock.index || 0) + mCharBlock[0].length;
+            const rest = text.slice(afterIndex);
+            const firstItemMatch = rest.match(/^\s*(?:[1-9][\.、]|\*|-)\s*([^\n\r]+)/);
+            if (firstItemMatch && firstItemMatch[1]) {
+                const charVal = firstItemMatch[1].trim();
+                slots.character = charVal;
+                slots.actor = charVal;
+            }
+        }
+    }
+
+    if (slots.scene || slots.product || slots.character) {
+        return slots;
+    }
+    return undefined;
 }
 
 /**
@@ -596,6 +681,14 @@ export function formatShotManifestToReadableScript(
     overviewText?: string,
     title = "创意反推分镜拆解表",
 ): string {
+    // 0. 如果 overviewText 原生就是完整的人类可读 Markdown 图纸（包含逐镜头卡段 ### 镜头），且不含裸露的 ```json，优先直接返回原生文本，绝不进行二次重编译造成信息损失
+    if (overviewText && typeof overviewText === "string" && !overviewText.includes("```json") && !overviewText.trim().startsWith("{")) {
+        const hasMarkdownShots = /(?:^|\n)###\s*镜头\s*\d+/i.test(overviewText);
+        if (hasMarkdownShots) {
+            return overviewText.trim();
+        }
+    }
+
     // 1. 如果未传入分镜数组，或数组为空，但 overviewText 中含有内容，自动提取 shots
     let effectiveShots = Array.isArray(shots) ? [...shots] : [];
     if (effectiveShots.length === 0 && overviewText) {

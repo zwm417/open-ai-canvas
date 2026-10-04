@@ -693,9 +693,11 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
     const Icon = nodeTypeIcon(node);
     const maxHeaderWidth = Math.min(240, node.width * scale);
 
+    // @opc-feature: canvas-node-header-select-guard [start]
     return (
         <div
-            className="canvas-node-external-header absolute bottom-full left-0 z-[var(--node-z-overlay)] flex h-6 items-center gap-1 overflow-hidden"
+            className="canvas-node-external-header absolute bottom-full left-0 z-[var(--node-z-overlay)] flex h-6 items-center gap-1 overflow-hidden select-none"
+    // @opc-feature: canvas-node-header-select-guard [end]
             style={{
                 width: dimensionLabel ? "calc(var(--canvas-node-width) * var(--canvas-live-scale, 1))" : undefined,
                 maxWidth: dimensionLabel ? undefined : maxHeaderWidth,

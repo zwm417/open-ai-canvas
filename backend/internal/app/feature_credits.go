@@ -162,8 +162,22 @@ func (s *Service) DeductFeatureCredits(user *model.User, req DeductFeatureCredit
 	}
 
 	amount := item.FixedMicrocredits
-	if item.Mode == "model_price" && req.AmountMicrocredits > 0 {
-		amount = req.AmountMicrocredits
+	if item.Mode == "model_price" {
+		// 服务端权威定价：优先查阅服务端模型定价策略，拒绝客户端随意篡改传入的低额或 0 元
+		if pricing, err := s.repo.ModelPricing("", req.Model, ""); err == nil && pricing != nil {
+			if pricing.PerMediaMicros > 0 {
+				amount = pricing.PerMediaMicros
+			} else if pricing.PerRequestMicros > 0 {
+				amount = pricing.PerRequestMicros
+			}
+		}
+		if amount <= 0 && item.FixedMicrocredits > 0 {
+			amount = item.FixedMicrocredits
+		}
+		// 若后台未配置且固定为 0，保底 1 积分，杜绝免授权白嫖
+		if amount <= 0 {
+			amount = 1_000_000
+		}
 	}
 
 	if amount <= 0 {
@@ -191,25 +205,45 @@ func (s *Service) DeductFeatureCredits(user *model.User, req DeductFeatureCredit
 }
 
 type RefundFeatureCreditsRequest struct {
-	AmountMicrocredits int64   `json:"amountMicrocredits"`
-	Scene              string  `json:"scene"`
-	Model              string  `json:"model"`
-	Note               string  `json:"note"`
-	ReferenceKey       *string `json:"referenceKey"`
+	AmountMicrocredits   int64   `json:"amountMicrocredits"`
+	Scene                string  `json:"scene"`
+	Model                string  `json:"model"`
+	Note                 string  `json:"note"`
+	ReferenceKey         *string `json:"referenceKey"`
+	OriginalReferenceKey *string `json:"originalReferenceKey,omitempty"`
+	OriginalDeductionID  *string `json:"originalDeductionId,omitempty"`
 }
 
 func (s *Service) RefundFeatureCredits(user *model.User, req RefundFeatureCreditsRequest) (*model.CreditAccount, error) {
 	if user == nil {
 		return nil, Unauthorized("请先登录")
 	}
-	if req.AmountMicrocredits <= 0 {
-		return nil, nil
-	}
 	note := req.Note
 	if note == "" {
 		note = "功能执行失败退款: " + req.Scene
 	}
-	account, _, err := s.repo.RefundFeatureCredits(user.ID, req.AmountMicrocredits, req.Scene, req.Model, note, req.ReferenceKey)
-	return account, err
+	account, _, err := s.repo.RefundFeatureCredits(
+		user.ID,
+		req.AmountMicrocredits,
+		req.Scene,
+		req.Model,
+		note,
+		req.ReferenceKey,
+		req.OriginalReferenceKey,
+		req.OriginalDeductionID,
+	)
+	if err != nil {
+		if errors.Is(err, repository.ErrOriginalDeductionNotFound) {
+			return nil, BadAuthRequest("未找到匹配的原始扣费记录，无法执行退款")
+		}
+		if errors.Is(err, repository.ErrAlreadyFullyRefunded) {
+			return nil, BadAuthRequest("该扣费单据已全额退款，拒绝重复退款")
+		}
+		if errors.Is(err, repository.ErrRefundExceedsDeduction) {
+			return nil, BadAuthRequest("退款金额超出原始扣费可退余额")
+		}
+		return nil, err
+	}
+	return account, nil
 }
 // @opc-adapter: feature-credits [end]

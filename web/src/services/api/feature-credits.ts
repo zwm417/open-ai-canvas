@@ -34,6 +34,8 @@ export type RefundFeatureCreditsParams = {
     model?: string;
     note?: string;
     referenceKey?: string;
+    originalReferenceKey?: string;
+    originalDeductionId?: string;
 };
 
 export const FEATURE_SCENE_DEFINITIONS: Array<{

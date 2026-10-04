@@ -1,4 +1,5 @@
 import { nanoid } from "nanoid";
+import { getActiveUserScope } from "@/lib/user-scope";
 import { isGenerationCanceled } from "@/lib/canvas/canvas-project-generation";
 
 import type { CanvasGenerationExecution } from "@/pages/canvas/canvas-generation-executor-types";
@@ -24,6 +25,14 @@ import { prepareCreationAssistantVideos } from "@/services/creation-assistant-vi
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 import { deductFeatureCredits, refundFeatureCredits } from "@/services/api/feature-credits";
+import {
+    startNodeTask,
+    updateNodeTaskProgress,
+    finishNodeTask,
+    failNodeTask,
+    cancelNodeTask,
+    recordTaskDeduction,
+} from "./opc-task-hub";
 
 import {
     VIDEO_REVERSE_NODE_TYPE,
@@ -49,6 +58,7 @@ import {
     fetchCreativeReversePrompt,
     formatShotManifestToReadableScript,
     parseDirectorJson,
+    parseMarkdownMasterSlots,
     parseMarkdownShots,
 } from "../prompts/hypit-director-prompts";
 import {
@@ -173,22 +183,56 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
         throw new Error("视频反推节点未找到可用的上游参考视频，请先连接视频节点");
     }
 
+    const initialUserScope = getActiveUserScope();
     const effectiveModel = meta.model || generationConfig.textModel || generationConfig.model;
+    const executionId = `${nodeId}_${Date.now()}_${nanoid(6)}`;
+    const deductKey = `deduct:video_reverse:${nodeId}:${executionId}`;
+    const refundKey = `refund:video_reverse:${nodeId}:${executionId}`;
     let deductedMicrocredits = 0;
+
+    const onAbortRefund = async () => {
+        if (deductedMicrocredits > 0) {
+            const amount = deductedMicrocredits;
+            deductedMicrocredits = 0;
+            try {
+                await refundFeatureCredits({
+                    scene: "video_reverse",
+                    model: effectiveModel,
+                    amountMicrocredits: amount,
+                    note: "画布视频反推取消退款",
+                    referenceKey: refundKey,
+                    originalReferenceKey: deductKey,
+                });
+            } catch (e) {
+                console.error("[custom-node-executor] refund on abort error:", e);
+            }
+        }
+    };
+
+    startNodeTask(nodeId, "video-reverse", { percent: 10, stage: "frames", message: "正在抽帧与网格拼版" }, {
+        executionId,
+        userScope: initialUserScope,
+        projectId: execution.projectId,
+        controller,
+        onAbortRefund,
+    });
+
     try {
         const creditRes = await deductFeatureCredits({
             scene: "video_reverse",
             model: effectiveModel,
             note: "画布视频反推任务",
+            referenceKey: deductKey,
         });
         deductedMicrocredits = creditRes.deductedMicrocredits;
+        recordTaskDeduction(nodeId, deductedMicrocredits, deductKey, executionId);
     } catch (creditErr: any) {
+        failNodeTask(nodeId, creditErr?.message || "视频反推积分扣减失败，余额不足", executionId);
         throw new Error(creditErr?.response?.data?.message || creditErr?.message || "视频反推积分扣减失败，余额不足");
     }
 
-    const taskId = `mock_reverse_${nanoid()}`;
     const task = createMockGenerationTask({
-        id: taskId,
+        id: executionId,
         type: "video_reverse",
         prompt: execution.prompt || "视频反推拆解",
         progress: 10,
@@ -197,15 +241,8 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
     bindGenerationTask(nodeId, task);
 
     const handleCancellation = () => {
-        if (deductedMicrocredits > 0) {
-            void refundFeatureCredits({
-                scene: "video_reverse",
-                model: effectiveModel,
-                amountMicrocredits: deductedMicrocredits,
-                note: "画布视频反推取消退款",
-            });
-            deductedMicrocredits = 0;
-        }
+        void onAbortRefund();
+        void cancelNodeTask(nodeId, "任务已取消", executionId);
         task.status = "cancelled";
         task.stage = "任务已取消";
         task.progress = 0;
@@ -241,7 +278,7 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
                       metadata: {
                           ...n.metadata,
                           status: "loading",
-                          taskId,
+                          taskId: executionId,
                           taskStatus: "running",
                           taskProgress: 10,
                           taskStage: "正在抽帧与网格拼版",
@@ -271,21 +308,22 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
                 task.progress = p.percent;
                 task.stage = p.message;
                 bindGenerationTask(nodeId, task);
+                updateNodeTaskProgress(nodeId, p, undefined, executionId);
             },
             {
                 track: isDeconstruct ? "deconstruct" : "classic",
                 samplingPolicy: isDeconstruct
                     ? {
                         mode: "deconstruct",
-                        sceneChangeThreshold: meta.sceneThreshold,
-                        minSceneGapSec: meta.minSceneGapSec,
+                        sceneChangeThreshold: meta.deconstruct?.sceneThreshold ?? (meta.samplingMode === "deconstruct" ? meta.sceneThreshold : undefined),
+                        minSceneGapSec: meta.deconstruct?.minSceneGapSec ?? (meta.samplingMode === "deconstruct" ? meta.minSceneGapSec : undefined),
                     }
                     : {
                         samplingMode: meta.classic?.samplingMode || (meta.samplingMode !== "deconstruct" ? meta.samplingMode : undefined) || "seconds_and_scene",
                         fps: meta.classic?.samplingFps ?? meta.samplingFps ?? 1,
                         includeMiddleFrames: meta.classic?.includeMiddleFrames ?? (meta.includeMiddleFrames !== false),
-                        sceneChangeThreshold: meta.classic?.sceneThreshold ?? meta.sceneThreshold ?? 0.20,
-                        minSceneGapSec: meta.classic?.minSceneGapSec ?? meta.minSceneGapSec ?? 0.3,
+                        sceneChangeThreshold: meta.classic?.sceneThreshold ?? (meta.samplingMode !== "deconstruct" ? meta.sceneThreshold : undefined) ?? 0.20,
+                        minSceneGapSec: meta.classic?.minSceneGapSec ?? (meta.samplingMode !== "deconstruct" ? meta.minSceneGapSec : undefined) ?? 0.3,
                     },
                 localAsrEnabled: effectiveAsrEnabled,
                 signal: controller.signal,
@@ -336,6 +374,7 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
                 task.progress = p.percent;
                 task.stage = p.message;
                 bindGenerationTask(nodeId, task);
+                updateNodeTaskProgress(nodeId, p, undefined, executionId);
             },
         });
 
@@ -363,24 +402,30 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
                     product: rawSlots.product || rawSlots.focalObject,
                     scene: rawSlots.scene,
                 };
+            } else {
+                parsedMasterSlots = parseMarkdownMasterSlots(rawPrompt);
             }
         }
 
+        const isJsonOutput = rawPrompt.trim().startsWith("{");
         const userFacingPrompt = isDeconstruct
-            ? formatShotManifestToReadableScript(parsedShots, rawPrompt)
+            ? (isJsonOutput ? formatShotManifestToReadableScript(parsedShots, rawPrompt) : rawPrompt)
             : rawPrompt;
 
         const finishStage = isDeconstruct ? "创意反推分镜拆解完成" : "反推完成";
 
         const trackKey = isDeconstruct ? "deconstruct" : "classic";
+        if (getActiveUserScope() !== initialUserScope) {
+            throw new Error("账号已切换，前序任务已熔断");
+        }
         const contactSheets = prepared?.pages
             ? await Promise.all(
                   prepared.pages.map(async (p) => {
-                      const storageKey = `reverse_sheet_${nodeId}_${trackKey}_${p.pageIndex}`;
+                      const storageKey = `media:${initialUserScope}:reverse_sheet:${nodeId}:${executionId}:${trackKey}:${p.pageIndex}`;
                       await setMediaBlob(storageKey, p.blob);
                       return {
                           pageIndex: p.pageIndex,
-                          url: p.url,
+                          url: "",
                           storageKey,
                           localFilePath: p.localFilePath,
                           frameStart: p.frameStart,
@@ -399,8 +444,8 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
             samplingMode: meta.classic?.samplingMode || (meta.samplingMode !== "deconstruct" ? meta.samplingMode : undefined) || "seconds_and_scene",
             samplingFps: meta.classic?.samplingFps ?? meta.samplingFps ?? 1,
             includeMiddleFrames: meta.classic?.includeMiddleFrames ?? (meta.includeMiddleFrames !== false),
-            sceneThreshold: meta.classic?.sceneThreshold ?? meta.sceneThreshold ?? 0.20,
-            minSceneGapSec: meta.classic?.minSceneGapSec ?? meta.minSceneGapSec ?? 0.3,
+            sceneThreshold: meta.classic?.sceneThreshold ?? (meta.samplingMode !== "deconstruct" ? meta.sceneThreshold : undefined) ?? 0.20,
+            minSceneGapSec: meta.classic?.minSceneGapSec ?? (meta.samplingMode !== "deconstruct" ? meta.minSceneGapSec : undefined) ?? 0.3,
             contactSheets,
             updatedAt: Date.now(),
         };
@@ -414,6 +459,8 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
             customRules: deconstructCustomRules,
             promptRules: deconstructPromptRules,
             replaceBuiltInPrompt: deconstructReplacePrompt,
+            sceneThreshold: meta.deconstruct?.sceneThreshold ?? (meta.samplingMode === "deconstruct" ? meta.sceneThreshold : undefined) ?? 0.15,
+            minSceneGapSec: meta.deconstruct?.minSceneGapSec ?? (meta.samplingMode === "deconstruct" ? meta.minSceneGapSec : undefined) ?? 0.25,
             wordLevelAudio,
             contactSheets,
             updatedAt: Date.now(),
@@ -430,7 +477,7 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
                               content: userFacingPrompt,
                               prompt: userFacingPrompt,
                               composerContent: userFacingPrompt,
-                              taskId,
+                              taskId: executionId,
                               taskStatus: "succeeded",
                               taskProgress: 100,
                               taskStage: finishStage,
@@ -465,17 +512,26 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
         task.progress = 100;
         task.stage = finishStage;
         bindGenerationTask(nodeId, task);
+        finishNodeTask(nodeId, executionId);
     } catch (err) {
         if (deductedMicrocredits > 0) {
-            void refundFeatureCredits({
-                scene: "video_reverse",
-                model: effectiveModel,
-                amountMicrocredits: deductedMicrocredits,
-                note: "画布视频反推失败退款",
-            });
+            const amount = deductedMicrocredits;
             deductedMicrocredits = 0;
+            try {
+                await refundFeatureCredits({
+                    scene: "video_reverse",
+                    model: effectiveModel,
+                    amountMicrocredits: amount,
+                    note: "画布视频反推失败退款",
+                    referenceKey: refundKey,
+                    originalReferenceKey: deductKey,
+                });
+            } catch (e) {
+                console.error("[custom-node-executor] refund on error:", e);
+            }
         }
         if (controller.signal.aborted || isGenerationCanceled(err)) {
+            void cancelNodeTask(nodeId, "任务已取消", executionId);
             task.status = "cancelled";
             task.stage = "任务已取消";
             task.progress = 0;
@@ -503,6 +559,7 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
             );
             return;
         }
+        failNodeTask(nodeId, (err as any)?.message || "视频反推执行失败", executionId);
         task.status = "failed";
         task.error = (err as any)?.message || "视频反推执行失败";
         bindGenerationTask(nodeId, task);
@@ -625,22 +682,56 @@ async function executeMaterialAnalysis(execution: CanvasGenerationExecution) {
         throw new Error("素材分析节点至少需要连接一个图片、视频或音频素材节点");
     }
 
+    const initialUserScope = getActiveUserScope();
     const effectiveModel = meta.model || generationConfig.textModel || generationConfig.model;
+    const executionId = `${nodeId}_${Date.now()}_${nanoid(6)}`;
+    const deductKey = `deduct:material_analysis:${nodeId}:${executionId}`;
+    const refundKey = `refund:material_analysis:${nodeId}:${executionId}`;
     let deductedMicrocredits = 0;
+
+    const onAbortRefund = async () => {
+        if (deductedMicrocredits > 0) {
+            const amount = deductedMicrocredits;
+            deductedMicrocredits = 0;
+            try {
+                await refundFeatureCredits({
+                    scene: "material_analysis",
+                    model: effectiveModel,
+                    amountMicrocredits: amount,
+                    note: "画布素材分析取消退款",
+                    referenceKey: refundKey,
+                    originalReferenceKey: deductKey,
+                });
+            } catch (e) {
+                console.error("[custom-node-executor] refund on abort error:", e);
+            }
+        }
+    };
+
+    startNodeTask(nodeId, "material-analysis", { percent: 15, message: "正在整理素材列表" }, {
+        executionId,
+        userScope: initialUserScope,
+        projectId: execution.projectId,
+        controller,
+        onAbortRefund,
+    });
+
     try {
         const creditRes = await deductFeatureCredits({
             scene: "material_analysis",
             model: effectiveModel,
             note: "画布素材分析任务",
+            referenceKey: deductKey,
         });
         deductedMicrocredits = creditRes.deductedMicrocredits;
+        recordTaskDeduction(nodeId, deductedMicrocredits, deductKey, executionId);
     } catch (creditErr: any) {
+        failNodeTask(nodeId, creditErr?.message || "素材分析积分扣减失败，余额不足", executionId);
         throw new Error(creditErr?.response?.data?.message || creditErr?.message || "素材分析积分扣减失败，余额不足");
     }
 
-    const taskId = nanoid();
     const task = createMockGenerationTask({
-        id: taskId,
+        id: executionId,
         type: "material_analysis",
         prompt: execution.prompt || "素材特征与商业洞察分析",
         progress: 15,
@@ -656,7 +747,7 @@ async function executeMaterialAnalysis(execution: CanvasGenerationExecution) {
                       metadata: {
                           ...n.metadata,
                           status: "loading",
-                          taskId,
+                          taskId: executionId,
                           taskStatus: "running",
                           taskProgress: 15,
                           taskStage: "正在准备多模态素材",
@@ -759,7 +850,7 @@ async function executeMaterialAnalysis(execution: CanvasGenerationExecution) {
                               content: summaryText,
                               prompt: summaryText,
                               composerContent: summaryText,
-                              taskId,
+                              taskId: executionId,
                               taskStatus: "succeeded",
                               taskProgress: 100,
                               taskStage: "分析完成",
@@ -788,14 +879,28 @@ async function executeMaterialAnalysis(execution: CanvasGenerationExecution) {
         task.progress = 100;
         task.stage = "分析完成";
         bindGenerationTask(nodeId, task);
+        finishNodeTask(nodeId, executionId);
     } catch (err) {
         if (deductedMicrocredits > 0) {
-            void refundFeatureCredits({
-                scene: "material_analysis",
-                model: effectiveModel,
-                amountMicrocredits: deductedMicrocredits,
-                note: "画布素材分析失败退款",
-            });
+            const amount = deductedMicrocredits;
+            deductedMicrocredits = 0;
+            try {
+                await refundFeatureCredits({
+                    scene: "material_analysis",
+                    model: effectiveModel,
+                    amountMicrocredits: amount,
+                    note: "画布素材分析失败退款",
+                    referenceKey: refundKey,
+                    originalReferenceKey: deductKey,
+                });
+            } catch (e) {
+                console.error("[custom-node-executor] refund on error:", e);
+            }
+        }
+        if (controller.signal.aborted || isGenerationCanceled(err)) {
+            void cancelNodeTask(nodeId, "任务已取消", executionId);
+        } else {
+            failNodeTask(nodeId, (err as any)?.message || "素材分析执行失败", executionId);
         }
         throw err;
     }
@@ -864,22 +969,56 @@ async function executeConfigScript(execution: CanvasGenerationExecution) {
         additionalNotes: effectiveNotes,
     });
 
+    const initialUserScope = getActiveUserScope();
     const effectiveModel = meta.model || generationConfig.textModel || generationConfig.model;
+    const executionId = `${nodeId}_${Date.now()}_${nanoid(6)}`;
+    const deductKey = `deduct:config_script:${nodeId}:${executionId}`;
+    const refundKey = `refund:config_script:${nodeId}:${executionId}`;
     let deductedMicrocredits = 0;
+
+    const onAbortRefund = async () => {
+        if (deductedMicrocredits > 0) {
+            const amount = deductedMicrocredits;
+            deductedMicrocredits = 0;
+            try {
+                await refundFeatureCredits({
+                    scene: "config_script",
+                    model: effectiveModel,
+                    amountMicrocredits: amount,
+                    note: "画布配置生成脚本取消退款",
+                    referenceKey: refundKey,
+                    originalReferenceKey: deductKey,
+                });
+            } catch (e) {
+                console.error("[custom-node-executor] refund on abort error:", e);
+            }
+        }
+    };
+
+    startNodeTask(nodeId, "creation-assistant-script", { percent: 20, message: "正在根据模型切片规划剧本结构" }, {
+        executionId,
+        userScope: initialUserScope,
+        projectId: execution.projectId,
+        controller,
+        onAbortRefund,
+    });
+
     try {
         const creditRes = await deductFeatureCredits({
             scene: "config_script",
             model: effectiveModel,
             note: "画布配置生成脚本任务",
+            referenceKey: deductKey,
         });
         deductedMicrocredits = creditRes.deductedMicrocredits;
+        recordTaskDeduction(nodeId, deductedMicrocredits, deductKey, executionId);
     } catch (creditErr: any) {
+        failNodeTask(nodeId, creditErr?.message || "配置生成脚本积分扣减失败，余额不足", executionId);
         throw new Error(creditErr?.response?.data?.message || creditErr?.message || "配置生成脚本积分扣减失败，余额不足");
     }
 
-    const taskId = nanoid();
     const task = createMockGenerationTask({
-        id: taskId,
+        id: executionId,
         type: "config_script",
         prompt: execution.prompt || "生成短视频剧本",
         progress: 20,
@@ -895,7 +1034,7 @@ async function executeConfigScript(execution: CanvasGenerationExecution) {
                       metadata: {
                           ...n.metadata,
                           status: "loading",
-                          taskId,
+                          taskId: executionId,
                           taskStatus: "running",
                           taskProgress: 20,
                           taskStage: "正在根据模型切片规划剧本结构",
@@ -919,25 +1058,32 @@ async function executeConfigScript(execution: CanvasGenerationExecution) {
         );
     } catch (err) {
         if (deductedMicrocredits > 0) {
-            void refundFeatureCredits({
-                scene: "config_script",
-                model: effectiveModel,
-                amountMicrocredits: deductedMicrocredits,
-                note: "画布配置生成脚本失败退款",
-            });
+            const amount = deductedMicrocredits;
+            deductedMicrocredits = 0;
+            try {
+                await refundFeatureCredits({
+                    scene: "config_script",
+                    model: effectiveModel,
+                    amountMicrocredits: amount,
+                    note: "画布配置生成脚本失败退款",
+                    referenceKey: refundKey,
+                    originalReferenceKey: deductKey,
+                });
+            } catch (e) {
+                console.error("[custom-node-executor] refund on error:", e);
+            }
+        }
+        if (controller.signal.aborted || isGenerationCanceled(err)) {
+            void cancelNodeTask(nodeId, "任务已取消", executionId);
+        } else {
+            failNodeTask(nodeId, (err as any)?.message || "配置生成脚本执行失败", executionId);
         }
         throw err;
     }
 
     if (controller.signal.aborted) {
-        if (deductedMicrocredits > 0) {
-            void refundFeatureCredits({
-                scene: "config_script",
-                model: effectiveModel,
-                amountMicrocredits: deductedMicrocredits,
-                note: "画布配置生成脚本取消退款",
-            });
-        }
+        void onAbortRefund();
+        void cancelNodeTask(nodeId, "任务已取消", executionId);
         return;
     }
 
@@ -954,7 +1100,7 @@ async function executeConfigScript(execution: CanvasGenerationExecution) {
                           content: cleanScript,
                           prompt: cleanScript,
                           composerContent: cleanScript,
-                          taskId,
+                          taskId: executionId,
                           taskStatus: "succeeded",
                           taskProgress: 100,
                           taskStage: "剧本生成完成",
@@ -991,6 +1137,7 @@ async function executeConfigScript(execution: CanvasGenerationExecution) {
     task.progress = 100;
     task.stage = "剧本生成完成";
     bindGenerationTask(nodeId, task);
+    finishNodeTask(nodeId, executionId);
 }
 
 // ---------------------------------------------------------------------------
@@ -1094,22 +1241,56 @@ async function executeRefScript(execution: CanvasGenerationExecution) {
         references: mentionReferences,
     });
 
+    const initialUserScope = getActiveUserScope();
     const effectiveModel = meta.model || generationConfig.textModel || generationConfig.model;
+    const executionId = `${nodeId}_${Date.now()}_${nanoid(6)}`;
+    const deductKey = `deduct:ref_script:${nodeId}:${executionId}`;
+    const refundKey = `refund:ref_script:${nodeId}:${executionId}`;
     let deductedMicrocredits = 0;
+
+    const onAbortRefund = async () => {
+        if (deductedMicrocredits > 0) {
+            const amount = deductedMicrocredits;
+            deductedMicrocredits = 0;
+            try {
+                await refundFeatureCredits({
+                    scene: "ref_script",
+                    model: effectiveModel,
+                    amountMicrocredits: amount,
+                    note: "画布参考生脚本取消退款",
+                    referenceKey: refundKey,
+                    originalReferenceKey: deductKey,
+                });
+            } catch (e) {
+                console.error("[custom-node-executor] refund on abort error:", e);
+            }
+        }
+    };
+
+    startNodeTask(nodeId, "reference-script", { percent: 20, message: "正在融合对标视频节奏与商品卖点" }, {
+        executionId,
+        userScope: initialUserScope,
+        projectId: execution.projectId,
+        controller,
+        onAbortRefund,
+    });
+
     try {
         const creditRes = await deductFeatureCredits({
             scene: "ref_script",
             model: effectiveModel,
             note: "画布参考生脚本任务",
+            referenceKey: deductKey,
         });
         deductedMicrocredits = creditRes.deductedMicrocredits;
+        recordTaskDeduction(nodeId, deductedMicrocredits, deductKey, executionId);
     } catch (creditErr: any) {
+        failNodeTask(nodeId, creditErr?.message || "参考生脚本积分扣减失败，余额不足", executionId);
         throw new Error(creditErr?.response?.data?.message || creditErr?.message || "参考生脚本积分扣减失败，余额不足");
     }
 
-    const taskId = nanoid();
     const task = createMockGenerationTask({
-        id: taskId,
+        id: executionId,
         type: "ref_script",
         prompt: execution.prompt || "基于对标视频复刻生成剧本",
         progress: 20,
@@ -1125,7 +1306,7 @@ async function executeRefScript(execution: CanvasGenerationExecution) {
                       metadata: {
                           ...n.metadata,
                           status: "loading",
-                          taskId,
+                          taskId: executionId,
                           taskStatus: "running",
                           taskProgress: 20,
                           taskStage: "正在融合对标视频节奏与商品卖点",
@@ -1149,25 +1330,32 @@ async function executeRefScript(execution: CanvasGenerationExecution) {
         );
     } catch (err) {
         if (deductedMicrocredits > 0) {
-            void refundFeatureCredits({
-                scene: "ref_script",
-                model: effectiveModel,
-                amountMicrocredits: deductedMicrocredits,
-                note: "画布参考生脚本失败退款",
-            });
+            const amount = deductedMicrocredits;
+            deductedMicrocredits = 0;
+            try {
+                await refundFeatureCredits({
+                    scene: "ref_script",
+                    model: effectiveModel,
+                    amountMicrocredits: amount,
+                    note: "画布参考生脚本失败退款",
+                    referenceKey: refundKey,
+                    originalReferenceKey: deductKey,
+                });
+            } catch (e) {
+                console.error("[custom-node-executor] refund on error:", e);
+            }
+        }
+        if (controller.signal.aborted || isGenerationCanceled(err)) {
+            void cancelNodeTask(nodeId, "任务已取消", executionId);
+        } else {
+            failNodeTask(nodeId, (err as any)?.message || "参考生脚本执行失败", executionId);
         }
         throw err;
     }
 
     if (controller.signal.aborted) {
-        if (deductedMicrocredits > 0) {
-            void refundFeatureCredits({
-                scene: "ref_script",
-                model: effectiveModel,
-                amountMicrocredits: deductedMicrocredits,
-                note: "画布参考生脚本取消退款",
-            });
-        }
+        void onAbortRefund();
+        void cancelNodeTask(nodeId, "任务已取消", executionId);
         return;
     }
 
@@ -1184,7 +1372,7 @@ async function executeRefScript(execution: CanvasGenerationExecution) {
                           content: cleanScript,
                           prompt: cleanScript,
                           composerContent: cleanScript,
-                          taskId,
+                          taskId: executionId,
                           taskStatus: "succeeded",
                           taskProgress: 100,
                           taskStage: "复刻剧本生成完成",
@@ -1221,4 +1409,5 @@ async function executeRefScript(execution: CanvasGenerationExecution) {
     task.progress = 100;
     task.stage = "复刻剧本生成完成";
     bindGenerationTask(nodeId, task);
+    finishNodeTask(nodeId, executionId);
 }

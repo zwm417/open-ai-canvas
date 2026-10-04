@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -12,14 +13,17 @@ import (
 )
 
 var (
-	ErrInsufficientCredits     = errors.New("积分不足，请先充值")
-	ErrRedeemCodeInvalid       = errors.New("兑换码无效或已使用")
-	ErrActiveTaskLimit         = errors.New("同时进行的任务数已达上限，请等待已有任务完成")
-	ErrTaskNotRetryable        = errors.New("该任务当前状态不支持重试")
-	ErrBillingStateConflict    = errors.New("计费状态已变化，请刷新后重试")
-	ErrBillingUsageUnavailable = errors.New("暂时无法获取用量，计费未完成")
-	ErrBillingChargeLimit      = errors.New("本次费用超过授权上限，已拒绝扣费")
-	ErrChannelModelInUse       = errors.New("该渠道模型正在被使用，无法删除或停用")
+	ErrInsufficientCredits       = errors.New("积分不足，请先充值")
+	ErrRedeemCodeInvalid         = errors.New("兑换码无效或已使用")
+	ErrActiveTaskLimit           = errors.New("同时进行的任务数已达上限，请等待已有任务完成")
+	ErrTaskNotRetryable          = errors.New("该任务当前状态不支持重试")
+	ErrBillingStateConflict      = errors.New("计费状态已变化，请刷新后重试")
+	ErrBillingUsageUnavailable   = errors.New("暂时无法获取用量，计费未完成")
+	ErrBillingChargeLimit        = errors.New("本次费用超过授权上限，已拒绝扣费")
+	ErrChannelModelInUse         = errors.New("该渠道模型正在被使用，无法删除或停用")
+	ErrOriginalDeductionNotFound = errors.New("未找到匹配的原始扣费记录，无法执行退款")
+	ErrAlreadyFullyRefunded       = errors.New("该扣费单据已全额退款，拒绝重复退款")
+	ErrRefundExceedsDeduction     = errors.New("退款金额超出原始扣费金额")
 )
 
 // 先抢占唯一业务键再更新账户，确保注册和签到奖励在多实例并发下只入账一次。
@@ -217,6 +221,16 @@ func (r *Repository) DeductFeatureCredits(userID string, amount int64, scene str
 		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&account).Error; err != nil {
 			return err
 		}
+		if referenceKey != nil && *referenceKey != "" {
+			var existing model.CreditLedgerEntry
+			if findErr := tx.First(&existing, "reference_key = ?", *referenceKey).Error; findErr == nil {
+				if existing.UserID != userID {
+					return errors.New("幂等键已被其他租户占用")
+				}
+				entry = existing
+				return tx.First(&account, "user_id = ?", userID).Error
+			}
+		}
 		updated := tx.Model(&model.CreditAccount{}).
 			Where("user_id = ? AND available_microcredits >= ?", userID, amount).
 			Updates(map[string]any{
@@ -233,14 +247,16 @@ func (r *Repository) DeductFeatureCredits(userID string, amount int64, scene str
 		if err := tx.First(&account, "user_id = ?", userID).Error; err != nil {
 			return err
 		}
+		entryID := newRepositoryID()
 		entry = model.CreditLedgerEntry{
-			ID:                         newRepositoryID(),
+			ID:                         entryID,
 			UserID:                     userID,
 			Type:                       model.CreditLedgerConsume,
 			AmountMicrocredits:         -amount,
 			AvailableDeltaMicrocredits: -amount,
 			AvailableAfterMicrocredits: account.AvailableMicrocredits,
 			ReservedAfterMicrocredits:  account.ReservedMicrocredits,
+			BillingOrderID:             entryID,
 			Model:                      modelName,
 			Scene:                      scene,
 			Note:                       note,
@@ -255,7 +271,16 @@ func (r *Repository) DeductFeatureCredits(userID string, amount int64, scene str
 	return &account, &entry, nil
 }
 
-func (r *Repository) RefundFeatureCredits(userID string, amount int64, scene string, modelName string, note string, referenceKey *string) (*model.CreditAccount, *model.CreditLedgerEntry, error) {
+func (r *Repository) RefundFeatureCredits(
+	userID string,
+	amount int64,
+	scene string,
+	modelName string,
+	note string,
+	referenceKey *string,
+	originalReferenceKey *string,
+	originalDeductionID *string,
+) (*model.CreditAccount, *model.CreditLedgerEntry, error) {
 	var account model.CreditAccount
 	var entry model.CreditLedgerEntry
 	err := r.db.Transaction(func(tx *gorm.DB) error {
@@ -263,10 +288,85 @@ func (r *Repository) RefundFeatureCredits(userID string, amount int64, scene str
 		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&account).Error; err != nil {
 			return err
 		}
+
+		// 1. 退款幂等性检查：若该 refund reference_key 已经入账，幂等返回已有流水，杜绝重复退款
+		if referenceKey != nil && *referenceKey != "" {
+			var existing model.CreditLedgerEntry
+			if findErr := tx.First(&existing, "reference_key = ?", *referenceKey).Error; findErr == nil {
+				if existing.UserID != userID {
+					return errors.New("幂等键已被其他租户占用")
+				}
+				entry = existing
+				return tx.First(&account, "user_id = ?", userID).Error
+			}
+		}
+
+		// 2. 溯源定位原始扣款记录 (Original Deduction)
+		var originalEntry model.CreditLedgerEntry
+		var foundOriginal bool
+
+		if originalDeductionID != nil && *originalDeductionID != "" {
+			if err := tx.Where("id = ? AND user_id = ? AND type = ?", *originalDeductionID, userID, model.CreditLedgerConsume).First(&originalEntry).Error; err == nil {
+				foundOriginal = true
+			}
+		}
+
+		if !foundOriginal && originalReferenceKey != nil && *originalReferenceKey != "" {
+			if err := tx.Where("reference_key = ? AND user_id = ? AND type = ?", *originalReferenceKey, userID, model.CreditLedgerConsume).First(&originalEntry).Error; err == nil {
+				foundOriginal = true
+			}
+		}
+
+		// 自动推断：若未提供显式 originalReferenceKey，但 referenceKey 遵循 "refund:*" 命名，则推断匹配 "deduct:*"
+		if !foundOriginal && referenceKey != nil && *referenceKey != "" && strings.HasPrefix(*referenceKey, "refund:") {
+			inferredDeductKey := "deduct:" + strings.TrimPrefix(*referenceKey, "refund:")
+			if err := tx.Where("reference_key = ? AND user_id = ? AND type = ?", inferredDeductKey, userID, model.CreditLedgerConsume).First(&originalEntry).Error; err == nil {
+				foundOriginal = true
+			}
+		}
+
+		// 安全防御底线：严禁凭空退款！未找到合法扣款记录一律拒绝
+		if !foundOriginal {
+			return ErrOriginalDeductionNotFound
+		}
+
+		// 3. 场景一致性校验
+		if scene != "" && originalEntry.Scene != "" && originalEntry.Scene != scene {
+			return errors.New("退款场景与原始扣费场景不匹配")
+		}
+
+		// 4. 统计此原始扣款记录已成功退款的累计金额 (以 originalEntry.ID 作为 billing_order_id)
+		var alreadyRefunded int64
+		if err := tx.Model(&model.CreditLedgerEntry{}).
+			Where("user_id = ? AND type = ? AND billing_order_id = ?", userID, model.CreditLedgerRefund, originalEntry.ID).
+			Select("COALESCE(SUM(amount_microcredits), 0)").
+			Scan(&alreadyRefunded).Error; err != nil {
+			return err
+		}
+
+		originalDeductedAmount := -originalEntry.AmountMicrocredits
+		if originalDeductedAmount <= 0 {
+			originalDeductedAmount = originalEntry.AmountMicrocredits
+		}
+
+		remainingRefundable := originalDeductedAmount - alreadyRefunded
+		if remainingRefundable <= 0 {
+			return ErrAlreadyFullyRefunded
+		}
+
+		// 5. 确定最终退款金额（上限严格锁死在剩余可退额度内，严禁超退）
+		refundAmount := amount
+		if refundAmount <= 0 {
+			refundAmount = remainingRefundable
+		} else if refundAmount > remainingRefundable {
+			return ErrRefundExceedsDeduction
+		}
+
+		// 6. 原子增加可用积分
 		if err := tx.Model(&model.CreditAccount{}).
 			Where("user_id = ?", userID).
 			Updates(map[string]any{
-				"available_microcredits": gorm.Expr("available_microcredits + ?", amount),
+				"available_microcredits": gorm.Expr("available_microcredits + ?", refundAmount),
 				"version":                gorm.Expr("version + 1"),
 				"updated_at":             time.Now(),
 			}).Error; err != nil {
@@ -275,14 +375,17 @@ func (r *Repository) RefundFeatureCredits(userID string, amount int64, scene str
 		if err := tx.First(&account, "user_id = ?", userID).Error; err != nil {
 			return err
 		}
+
+		// 7. 写入退款流水并永久绑定 BillingOrderID = originalEntry.ID
 		entry = model.CreditLedgerEntry{
 			ID:                         newRepositoryID(),
 			UserID:                     userID,
 			Type:                       model.CreditLedgerRefund,
-			AmountMicrocredits:         amount,
-			AvailableDeltaMicrocredits: amount,
+			AmountMicrocredits:         refundAmount,
+			AvailableDeltaMicrocredits: refundAmount,
 			AvailableAfterMicrocredits: account.AvailableMicrocredits,
 			ReservedAfterMicrocredits:  account.ReservedMicrocredits,
+			BillingOrderID:             originalEntry.ID,
 			Model:                      modelName,
 			Scene:                      scene,
 			Note:                       note,

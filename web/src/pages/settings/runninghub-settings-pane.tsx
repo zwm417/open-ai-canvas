@@ -239,10 +239,10 @@ export function RunningHubSettingsPane() {
                     </AutoComplete>
                 </Form.Item>
                 <Form.Item label="积分 API Key（工作流提交）" className="mb-0 lg:col-span-6" extra="用于拉取工作流参数、创建任务和查询结果；最终提交固定使用这把 Key。若提示企业版余额不足，请检查这里没有填企业级上传 Key。">
-                    <Input.Password autoComplete="new-password" value={runningHub.apiKey} onChange={(event) => update({ apiKey: event.target.value })} />
+                    <Input.Password autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" value={runningHub.apiKey} onChange={(event) => update({ apiKey: event.target.value })} />
                 </Form.Item>
                 <Form.Item label="素材上传 API Key（企业级）" className="mb-0 lg:col-span-6" extra="仅用于上传参考图片、视频、音频和蒙版；没有参考素材时可以留空。">
-                    <Input.Password autoComplete="new-password" value={runningHub.uploadApiKey || ""} onChange={(event) => update({ uploadApiKey: event.target.value })} />
+                    <Input.Password autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" value={runningHub.uploadApiKey || ""} onChange={(event) => update({ uploadApiKey: event.target.value })} />
                 </Form.Item>
                 <Form.Item label="工作流用途" className="mb-0 lg:col-span-6">
                     <Select className="w-full" value={capability} options={capabilityOptions} onChange={(value) => updateCapability(value as RunningHubCapability)} />

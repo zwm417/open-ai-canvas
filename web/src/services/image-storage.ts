@@ -2,10 +2,10 @@ import localforage from "localforage";
 
 import { nanoid } from "nanoid";
 import { readImageMeta } from "@/lib/image-utils";
-import { getActiveUserScope } from "@/lib/user-scope";
+import { getActiveUserScope, USER_SCOPE_CHANGED_EVENT } from "@/lib/user-scope";
 import { getResourceAccess, importResourceFromUrl, isResourceUrl, resolveResourceAccessURL, resourceFileUrl, resourceIdFromStorageKey, resourceStorageKey, ResourceUploadError, uploadResourceFile } from "@/services/api/resources";
 import { getCachedResourceBlob, getCachedResourceObjectUrl, peekCachedResourceObjectUrl, primeResourceBlobCache } from "@/services/resource-blob-cache";
-import { peekLocalFirstMedia, resolveLocalFirstMedia } from "@/services/local-first-media-resolver";
+import { evictLocalFirstMedia, peekLocalFirstMedia, resolveLocalFirstMedia } from "@/services/local-first-media-resolver";
 
 // @opc-feature: asset-deduplication [start]
 import { computeBlobSha256, computeTextSha256 } from "@/lib/asset-fingerprint";
@@ -189,6 +189,7 @@ export async function deleteStoredImages(keys: Iterable<string>) {
             const url = objectUrls.get(key);
             if (url) URL.revokeObjectURL(url);
             objectUrls.delete(key);
+            evictLocalFirstMedia(key, url);
             await store.removeItem(key);
         }),
     );
@@ -245,4 +246,14 @@ function imageMimeTypeFromName(value: string) {
     if (path.endsWith(".gif")) return "image/gif";
     if (path.endsWith(".bmp")) return "image/bmp";
     return "";
+}
+
+// 监听账户变更事件（Session Epoch 切换时自动释放旧账号的所有内存图片 Object URL 句柄）
+if (typeof window !== "undefined") {
+    window.addEventListener(USER_SCOPE_CHANGED_EVENT, () => {
+        objectUrls.forEach((url) => {
+            try { URL.revokeObjectURL(url); } catch {}
+        });
+        objectUrls.clear();
+    });
 }

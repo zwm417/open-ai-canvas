@@ -16,6 +16,7 @@
  */
 
 import localforage from "localforage";
+import { USER_SCOPE_CHANGED_EVENT } from "@/lib/user-scope";
 
 import {
     isDesktopShell,
@@ -223,6 +224,32 @@ export function peekLocalFirstMedia(storageKey?: string, url?: string): string |
         if (idbMem) return idbMem;
     }
     return null;
+}
+
+/**
+ * 外部存储直接预热注入多级缓存 (Tier 1 LRU 统一纳管)
+ */
+export function primeLocalFirstMedia(
+    storageKey: string,
+    url: string,
+    blob?: Blob,
+    mediaType: "image" | "video" | "audio" = "image"
+): void {
+    const canonicalKey = getCanonicalMediaKey(storageKey, url);
+    lruCache.set(canonicalKey, {
+        key: canonicalKey,
+        url,
+        blob,
+        mediaType,
+    });
+}
+
+/**
+ * 从多级缓存中主动驱逐指定存储键
+ */
+export function evictLocalFirstMedia(storageKey?: string, url?: string): boolean {
+    const key = getCanonicalMediaKey(storageKey, url);
+    return lruCache.delete(key);
 }
 
 /**
@@ -694,5 +721,12 @@ export async function clearLocalFirstMediaCache(): Promise<void> {
             await window.caches.delete(WEB_CACHE_NAME);
         } catch {}
     }
+}
+
+// 监听账户变更事件（Session Epoch 切换时自动清空内存 LRU，彻底杜绝跨租户媒体缓存泄漏）
+if (typeof window !== "undefined") {
+    window.addEventListener(USER_SCOPE_CHANGED_EVENT, () => {
+        clearMemoryCacheOnly();
+    });
 }
 // @opc-feature: local-first-media-resolver [end]

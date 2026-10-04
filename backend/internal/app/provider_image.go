@@ -135,9 +135,8 @@ func validateOpenAIImageInput(input canvasGenerationInput) error {
 	if !ok || widthErr != nil || heightErr != nil || width <= 0 || height <= 0 {
 		return errors.New("图片尺寸无效：请选择支持的宽高比或填写正整数像素尺寸，如 1024x1024")
 	}
-	base, err := url.Parse(input.Config.BaseURL)
-	if err == nil && strings.EqualFold(base.Hostname(), "api.ddcat.pronhubcn.com") && (width > 4096 || height > 4096) {
-		return errors.New("ddcat 图片尺寸超过上游限制：宽和高均不得超过 4096 像素")
+	if width > 4096 || height > 4096 {
+		return errors.New("图片尺寸超过限制：宽和高均不得超过 4096 像素")
 	}
 	return nil
 }

@@ -172,8 +172,9 @@ export async function extractFramesWithDesktopFFmpeg(
         // 对 FFmpeg 抽取的原始帧序列执行特征比对与时间线组织
         const diffCanvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
         if (diffCanvas) {
-            diffCanvas.width = 32;
-            diffCanvas.height = 18;
+            const isVert = (res.height || 720) > (res.width || 1280);
+            diffCanvas.width = isVert ? 36 : 64;
+            diffCanvas.height = isVert ? 64 : 36;
         }
         const diffCtx = diffCanvas?.getContext("2d") || null;
 
@@ -452,7 +453,8 @@ export async function extractAudioWithDesktopFFmpeg(
 
         const args = [
             "-vn",
-            "-acodec", "pcm_s16le",
+            "-acodec", "libmp3lame",
+            "-b:a", "64k",
             "-ar", "16000",
             "-ac", "1",
             "OUTPUT_PLACEHOLDER",
@@ -463,8 +465,8 @@ export async function extractAudioWithDesktopFFmpeg(
             inputBuffer,
             inputExtension,
             args,
-            outputExtension: "wav",
-            mimeType: "audio/wav",
+            outputExtension: "mp3",
+            mimeType: "audio/mp3",
         });
 
         if (options.signal?.aborted) return null;

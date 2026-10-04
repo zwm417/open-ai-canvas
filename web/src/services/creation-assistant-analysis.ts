@@ -18,11 +18,13 @@ export async function analyzeCreationAssistantBatch(
         customRules?: string;
         replaceBuiltInPrompt?: boolean;
         promptRules?: string;
+        signal?: AbortSignal;
     },
 ) {
     const manifest: CreationAssistantManifestItem[] = files.map((file, index) => ({ fileId: file.id, order: index + 1, name: file.name, mediaType: file.kind }));
     const content: AiTextMessage["content"] = [{ type: "text", text: buildCreationAssistantAnalysisPrompt(manifest, options) }];
     for (const file of files) {
+        if (options?.signal?.aborted) throw new DOMException("Aborted", "AbortError");
         content.push({ type: "text", text: `当前素材 fileId=${file.id}，order=${manifest.find((item) => item.fileId === file.id)?.order}，文件名=${file.name}，媒体类型=${file.kind}。以下媒体内容只对应这一项。` });
         if (file.kind === "image") {
             content.push({ type: "image_url", image_url: { url: await imageToDataUrl(file.item) } });
@@ -36,7 +38,7 @@ export async function analyzeCreationAssistantBatch(
                 content.push({ type: "text", text: "视频抽帧总拼图暂不可用；不得仅凭文件名推断视频内容。" });
             }
             if (analysis?.audio?.url) {
-                content.push({ type: "input_audio", input_audio: { data: await mediaUrlToBase64(analysis.audio.url), format: audioFormat(analysis.audio.mimeType, `${file.name}.wav`) } });
+                content.push({ type: "input_audio", input_audio: { data: await mediaUrlToBase64(analysis.audio.url), format: audioFormat(analysis.audio.mimeType, `${file.name}.mp3`) } });
                 content.push({ type: "text", text: "以上音频是该视频分离出的完整音轨。请识别其中可听到的人声、口播、音乐、环境声和节奏，并与抽帧总拼图结合分析；音频不是独立素材，不要单独生成 fileSummary。" });
             } else {
                 content.push({ type: "text", text: "该视频没有可用的分离音频；不要仅凭文件名推断声音内容。" });
@@ -46,7 +48,7 @@ export async function analyzeCreationAssistantBatch(
             content.push({ type: "text", text: "以上是当前音频素材本身。请识别可听到的人声、口播、音乐、环境声和节奏，并将可核验的听觉内容写入这一文件的一句 summary。" });
         }
     }
-    const raw = await requestImageQuestion(config, [{ role: "user", content }], () => undefined);
+    const raw = await requestImageQuestion(config, [{ role: "user", content }], () => undefined, { signal: options?.signal });
     return normalizeAnalysisResponse(raw, manifest);
 }
 
@@ -67,7 +69,7 @@ function audioFormat(mimeType: string, name: string) {
     if (mime.includes("mpeg") || mime.includes("mp3")) return "mp3";
     if (mime.includes("ogg") || mime.includes("opus")) return "ogg";
     const extension = name.split(".").pop()?.toLowerCase();
-    return extension === "m4a" || extension === "mp4" ? "m4a" : extension || "wav";
+    return extension === "m4a" || extension === "mp4" ? "m4a" : extension || "mp3";
 }
 
 function normalizeAnalysisResponse(raw: string, manifest: Array<{ fileId: string; order: number; name: string; mediaType: string }>) {

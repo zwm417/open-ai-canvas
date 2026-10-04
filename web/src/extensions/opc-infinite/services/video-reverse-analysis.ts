@@ -223,7 +223,7 @@ export async function prepareReverseVideo(source: Blob | File | string, gridSize
                         const arrayBuf = await sheet.blob.arrayBuffer();
                         const trackPrefix = prepareOptions.track ? `${prepareOptions.track}_` : "";
                         const saveRes = await bridge.saveMedia({
-                            fileName: `contact_sheet_${trackPrefix}p${index + 1}_${Date.now()}.jpg`,
+                            fileName: `contact_sheet_${trackPrefix}p${index + 1}_${Date.now()}.webp`,
                             buffer: new Uint8Array(arrayBuf),
                             subFolder: "contact-sheets",
                             mediaType: "image",
@@ -502,8 +502,9 @@ async function buildAnalysisContent(
     }
     const audioSupported = isModelAudioInputSupported(candidateConfig);
     if (prepared.audio && audioSupported) {
-        content.push({ type: "text", text: "下面的音频是同一视频按无限创作台逻辑提取的单声道 WAV，请识别人声、口播、音乐、环境声、混响和节奏，并与画面共同分析。" });
-        content.push({ type: "input_audio", input_audio: { data: await blobToBase64(prepared.audio), format: "wav" } });
+        const audioFormat = prepared.audio.type?.toLowerCase().includes("wav") ? "wav" : "mp3";
+        content.push({ type: "text", text: `下面的音频是同一视频按无限创作台逻辑提取的单声道 ${audioFormat.toUpperCase()}，请识别人声、口播、音乐、环境声、混响和节奏，并与画面共同分析。` });
+        content.push({ type: "input_audio", input_audio: { data: await blobToBase64(prepared.audio), format: audioFormat } });
     } else if (prepared.audio) {
         const hasWordAnnotations = Boolean(prepared.localAsrResult?.success && prepared.localAsrResult.words?.length);
         if (hasWordAnnotations) {

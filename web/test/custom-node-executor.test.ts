@@ -183,5 +183,98 @@ describe("custom plugin node executor and guardrail verification", () => {
         expect(isLocalOrPrivateUpstream("https://dashscope.aliyuncs.com/api/v1")).toBe(false);
         expect(isLocalOrPrivateUpstream("https://api.minimax.chat/v1")).toBe(false);
     });
+
+    it("enforces canvas draggable contract: root container must never suppress drag, pinned header provides drag handle", async () => {
+        const fs = await import("fs");
+        const path = await import("path");
+
+        const componentsDir = path.resolve(import.meta.dir, "../src/extensions/opc-infinite/components");
+        const customNodeFiles = [
+            "creation-assistant-script-node.tsx",
+            "material-analysis-node.tsx",
+            "reference-video-script-node.tsx",
+            "video-reverse-node.tsx",
+        ];
+
+        for (const file of customNodeFiles) {
+            const content = fs.readFileSync(path.join(componentsDir, file), "utf-8");
+
+            // 1. Root container (the div immediately following "return (") MUST NOT have data-canvas-no-drag
+            const returnMatch = content.match(/return\s*\(\s*<div([^>]+)>/);
+            expect(returnMatch).toBeTruthy();
+            const rootAttrs = returnMatch![1];
+            expect(rootAttrs).not.toContain("data-canvas-no-drag");
+            expect(rootAttrs).not.toContain("onMouseDown");
+            expect(rootAttrs).not.toContain("onPointerDown");
+
+            // 2. Pinned header MUST provide drag affordance (cursor-grab)
+            expect(content).toContain("cursor-grab");
+            expect(content).toContain("active:cursor-grabbing");
+
+            // 3. Scrollable content container MUST isolate internal drag and wheel
+            expect(content).toContain("data-canvas-no-drag");
+            expect(content).toContain("data-canvas-wheel-scroll");
+        }
+    });
+
+    it("enforces generation locked button contract: once inference starts, action button is disabled/locked, cancel button is prohibited, and no full-node/page blocking overlay exists", async () => {
+        const fs = await import("fs");
+        const path = await import("path");
+
+        const componentsDir = path.resolve(import.meta.dir, "../src/extensions/opc-infinite/components");
+        const customNodeFiles = [
+            "creation-assistant-script-node.tsx",
+            "material-analysis-node.tsx",
+            "reference-video-script-node.tsx",
+            "video-reverse-node.tsx",
+        ];
+
+        for (const file of customNodeFiles) {
+            const content = fs.readFileSync(path.join(componentsDir, file), "utf-8");
+
+            // 1. Prohibit user-facing abort/cancel generation buttons
+            expect(content).not.toContain("中止生成");
+            expect(content).not.toContain("中止分析");
+            expect(content).not.toContain("中止反推");
+            expect(content).not.toContain("const handleCancel =");
+
+            // 2. Action button must be locked with disabled={running}
+            expect(content).toContain("disabled={running}");
+
+            // 3. Prohibit full-page or full-node blocking overlay (e.g. absolute inset-0 z-50 bg-black/50 pointer-events-auto)
+            expect(content).not.toContain("absolute inset-0 bg-black");
+            expect(content).not.toContain("fixed inset-0 bg-black");
+        }
+    });
+
+    it("enforces progress bar lifecycle contract: progress bars must only render during active execution, clean up on finish/error, and prohibit spinning loader or '处理中' at 100%", async () => {
+        const fs = await import("fs");
+        const path = await import("path");
+
+        const componentsDir = path.resolve(import.meta.dir, "../src/extensions/opc-infinite/components");
+        const customNodeFiles = [
+            "creation-assistant-script-node.tsx",
+            "material-analysis-node.tsx",
+            "reference-video-script-node.tsx",
+            "video-reverse-node.tsx",
+        ];
+
+        for (const file of customNodeFiles) {
+            const content = fs.readFileSync(path.join(componentsDir, file), "utf-8");
+
+            // 1. If the node renders a progress bar with effectiveProgress, it MUST be strictly gated by active running state
+            if (content.includes("effectiveProgress")) {
+                expect(content).not.toMatch(/\{\s*effectiveProgress\s*\?/);
+            }
+
+            // 2. Component must clean up transient local progress on finish / error
+            expect(content).toMatch(/set(Local)?Progress\(null\)/);
+        }
+
+        // Specific contract on video-reverse-node.tsx:
+        const reverseContent = fs.readFileSync(path.join(componentsDir, "video-reverse-node.tsx"), "utf-8");
+        expect(reverseContent).toContain("(running || isNodeExecuting) && effectiveProgress");
+        expect(reverseContent).toContain("effectiveProgress.percent >= 100");
+    });
 });
 // @opc-feature: custom-node-execution-test [end]

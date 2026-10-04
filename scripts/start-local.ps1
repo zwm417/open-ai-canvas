@@ -40,7 +40,8 @@ foreach ($directory in @($dataDir, $goBuildCache, $goModuleCache)) {
 
 function Test-ListeningPort([int]$Port) {
     try {
-        return $null -ne (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction Stop | Select-Object -First 1)
+        $found = cmd.exe /c "netstat -ano | findstr LISTENING | findstr :$Port" 2>$null
+        return [bool]$found
     } catch {
         return $false
     }

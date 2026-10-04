@@ -63,6 +63,8 @@ export type ReverseTrackDeconstruct = {
     promptRules?: string;
     replaceBuiltInPrompt?: boolean;
     wordLevelAudio?: boolean;
+    sceneThreshold?: number;
+    minSceneGapSec?: number;
     contactSheets?: Array<{
         pageIndex: number;
         url: string;

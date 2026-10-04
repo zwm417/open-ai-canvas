@@ -95,22 +95,16 @@ func TestCreativeReverseKeywords(t *testing.T) {
 		"l-cut",
 		"split",
 		"wordTimings",
-		"originalMasterSlots",
-		"主要物品分析",
-		"声画毫秒级锁死与词级时间戳契约",
-		"lightingTone",
 		"分镜判定必须综合主播语音气口、台词完整性与主体景别转换",
 		"三段式微过程",
 		"主要物品物理反馈",
 		"情绪微表情与眼神轨迹",
-		"coreElements",
-		"imagePrompt",
-		"motionPrompt",
-		"空间透视视差",
-		"几何稳定性",
-		"空间场域与物理环境 (scene)",
-		"视听工程特别说明（全片总览）",
-		"空间场域与物理光学布光（支持多场景解构）",
+		"逐镜头全息工程图纸",
+		"全片视听基因与宏观架构总览",
+		"注意力动力学与商业转化机制",
+		"空间场域构型、物理光学与美术置景",
+		"影视表演动力学与微表情指导",
+		"真人实拍物理质感与连续性全息审计",
 	}
 
 	for _, s := range mustContain {
@@ -122,16 +116,13 @@ func TestCreativeReverseKeywords(t *testing.T) {
 	mustNotContain := []string{
 		"hookType",
 		"productAnchor",
+		"作战手册",
 		"严禁出现任何下游换品",
 		"复刻建议或改写脑补",
 		"二创复刻与改编策略",
 		"| 镜头编号 |",
 		"| :--- |",
-		"startSec",
-		"endSec",
-		"durationSec",
-		"A photograph captured as a single frame from an iPhone video",
-		"The camera slowly pushes in",
+		"```json",
 	}
 
 	for _, s := range mustNotContain {

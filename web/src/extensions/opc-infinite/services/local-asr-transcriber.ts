@@ -113,7 +113,8 @@ export async function transcribeWithLocalAsr(
         }
 
         const formData = new FormData();
-        formData.append("file", audioBlob, "audio.wav");
+        const audioExt = audioBlob.type?.includes("mp3") || audioBlob.type?.includes("mpeg") ? "mp3" : "wav";
+        formData.append("file", audioBlob, `audio.${audioExt}`);
         formData.append("language", options.language || "zh");
         formData.append("granularity", "word");
 

@@ -212,6 +212,9 @@ import {
 } from "@/types/canvas";
 import type { ReferenceImage } from "@/types/image";
 import { ART_CRITIQUE_NODE_TYPE } from "@/lib/art-critique/contracts";
+// @opc-feature: opc-task-hub [start]
+import { cancelAllNodeTasks, cancelNodeTask, isNodeTaskRunning } from "@/extensions/opc-infinite/services/opc-task-hub";
+// @opc-feature: opc-task-hub [end]
 
 const CanvasDirectorWorkbench = lazy(() => import("@/components/canvas/director/canvas-director-workbench").then((module) => ({ default: module.CanvasDirectorWorkbench })));
 const CanvasDrawingEditorModal = lazy(() => import("@/components/canvas/canvas-drawing-editor-modal").then((module) => ({ default: module.CanvasDrawingEditorModal })));
@@ -757,6 +760,14 @@ function InfiniteCanvasPage() {
         return () => resizeObserver.disconnect();
     }, [projectLoaded]);
 
+    // @opc-feature: opc-task-hub [start]
+    useEffect(() => {
+        return () => {
+            void cancelAllNodeTasks("已离开当前画布，未完成的本地任务已中止并退款");
+        };
+    }, []);
+    // @opc-feature: opc-task-hub [end]
+
     const {
         fitCanvasContent,
         fitCanvasSelection,
@@ -1043,6 +1054,13 @@ function InfiniteCanvasPage() {
             if (removedDrawingIds.length) {
                 void Promise.all(removedDrawingIds.map((drawingId) => removeCanvasDrawing(projectId, drawingId))).catch(() => message.warning("绘图节点已删除，但本地绘图缓存清理失败"));
             }
+            // @opc-feature: opc-task-hub [start]
+            removedIds.forEach((deletedId) => {
+                if (isNodeTaskRunning(deletedId)) {
+                    void cancelNodeTask(deletedId, "节点已从画布删除");
+                }
+            });
+            // @opc-feature: opc-task-hub [end]
             cleanupCanvasFiles({ projectId, nodes: nextNodes, chatSessions });
         },
         [

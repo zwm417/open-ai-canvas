@@ -371,12 +371,12 @@ export default function ChannelsPage() {
                     </div>
                 }
             >
-                <Form form={form} layout="vertical" requiredMark={false}>
+                <Form form={form} layout="vertical" requiredMark={false} autoComplete="off">
                     <Form.Item name="name" label="渠道名称" rules={[{ required: true, message: "请填写渠道名称" }]}>
-                        <Input placeholder="例如：OpenAI 官方渠道" />
+                        <Input placeholder="例如：OpenAI 官方渠道" autoComplete="off" />
                     </Form.Item>
                     <Form.Item name="baseUrl" label="Base URL" rules={[{ required: true, message: "请填写 Base URL" }]}>
-                        <Input placeholder="填写云端渠道 Base URL" />
+                        <Input placeholder="填写云端渠道 Base URL" autoComplete="off" data-lpignore="true" data-1p-ignore="true" />
                     </Form.Item>
                     <Form.Item
                         name="apiKey"
@@ -384,10 +384,10 @@ export default function ChannelsPage() {
                         rules={editingChannel ? [] : [{ required: true, message: "请填写 API Key 或 Access Key" }]}
                         extra="OpenAI 兼容协议填写 API Key；即梦官方协议填写 IAM Access Key。"
                     >
-                        <Input.Password autoComplete="new-password" placeholder={editingChannel ? "留空保留原凭证" : "API Key 或 Access Key"} />
+                        <Input.Password autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" placeholder={editingChannel ? "留空保留原凭证" : "API Key 或 Access Key"} />
                     </Form.Item>
                     <Form.Item name="secretKey" label={editingChannel ? `Secret Key（${channelSecretText(editingChannel)}）` : "Secret Key（可选）"} extra="仅即梦官方等 AK/SK 签名协议需要；其他渠道留空。">
-                        <Input.Password autoComplete="new-password" placeholder={editingChannel ? "留空保留原 Secret Key" : "IAM Secret Key"} />
+                        <Input.Password autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" placeholder={editingChannel ? "留空保留原 Secret Key" : "IAM Secret Key"} />
                     </Form.Item>
                     <div className="mb-6">
                         <Form.Item name="headers" noStyle>

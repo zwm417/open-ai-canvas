@@ -259,19 +259,25 @@ function BatchConnectionHandle({ scale, count, active, onPointerDown }: { scale:
         borderColor: active ? "var(--workspace-accent)" : "var(--workspace-border)",
         color: active ? "var(--workspace-accent-foreground)" : "var(--foreground)",
     };
+    // @opc-feature: canvas-batch-handle-gesture-guard [start]
     return (
         <button
             type="button"
             data-canvas-no-zoom
             data-icon-only
-            className="pointer-events-auto absolute grid -translate-y-1/2 translate-x-1/2 place-items-center rounded-full border shadow-md transition hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="pointer-events-auto absolute grid -translate-y-1/2 translate-x-1/2 place-items-center rounded-full border shadow-md transition hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 select-none"
             style={buttonStyle}
             title={`批量连接 ${count} 个节点`}
             aria-label={`批量连接 ${count} 个节点`}
+            onMouseDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+            }}
             onPointerDown={onPointerDown}
         >
             <Link2 style={{ width: 14 * inverseScale, height: 14 * inverseScale }} strokeWidth={2} />
             <span className="sr-only">连接 {count} 个节点</span>
         </button>
     );
+    // @opc-feature: canvas-batch-handle-gesture-guard [end]
 }

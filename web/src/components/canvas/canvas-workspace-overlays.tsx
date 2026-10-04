@@ -372,7 +372,9 @@ export function CanvasConnectionCreateMenu({ pending, viewport, viewportSize, co
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }}
-            className="thin-scrollbar absolute origin-top-left overflow-x-hidden overflow-y-auto rounded-[var(--r-2xl)] border p-2"
+            // @opc-feature: canvas-menu-gesture-guard [start]
+            className="thin-scrollbar absolute origin-top-left overflow-x-hidden overflow-y-auto rounded-[var(--r-2xl)] border p-2 select-none"
+            // @opc-feature: canvas-menu-gesture-guard [end]
             data-canvas-no-zoom
             data-connection-create-menu
             aria-label="创建下一步"
@@ -383,8 +385,16 @@ export function CanvasConnectionCreateMenu({ pending, viewport, viewportSize, co
                 }
             }}
             style={{ width: menuWidth, maxHeight: Math.max(120, viewportSize.height - 84), left: initialPosition.left, top: initialPosition.top, zIndex, background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }}
-            onMouseDown={(event) => event.stopPropagation()}
+            // @opc-feature: canvas-menu-gesture-guard [start]
+            onMouseDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+            }}
+            onMouseUp={(event) => event.stopPropagation()}
             onPointerDownCapture={bringToFront}
+            onPointerDown={(event) => event.stopPropagation()}
+            onPointerUp={(event) => event.stopPropagation()}
+            // @opc-feature: canvas-menu-gesture-guard [end]
             onFocusCapture={(event) => {
                 bringToFront();
                 if (event.target.matches(":focus-visible")) setActiveOption(event.target.closest<HTMLElement>("[data-create-option]")?.dataset.createOption || null);
@@ -405,7 +415,6 @@ export function CanvasConnectionCreateMenu({ pending, viewport, viewportSize, co
                 lastPointerRef.current = null;
                 setActiveOption(null);
             }}
-            onPointerDown={(event) => event.stopPropagation()}
         >
             <div className="grid min-w-0 grid-cols-1 gap-1">
                 {/* @opc-feature: connection-menu-pinning [start] */}
@@ -580,8 +589,14 @@ function ConnectionCreateOption({
             data-create-option={title}
             data-expanded={expanded}
             data-motion={motionEnabled ? "enabled" : "reduced"}
-            className="canvas-connection-create-option group relative flex min-h-10 w-full cursor-pointer items-start gap-2 rounded-[var(--dock-item-radius)] px-2 py-1.5 text-left outline-none focus-visible:ring-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
+            // @opc-feature: canvas-menu-gesture-guard [start]
+            className="canvas-connection-create-option group relative flex min-h-10 w-full cursor-pointer items-start gap-2 rounded-[var(--dock-item-radius)] px-2 py-1.5 text-left outline-none focus-visible:ring-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-40 select-none"
             style={{ color: theme.node.text, "--tw-ring-color": theme.node.muted, background: expanded ? theme.toolbar.itemHover : undefined } as CSSProperties}
+            onMouseDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+            }}
+            // @opc-feature: canvas-menu-gesture-guard [end]
             onClick={() => { if (!disabledReason) onClick(); }}
         >
             <span className="grid size-7 shrink-0 place-items-center rounded-[var(--r-md)] opacity-65 transition-opacity group-hover:opacity-100 [&_svg]:size-3.5" style={{ background: theme.toolbar.itemHover }}>{icon}</span>

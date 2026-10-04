@@ -2509,13 +2509,13 @@ describe("创意反推与创意复刻管线规范", () => {
 
         // 1. 源码契约校验：storageKey 必须包含 trackKey 物理命名空间，彻底杜绝 IndexedDB 互相覆盖
         expect(nodeSource).toContain("const trackKey = isDeconstruct ? \"deconstruct\" : \"classic\";");
-        expect(nodeSource).toContain("const storageKey = `reverse_sheet_${node.id}_${trackKey}_${p.pageIndex}`;");
+        expect(nodeSource).toContain("const storageKey = `media:${initialUserScope}:reverse_sheet:${node.id}:${currentExecutionId}:${trackKey}:${p.pageIndex}`;");
         expect(executorSource).toContain("const trackKey = isDeconstruct ? \"deconstruct\" : \"classic\";");
-        expect(executorSource).toContain("const storageKey = `reverse_sheet_${nodeId}_${trackKey}_${p.pageIndex}`;");
+        expect(executorSource).toContain("const storageKey = `media:${initialUserScope}:reverse_sheet:${nodeId}:${executionId}:${trackKey}:${p.pageIndex}`;");
 
         // 2. 源码契约校验：本地磁盘保存时文件名必须带 track 前缀
         expect(analysisSource).toContain("const trackPrefix = prepareOptions.track ? `${prepareOptions.track}_` : \"\";");
-        expect(analysisSource).toContain("fileName: `contact_sheet_${trackPrefix}p${index + 1}_${Date.now()}.jpg`");
+        expect(analysisSource).toMatch(/fileName:\s*`contact_sheet_\$\{trackPrefix\}p\$\{index \+ 1\}_\$\{Date\.now\(\)\}\.(webp|jpg)`/);
 
         // 3. 源码契约校验：activeContactSheets 绝不从顶层跨轨污染（isDualTrackNode 保护）
         expect(nodeSource).toContain("!isDualTrackNode && meta.activeTab === \"classic\" ? meta.contactSheets : undefined");
@@ -3172,6 +3172,64 @@ describe("创意反推与创意复刻管线规范", () => {
         expect(formatted).toContain("### 镜头 2 [L-CUT]");
         expect(formatted).toContain("这家店是不是你开的？");
         expect(formatted).toContain("烤肉油煎滋滋声");
+    });
+
+    it("创意反推多行子项与视听核心要素解析：parseMarkdownShots 与 parseMarkdownMasterSlots 弹性聚合", async () => {
+        const { parseMarkdownShots, parseMarkdownMasterSlots, formatShotManifestToReadableScript } = await import("../src/extensions/opc-infinite/prompts/hypit-director-prompts");
+
+        const sampleMultilineMarkdown = `## 一、全片视听基因与宏观架构总览
+- **视频总时长**：37.0 秒
+- **风格关键词**：第一人称沉浸、痛点强对比
+
+## 三、空间场域构型、物理光学与美术置景
+- **场景空间几何**：现代极简北欧风开放式厨房水槽操作区
+- **陈设与道具资产清单**：
+  1. 白色按压多功能清洁刷（灰白毛、硅胶椭圆按键、尾部挂环）；
+  2. 透明玻璃带把油壶/洗洁精分装壶；
+
+## 四、影视表演动力学与微表情指导
+- **表演时序轨迹**：全片为手部主观视角操作，表演动力学全由“手部手势与施力反馈”呈现
+
+## 六、逐镜头全息工程图纸
+
+### 镜头 1 [POV] 00:00.0-00:01.3 (1.3s)
+- **景别机位**：第一人称 POV 俯视特写，固定手持，焦点精准对焦在白色刷柄注液孔
+- **画面内容**：
+  * 左手在画面左侧稳稳握持白色锅刷手柄，手柄顶部盖子已旋开，露出圆形注液口；
+  * 右手从右上角倾斜倒入金黄色透明洗洁精分装壶，细细的透明液体带微弱气泡，顺畅灌入中空的手柄储液仓内；
+  * 背景为光洁干净的水槽与黑色窗框外的绿植明亮散景。
+- **表演时序与微动作**：0.0s 分装壶倾斜倾倒 -> 0.8s 液体液面在手柄仓内升起 -> 1.3s 倒液完成，壶口微抬收尾
+- **物理反馈与力学**：高粘度洗洁精拉出晶莹细丝，在重力作用下注入塑料管道
+- **原片台词**：“你看，现在的设计师也太懂生活了！”
+- **语言与语速**：时间轴: 0.0s[你看] 0.3s[现在的] 0.6s[设计师] 0.9s[也太懂] 1.1s[生活了] | 语调: 充满赞叹与新奇感
+- **视听氛围**：洗洁精粘稠液体滴落流动声，轻快背景音乐悄然进入
+- **剪辑与功能**：开篇第一视觉钩子，展示“手柄内置储液”新颖功能
+`;
+
+        // 1. 验证 masterSlots 提取
+        const slots = parseMarkdownMasterSlots(sampleMultilineMarkdown);
+        expect(slots).toBeDefined();
+        expect(slots?.scene).toContain("现代极简北欧风开放式厨房水槽操作区");
+        expect(slots?.product).toContain("白色按压多功能清洁刷");
+        expect(slots?.character).toContain("全片为手部主观视角操作");
+
+        // 2. 验证多行子列表聚合至 visualAction
+        const shots = parseMarkdownShots(sampleMultilineMarkdown);
+        expect(shots).toHaveLength(1);
+        expect(shots[0].shotNumber).toBe(1);
+        expect(shots[0].shotType).toBe("pov");
+        expect(shots[0].camera).toContain("第一人称 POV 俯视特写");
+        // 关键断言：多行子项未丢失，已完整聚合
+        expect(shots[0].visualAction).toContain("左手在画面左侧稳稳握持白色锅刷手柄");
+        expect(shots[0].visualAction).toContain("右手从右上角倾斜倒入金黄色透明洗洁精分装壶");
+        expect(shots[0].visualAction).toContain("背景为光洁干净的水槽与黑色窗框外的绿植明亮散景");
+        expect(shots[0].performanceTiming).toContain("0.0s 分装壶倾斜倾倒");
+        expect(shots[0].physicalFeedback).toContain("高粘度洗洁精拉出晶莹细丝");
+        expect(shots[0].dialogue).toContain("你看，现在的设计师也太懂生活了！");
+
+        // 3. 验证 formatShotManifestToReadableScript 遇完整 Markdown 原汁原味直出不重编译
+        const directOutput = formatShotManifestToReadableScript(shots, sampleMultilineMarkdown);
+        expect(directOutput).toBe(sampleMultilineMarkdown.trim());
     });
 });
 

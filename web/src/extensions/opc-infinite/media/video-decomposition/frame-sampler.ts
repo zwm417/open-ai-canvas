@@ -1,5 +1,6 @@
 import type { VideoDecompositionOptions, VideoFrameRecord, VideoSamplingMode, VideoSamplingPolicy, VideoSamplingPolicyInput, VideoTimelineFrameManifest } from "./types";
 import { getCachedResourceBlob, primeResourceBlobCache } from "@/services/resource-blob-cache";
+import { Mp3Encoder } from "@breezystack/lamejs";
 
 export const VIDEO_DECOMPOSITION_ENGINE_VERSION = "browser-evidence-v1";
 
@@ -36,7 +37,7 @@ export function evaluateDeconstructBudget(durationSec: number) {
         maxShots,
         maxFrames,
         minSceneGapSec,
-        sceneThreshold: 0.20,
+        sceneThreshold: 0.15,
     };
 }
 
@@ -84,12 +85,14 @@ export function normalizeVideoSamplingPolicy(options: SamplingOptions = {}, fall
     const safeMode = requestedMode === "seconds" || requestedMode === "scene" || requestedMode === "seconds_and_scene" || requestedMode === "agent" || requestedMode === "deconstruct" ? requestedMode : fallback.mode;
     const mode = safeMode === "agent" ? (fallback.mode === "agent" ? DEFAULT_VIDEO_SAMPLING_POLICY.mode : fallback.mode) : safeMode;
     const includeMiddleFrames = nested.includeMiddleFrames ?? value.includeMiddleFrames ?? (hasLegacyFields ? false : fallback.includeMiddleFrames);
+    const modeDefaultThreshold = mode === "deconstruct" ? 0.15 : fallback.sceneChangeThreshold;
+    const modeDefaultGap = mode === "deconstruct" ? 0.25 : fallback.minSceneGapSec;
     return {
         mode,
         fps: clampNumber(nested.fps ?? value.fps ?? fallback.fps, 0.1, 10),
         includeMiddleFrames,
-        sceneChangeThreshold: clampNumber(nested.sceneChangeThreshold ?? value.sceneChangeThreshold ?? fallback.sceneChangeThreshold, 0, 1),
-        minSceneGapSec: clampNumber(nested.minSceneGapSec ?? value.minSceneGapSec ?? fallback.minSceneGapSec, 0, 60),
+        sceneChangeThreshold: clampNumber(nested.sceneChangeThreshold ?? value.sceneChangeThreshold ?? modeDefaultThreshold, 0, 1),
+        minSceneGapSec: clampNumber(nested.minSceneGapSec ?? value.minSceneGapSec ?? modeDefaultGap, 0, 60),
         maxFrames: clampInteger(nested.maxFrames ?? value.maxFrames ?? fallback.maxFrames, 1, 500),
         maxFramesPerSheet: clampInteger(nested.maxFramesPerSheet ?? value.maxFramesPerSheet ?? fallback.maxFramesPerSheet, 1, 24),
         source,
@@ -237,9 +240,9 @@ export function compareFrameTimestampOrder(left: Pick<VideoFrameRecord, "timesta
     return typeOrder[left.frameType] - typeOrder[right.frameType] || left.index - right.index;
 }
 
-export function normalizeSceneChangeThreshold(value: number | undefined) {
+export function normalizeSceneChangeThreshold(value: number | undefined, fallback = 0.20) {
     const threshold = Number(value);
-    return Number.isFinite(threshold) ? Math.min(1, Math.max(0, threshold)) : 0.20;
+    return Number.isFinite(threshold) ? Math.min(1, Math.max(0, threshold)) : fallback;
 }
 
 export function timelineSeekSecond(sampleTime: number, durationSec: number) {
@@ -761,10 +764,21 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
         const context = canvas.getContext("2d");
         if (!context) throw new Error("浏览器不支持视频帧绘制");
         const detectSceneChanges = policy.mode === "scene" || policy.mode === "seconds_and_scene";
-        // 始终初始化 32x18 缩略图特征 Canvas，用于全场景精确的逐帧 RGB 差异度比对
+        // 自适应初始化特征 Canvas：保持约 2300 像素的高精度网格，杜绝横竖屏拉伸与空间细节模糊
         const differenceCanvas = document.createElement("canvas");
-        differenceCanvas.width = 32;
-        differenceCanvas.height = 18;
+        const safeVideoW = Math.max(1, loaded.width || 1280);
+        const safeVideoH = Math.max(1, loaded.height || 720);
+        const isVertical = safeVideoH > safeVideoW;
+        if (isVertical) {
+            differenceCanvas.width = 36;
+            differenceCanvas.height = 64; // 竖屏 9:16
+        } else if (safeVideoW / safeVideoH >= 1.33) {
+            differenceCanvas.width = 64;
+            differenceCanvas.height = 36; // 横屏 16:9
+        } else {
+            differenceCanvas.width = 48;
+            differenceCanvas.height = 48; // 方形 1:1
+        }
         const differenceContext = differenceCanvas.getContext("2d");
 
         let previousProbeSignature: Uint8ClampedArray | null = null;
@@ -776,24 +790,27 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
         if (policy.mode === "deconstruct") {
             // =========================================================================
             // 创意反推：正向两阶段物理分镜解构管线 (<= 60秒短视频专用)
-            // Phase 1：32x18 内存双时标粗筛 + 局部毫秒级高精对齐 (0.033s 步长锁定真实硬切点)
-            // Phase 2：微观精细窗口多帧优选 (Clean In 拐点平稳首帧 + Apex 核心动势 + Clean Out 落幅定格 + 拉普拉斯清晰度防拖影)
+            // Phase 1：自适应网格双时标粗筛 + 局部毫秒级高精对齐 (0.025s 步长锁定真实硬切点)
+            // Phase 2：微观精细窗口多帧优选 (Clean In 起幅 + Apex 动势 + Clean Out 落幅 + 拉普拉斯清晰度防拖影)
             // =========================================================================
             const effectiveDuration = Math.max(0.5, Math.min(60, loaded.durationSec));
             const budget = evaluateDeconstructBudget(effectiveDuration);
-            const sceneThreshold = normalizeSceneChangeThreshold(policy.sceneChangeThreshold || budget.sceneThreshold);
+            const userThreshold = policy.source === "user" && (options.samplingPolicy?.sceneChangeThreshold !== undefined || options.sceneChangeThreshold !== undefined)
+                ? policy.sceneChangeThreshold
+                : budget.sceneThreshold;
+            const sceneThreshold = normalizeSceneChangeThreshold(userThreshold, budget.sceneThreshold);
             const minSceneGap = policy.minSceneGapSec !== undefined && policy.source === "user"
                 ? Math.max(0.15, policy.minSceneGapSec)
                 : budget.minSceneGapSec;
 
-            // Phase 1A: 极速全片双时标粗筛 (Fast Dual-Timescale Screening)
-            // 步长设为 0.20s ~ 0.35s，快速掠过全片生成 32x18 特征签名
-            const probeStep = Math.max(0.20, Math.min(0.35, effectiveDuration / 120));
+            // Phase 1A: 自适应高密度全片双时标探测 (Adaptive High-Density Screening)
+            // 步长优化至 0.08s ~ 0.15s (约 7~12 fps)，大幅提升采样密度，保障 0.5s~1.2s 快切不被均摊漏检
+            const probeStep = Math.max(0.08, Math.min(0.15, effectiveDuration / 250));
             const probeTimestamps: number[] = [];
             for (let t = 0; t <= effectiveDuration; t += probeStep) {
                 probeTimestamps.push(Number(t.toFixed(3)));
             }
-            if (probeTimestamps[probeTimestamps.length - 1] < effectiveDuration - 0.08) {
+            if (probeTimestamps[probeTimestamps.length - 1] < effectiveDuration - 0.05) {
                 probeTimestamps.push(Number(effectiveDuration.toFixed(3)));
             }
 
@@ -802,9 +819,9 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
             let previousSig: Uint8ClampedArray | null = null;
             let previousHist: Float32Array | null = null;
 
-            // 滑动窗环形缓冲区 (覆盖 ~0.8s，用于捕获慢速叠化 Dissolve 转场)
+            // 滑动窗环形缓冲区 (自适应覆盖 ~0.8s 物理时间，用于捕获慢速叠化 Dissolve 转场)
             const ringBuffer: Array<{ timestampSec: number; sig: Uint8ClampedArray; hist: Float32Array }> = [];
-            const RING_SIZE = 4;
+            const RING_SIZE = Math.max(4, Math.ceil(0.8 / probeStep));
 
             for (let i = 0; i < probeTimestamps.length; i++) {
                 throwIfAborted(options.signal);
@@ -842,8 +859,8 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
                                     // =========================================================================
                                     // Phase 1B: 局部高精度精修 (Local Sub-Frame Refinement Pass)
                                     // 真实切点必然严格位于 [prevProbeT, probeT] 区间内！
-                                    // 绝不直接记录滞后的 probeT，而是以 ~0.033s (约 30fps) 微步长在该 0.25s~0.35s 窗口内精细逼近，
-                                    // 锁定帧差产生单步剧变的真实毫秒切点 T_exact，将时间误差彻底压缩至 < 0.033s！
+                                    // 在收窄的局部前向窗口 (最大 120ms~150ms) 内以 0.025s (40fps) 微步长精细逼近，
+                                    // 锁定帧差产生单步剧变的真实毫秒切点 T_exact，将时间误差彻底压缩至 < 0.025s！
                                     // =========================================================================
                                     const windowStart = isSlowDissolve && ringBuffer.length > 0
                                         ? ringBuffer[0].timestampSec
@@ -853,8 +870,8 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
                                     let exactCutT = probeT;
                                     let maxJumpScore = instantScore;
 
-                                    if (windowEnd - windowStart >= 0.06) {
-                                        const subStep = 0.033;
+                                    if (isHardCut && windowEnd - windowStart >= 0.04) {
+                                        const subStep = 0.025;
                                         let lastSubSig = previousSig;
                                         let bestJump = 0;
                                         let candidateSubT = probeT;
@@ -881,6 +898,10 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
                                             exactCutT = candidateSubT;
                                             maxJumpScore = Math.max(instantScore, bestJump);
                                         }
+                                    } else if (isSlowDissolve && !isHardCut) {
+                                        // 慢速叠化转场：由于缺乏单步阶跃点，切点物理收敛至叠化中界点
+                                        exactCutT = Number(((windowStart + windowEnd) / 2).toFixed(3));
+                                        maxJumpScore = Math.max(instantScore, windowScore);
                                     }
 
                                     candidateCuts.push({ timestampSec: exactCutT, sceneScore: maxJumpScore });
@@ -917,21 +938,46 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
             const selectSharpestFrameTime = async (
                 targetT: number,
                 lowerBound: number,
-                upperBound: number
+                upperBound: number,
+                direction: "forward" | "backward" | "bidirectional" = "bidirectional"
             ): Promise<number> => {
                 if (!differenceContext || !differenceCanvas) return targetT;
-                // 核心正向优化：候选帧保持完全一致数学集合 [targetT, targetT - 0.033, targetT + 0.033]，
-                // 但执行严格升序排序。彻底消除解码器倒退寻道（Backward Seek）引发的 GOP 刷新与解码器死锁，保持 100% 精度
-                const candidates = [
-                    targetT,
-                    Number((targetT - 0.033).toFixed(3)),
-                    Number((targetT + 0.033).toFixed(3)),
-                ].filter((t) => t >= lowerBound && t <= upperBound).sort((a, b) => a - b);
+                // 核心正向优化：
+                // 1. 时间窗口收窄至微秒级单步 (0.018s ~ 0.035s)，大幅减少冗余 seek；
+                // 2. 依据镜头物理语义分流：
+                //    - forward: Clean In 起幅，严格正向探寻，杜绝向后倒退穿透至上一镜头；
+                //    - backward: Clean Out 落幅，严格向内探寻，杜绝逼近或穿透下一镜头转场；
+                //    - bidirectional: Apex 动势 / Detail 细节，对称双向探寻边缘最锐利瞬时帧；
+                // 3. 执行严格升序排序，彻底消除解码器倒退寻道 (Backward Seek)
+                let candidates: number[];
+                if (direction === "forward") {
+                    candidates = [
+                        targetT,
+                        Number((targetT + 0.018).toFixed(3)),
+                        Number((targetT + 0.035).toFixed(3)),
+                    ];
+                } else if (direction === "backward") {
+                    candidates = [
+                        Number((targetT - 0.035).toFixed(3)),
+                        Number((targetT - 0.018).toFixed(3)),
+                        targetT,
+                    ];
+                } else {
+                    candidates = [
+                        Number((targetT - 0.018).toFixed(3)),
+                        targetT,
+                        Number((targetT + 0.018).toFixed(3)),
+                    ];
+                }
+
+                const validCandidates = candidates
+                    .filter((t) => t >= lowerBound && t <= upperBound)
+                    .sort((a, b) => a - b);
 
                 let bestTime = targetT;
                 let maxSharpness = -1;
 
-                for (const candT of candidates) {
+                for (const candT of validCandidates) {
                     try {
                         if (options.signal?.aborted) throw new DOMException("Aborted", "AbortError");
                         await seekVideo(loaded.video, candT);
@@ -974,7 +1020,8 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
                     cleanInT = await selectSharpestFrameTime(
                         cleanInT,
                         Number((start + 0.015).toFixed(3)),
-                        Number((Math.min(effectiveDuration, start + Math.min(0.10, shotLen * 0.35))).toFixed(3))
+                        Number((Math.min(effectiveDuration, start + Math.min(0.08, shotLen * 0.25))).toFixed(3)),
+                        "forward"
                     );
                 }
                 const matchedScore = candidateCuts.find((c) => Math.abs(c.timestampSec - start) < 0.15)?.sceneScore;
@@ -995,7 +1042,8 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
                         const cleanOutT = await selectSharpestFrameTime(
                             rawOutT,
                             Number((start + shotLen * 0.5).toFixed(3)),
-                            Number((next - 0.015).toFixed(3))
+                            Number((next - 0.015).toFixed(3)),
+                            "backward"
                         );
                         candidatePlans.push({
                             timestampSec: cleanOutT,
@@ -1011,7 +1059,8 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
                     const apexT = await selectSharpestFrameTime(
                         rawApexT,
                         Number((start + shotLen * 0.30).toFixed(3)),
-                        Number((start + shotLen * 0.65).toFixed(3))
+                        Number((start + shotLen * 0.65).toFixed(3)),
+                        "bidirectional"
                     );
                     candidatePlans.push({
                         timestampSec: apexT,
@@ -1025,7 +1074,8 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
                     const cleanOutT = await selectSharpestFrameTime(
                         rawOutT,
                         Number((start + shotLen * 0.70).toFixed(3)),
-                        Number((next - 0.015).toFixed(3))
+                        Number((next - 0.015).toFixed(3)),
+                        "backward"
                     );
                     candidatePlans.push({
                         timestampSec: cleanOutT,
@@ -1040,7 +1090,8 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
                     const apexT = await selectSharpestFrameTime(
                         rawApexT,
                         Number((start + shotLen * 0.25).toFixed(3)),
-                        Number((start + shotLen * 0.50).toFixed(3))
+                        Number((start + shotLen * 0.50).toFixed(3)),
+                        "bidirectional"
                     );
                     candidatePlans.push({
                         timestampSec: apexT,
@@ -1054,7 +1105,8 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
                     const detailT = await selectSharpestFrameTime(
                         rawDetailT,
                         Number((start + shotLen * 0.55).toFixed(3)),
-                        Number((start + shotLen * 0.80).toFixed(3))
+                        Number((start + shotLen * 0.80).toFixed(3)),
+                        "bidirectional"
                     );
                     candidatePlans.push({
                         timestampSec: detailT,
@@ -1068,7 +1120,8 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
                     const cleanOutT = await selectSharpestFrameTime(
                         rawOutT,
                         Number((start + shotLen * 0.82).toFixed(3)),
-                        Number((next - 0.015).toFixed(3))
+                        Number((next - 0.015).toFixed(3)),
+                        "backward"
                     );
                     candidatePlans.push({
                         timestampSec: cleanOutT,
@@ -1087,7 +1140,8 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
                             const cleanOutT = await selectSharpestFrameTime(
                                 rawOutT,
                                 Number((next - 0.3).toFixed(3)),
-                                Number((next - 0.015).toFixed(3))
+                                Number((next - 0.015).toFixed(3)),
+                                "backward"
                             );
                             candidatePlans.push({
                                 timestampSec: cleanOutT,
@@ -1101,7 +1155,8 @@ export async function extractVideoFrames(input: Blob | File | string, options: V
                             const subT = await selectSharpestFrameTime(
                                 rawSubT,
                                 Number((rawSubT - 0.05).toFixed(3)),
-                                Number((rawSubT + 0.05).toFixed(3))
+                                Number((rawSubT + 0.05).toFixed(3)),
+                                "bidirectional"
                             );
                             candidatePlans.push({
                                 timestampSec: subT,
@@ -1432,7 +1487,7 @@ export async function extractVideoAudio(
         if (!OfflineContextCtor) {
             const channel = decodedBuffer.getChannelData(0);
             const sampleCount = Math.min(channel.length, Math.floor(targetDuration * decodedBuffer.sampleRate));
-            const blob = encodeWav(channel.subarray(0, sampleCount), decodedBuffer.sampleRate);
+            const blob = encodeMp3(channel.subarray(0, sampleCount), decodedBuffer.sampleRate);
             return { blob, durationSec: targetDuration, truncated };
         }
 
@@ -1446,7 +1501,7 @@ export async function extractVideoAudio(
         const rendered = await offlineContext.startRendering();
         throwIfAborted(options.signal);
         const monoData = rendered.getChannelData(0);
-        const blob = encodeWav(monoData, TARGET_AUDIO_SAMPLE_RATE);
+        const blob = encodeMp3(monoData, TARGET_AUDIO_SAMPLE_RATE);
         return { blob, durationSec: targetDuration, truncated };
     } catch (error) {
         if (isAbortError(error) || options.signal?.aborted) throw error;
@@ -1532,9 +1587,28 @@ export function histogramIntersection(h1: Float32Array, h2: Float32Array): numbe
  * 拉普拉斯算子方差清晰度评分 Var(∇²I)
  * 用于剔除运动模糊拉丝与闭眼残影帧，优先选拔边缘最锐利的黄金帧
  */
-export function computeLaplacianSharpness(signature: Uint8ClampedArray, width = 32, height = 18): number {
-    if (!signature || signature.length < width * height * 4) return 0;
-    const gray = new Float32Array(width * height);
+export function computeLaplacianSharpness(signature: Uint8ClampedArray, width?: number, height?: number): number {
+    if (!signature || signature.length < 16) return 0;
+    const pixelCount = Math.floor(signature.length / 4);
+    let w = width;
+    let h = height;
+    if (!w || !h) {
+        if (pixelCount === 36 * 64) {
+            w = 36;
+            h = 64;
+        } else if (pixelCount === 64 * 36) {
+            w = 64;
+            h = 36;
+        } else if (pixelCount === 48 * 48) {
+            w = 48;
+            h = 48;
+        } else {
+            w = 32;
+            h = 18;
+        }
+    }
+    if (signature.length < w * h * 4) return 0;
+    const gray = new Float32Array(w * h);
     for (let i = 0, p = 0; i < gray.length; i++, p += 4) {
         gray[i] = (signature[p] + signature[p + 1] + signature[p + 2]) / 3;
     }
@@ -1543,12 +1617,12 @@ export function computeLaplacianSharpness(signature: Uint8ClampedArray, width = 
     let sumSq = 0;
     let count = 0;
 
-    for (let y = 1; y < height - 1; y++) {
-        const row = y * width;
-        for (let x = 1; x < width - 1; x++) {
+    for (let y = 1; y < h - 1; y++) {
+        const row = y * w;
+        for (let x = 1; x < w - 1; x++) {
             const idx = row + x;
             // 离散拉普拉斯卷积核 [0 1 0; 1 -4 1; 0 1 0]
-            const lap = gray[idx - width] + gray[idx + width] + gray[idx - 1] + gray[idx + 1] - 4 * gray[idx];
+            const lap = gray[idx - w] + gray[idx + w] + gray[idx - 1] + gray[idx + 1] - 4 * gray[idx];
             sum += lap;
             sumSq += lap * lap;
             count++;
@@ -1561,9 +1635,9 @@ export function computeLaplacianSharpness(signature: Uint8ClampedArray, width = 
     return Math.max(0, variance);
 }
 
-function canvasToBlob(canvas: HTMLCanvasElement, quality: number) {
+function canvasToBlob(canvas: HTMLCanvasElement, quality = 0.82) {
     return new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("视频帧导出失败"))), "image/jpeg", Math.min(1, Math.max(0.1, quality)));
+        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("视频帧导出失败"))), "image/webp", Math.min(1, Math.max(0.1, quality)));
     });
 }
 
@@ -1573,6 +1647,34 @@ function isAbortError(error: unknown) {
 
 function throwIfAborted(signal?: AbortSignal) {
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+}
+
+export function encodeMp3(samples: Float32Array, sampleRate = 16000, kbps = 64): Blob {
+    try {
+        const encoder = new Mp3Encoder(1, sampleRate, kbps);
+        const sampleCount = samples.length;
+        const int16Samples = new Int16Array(sampleCount);
+        for (let i = 0; i < sampleCount; i++) {
+            const clamped = Math.max(-1, Math.min(1, samples[i]));
+            int16Samples[i] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff;
+        }
+        const mp3Data: Uint8Array[] = [];
+        const chunkSize = 1152;
+        for (let i = 0; i < int16Samples.length; i += chunkSize) {
+            const chunk = int16Samples.subarray(i, i + chunkSize);
+            const mp3buf = encoder.encodeBuffer(chunk);
+            if (mp3buf.length > 0) {
+                mp3Data.push(new Uint8Array(mp3buf));
+            }
+        }
+        const flushBuf = encoder.flush();
+        if (flushBuf.length > 0) {
+            mp3Data.push(new Uint8Array(flushBuf));
+        }
+        return new Blob(mp3Data as unknown as BlobPart[], { type: "audio/mp3" });
+    } catch {
+        return encodeWav(samples, sampleRate);
+    }
 }
 
 function encodeWav(samples: Float32Array, sampleRate: number) {
@@ -1601,3 +1703,4 @@ function encodeWav(samples: Float32Array, sampleRate: number) {
 function writeAscii(view: DataView, offset: number, value: string) {
     [...value].forEach((character, index) => view.setUint8(offset + index, character.charCodeAt(0)));
 }
+

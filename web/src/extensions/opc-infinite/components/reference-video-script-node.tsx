@@ -22,6 +22,7 @@ import {
     X,
 } from "lucide-react";
 import saveAs from "file-saver";
+import { nanoid } from "nanoid";
 
 import { useUpstreamNodes, useCanvasGraphActions } from "@/components/canvas/canvas-node-graph-context";
 import { useCanvasNodeActions } from "@/components/canvas/canvas-node-action-context";
@@ -63,6 +64,17 @@ import {
     buildRefScriptMentionReferences,
     resolveMentionedContentPartsAsync,
 } from "../services/script-mention-resolver";
+import {
+    failNodeTask,
+    finishNodeTask,
+    isCurrentExecution,
+    reconcileOrphanedClientNodeState,
+    recordTaskDeduction,
+    startNodeTask,
+    updateNodeTaskProgress,
+    updateNodeTaskStreamedText,
+    useNodeTask,
+} from "../services/opc-task-hub";
 
 /**
  * 健壮解析上游参考源（打通视频反推、文本节点与素材分析跨模式协同）
@@ -336,11 +348,16 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
     const [customPrompt, setCustomPrompt] = useState<string>(meta.customPrompt || "");
     const [useCustomPrompt, setUseCustomPrompt] = useState<boolean>(Boolean(meta.useCustomPrompt));
     const [promptModalOpen, setPromptModalOpen] = useState<boolean>(false);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
-    // 运行状态与结果
-    const [running, setRunning] = useState<boolean>(meta.status === "running");
+    // 运行状态与结果 (自持无头任务机制)
+    const hubTask = useNodeTask<ScriptGenerationProgress>(node.id);
+    const isNodeExecuting = hubTask.isRunning;
+    const [running, setRunning] = useState<boolean>(isNodeExecuting);
     const [localProgress, setLocalProgress] = useState<ScriptGenerationProgress | null>(null);
+    const effectiveProgress = hubTask.progress || localProgress;
     const [streamedScript, setStreamedScript] = useState<string>("");
+    const effectiveStreamedScript = hubTask.streamedText || streamedScript;
     const [errorMsg, setErrorMsg] = useState<string>(meta.errorDetails || "");
 
     const [scriptResult, setScriptResult] = useState<string>(() => {
@@ -350,17 +367,6 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
     const [expandedModalOpen, setExpandedModalOpen] = useState(false);
     const [refScriptModalOpen, setRefScriptModalOpen] = useState(false);
     const [copied, setCopied] = useState<boolean>(false);
-
-    const abortControllerRef = useRef<AbortController | null>(null);
-    const isMountedRef = useRef(true);
-
-    useEffect(() => {
-        isMountedRef.current = true;
-        return () => {
-            isMountedRef.current = false;
-            abortControllerRef.current?.abort();
-        };
-    }, []);
 
     // 同步元数据变更
     useEffect(() => {
@@ -378,9 +384,40 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
         if (meta.customRules !== undefined) setCustomRules(meta.customRules);
         if (meta.customPrompt !== undefined) setCustomPrompt(meta.customPrompt);
         if (meta.useCustomPrompt !== undefined) setUseCustomPrompt(Boolean(meta.useCustomPrompt));
-        if (meta.status) setRunning(meta.status === "running");
+        setRunning(hubTask.isRunning);
         if (meta.errorDetails !== undefined) setErrorMsg(meta.errorDetails);
-    }, [meta, node.metadata?.content, node.metadata?.prompt]);
+    }, [hubTask.isRunning, meta, node.metadata?.content, node.metadata?.prompt]);
+
+    // 挂载期自主健康对账与孤儿态自愈（消灭 F5 刷新/异常崩溃导致的无取消按钮永久死锁）
+    useEffect(() => {
+        const hasValidResult = Boolean(
+            scriptResult ||
+            meta.classic?.script ||
+            meta.result?.script ||
+            node.metadata?.content
+        );
+
+        reconcileOrphanedClientNodeState({
+            nodeId: node.id,
+            isTaskRunning: hubTask.isRunning,
+            persistedStatus: node.metadata?.status,
+            persistedTaskStatus: node.metadata?.taskStatus,
+            subStatus: meta.status,
+            hasValidResult,
+            onHeal: (healedStatus) => {
+                setRunning(false);
+                setLocalProgress(null);
+                updateMetadata?.(node.id, {
+                    status: healedStatus,
+                    taskStatus: "idle",
+                    refScript: {
+                        ...meta,
+                        status: healedStatus,
+                    },
+                });
+            },
+        });
+    }, [node.id, hubTask.isRunning]);
 
     // 发现上游输入来源
     const upstreamAnalysis = useMemo(() => {
@@ -621,20 +658,79 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
 
         const controller = new AbortController();
         abortControllerRef.current = controller;
+
+        const currentExecutionId = `${node.id}_${Date.now()}_${nanoid(6)}`;
+        const deductKey = `deduct:ref_script:${node.id}:${currentExecutionId}`;
+        const refundKey = `refund:ref_script:${node.id}:${currentExecutionId}`;
+
+        let deductedMicrocredits = 0;
+        const refundIfDeducted = async () => {
+            if (deductedMicrocredits > 0) {
+                const amount = deductedMicrocredits;
+                deductedMicrocredits = 0;
+                try {
+                    await featureCredit.refund(amount, selectedModel, "参考生脚本任务中止退款", refundKey, deductKey);
+                } catch (e) {
+                    console.warn("[reference-script] refund error on abort:", e);
+                }
+            }
+        };
+
         setRunning(true);
         setErrorMsg("");
         setStreamedScript("");
-        setLocalProgress({ stage: "init", percent: 5, message: "正在校验积分与初始化参考复刻编导上下文..." });
+        const initProgress: ScriptGenerationProgress = { stage: "init", percent: 5, message: "正在校验积分与初始化参考复刻编导上下文..." };
+        setLocalProgress(initProgress);
+        startNodeTask(node.id, "reference-script", initProgress, {
+            executionId: currentExecutionId,
+            controller,
+            onAbortRefund: refundIfDeducted,
+        });
 
-        let deductedMicrocredits = 0;
+        updateMetadata?.(node.id, {
+            status: "loading",
+            taskStatus: "running",
+            isClientMockTask: true,
+            refScript: {
+                ...meta,
+                status: "running",
+                activeExecutionId: currentExecutionId,
+                errorDetails: undefined,
+            },
+        });
+
+        const reportProgress = (p: ScriptGenerationProgress) => {
+            if (!isCurrentExecution(node.id, currentExecutionId)) return;
+            setLocalProgress(p);
+            updateNodeTaskProgress(node.id, p, undefined, currentExecutionId);
+        };
+        let streamedScriptAccumulator = "";
+        const reportStream = (text: string) => {
+            if (!isCurrentExecution(node.id, currentExecutionId)) return;
+            setStreamedScript(text);
+            updateNodeTaskStreamedText(node.id, text, currentExecutionId);
+        };
+
         try {
-            const deductRes = await featureCredit.deduct(selectedModel, "画布参考生脚本");
+            const deductRes = await featureCredit.deduct(selectedModel, "画布参考生脚本", deductKey);
             deductedMicrocredits = deductRes.deductedMicrocredits;
+            recordTaskDeduction(node.id, deductedMicrocredits, deductKey, currentExecutionId);
         } catch (creditErr) {
             const msg = creditErr instanceof Error ? creditErr.message : "积分扣减失败";
             setErrorMsg(msg);
             setRunning(false);
             setLocalProgress(null);
+            failNodeTask(node.id, msg, currentExecutionId);
+            updateMetadata?.(node.id, {
+                status: scriptResult ? "success" : "idle",
+                taskStatus: "idle",
+                isClientMockTask: true,
+                refScript: {
+                    ...meta,
+                    status: scriptResult ? "success" : "idle",
+                    errorDetails: msg,
+                },
+            });
             return;
         }
 
@@ -686,13 +782,6 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
                 referenceScriptDurationSec: refDuration,
             });
 
-            if (controller.signal.aborted || !isMountedRef.current) {
-                if (deductedMicrocredits > 0) {
-                    void featureCredit.refund(deductedMicrocredits, selectedModel, "参考生脚本取消退款");
-                }
-                return;
-            }
-
             // 5. 提示词替换与模型调用
             const effectiveSystemPrompt =
                 useCustomPrompt && customPrompt.trim()
@@ -708,14 +797,14 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
             const startTime = Date.now();
             let streamedChars = 0;
             let currentPercent = 20;
-            setLocalProgress({ stage: "generation", percent: 20, message: "正在连接大模型生成脚本..." });
+            reportProgress({ stage: "generation", percent: 20, message: "正在连接大模型生成脚本..." });
 
             progressTimer = setInterval(() => {
                 const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
                 if (streamedChars > 0) {
                     const dynamicPercent = Math.min(96, 85 + Math.floor(streamedChars / 200));
                     currentPercent = Math.max(currentPercent, dynamicPercent);
-                    setLocalProgress({
+                    reportProgress({
                         stage: "generation",
                         percent: currentPercent,
                         message: `⚡ 大模型实时流式推演中 (已生成 ${streamedChars} 字 · 耗时 ${elapsedSec}s)`,
@@ -723,7 +812,7 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
                 } else {
                     const waitPercent = Math.min(80, 20 + elapsedSec * 2);
                     currentPercent = Math.max(currentPercent, waitPercent);
-                    setLocalProgress({
+                    reportProgress({
                         stage: "generation",
                         percent: currentPercent,
                         message: `正在调用大模型进行剧本与分镜深度推理 (已耗时 ${elapsedSec}s)...`,
@@ -733,9 +822,10 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
 
             const handleDelta = (delta: string) => {
                 streamedChars += delta.length;
-                setStreamedScript((prev) => prev + delta);
+                streamedScriptAccumulator += delta;
+                reportStream(streamedScriptAccumulator);
                 if (streamedChars <= delta.length) {
-                    setLocalProgress({
+                    reportProgress({
                         stage: "generation",
                         percent: Math.max(currentPercent, 88),
                         message: "⚡ 大模型已开始吐字响应 · 实时流式推演中...",
@@ -747,26 +837,20 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
                 { ...config, model: effectiveScriptModel, systemPrompt: effectiveSystemPrompt },
                 [{ role: "user", content: finalContentParts }],
                 handleDelta,
-                { signal: controller.signal, temperature: 0.85, presence_penalty: 0.2 },
+                { temperature: 0.85, presence_penalty: 0.2, signal: controller.signal },
             );
 
             clearInterval(progressTimer);
             progressTimer = null;
 
-            if (controller.signal.aborted || !isMountedRef.current) {
-                if (deductedMicrocredits > 0) {
-                    void featureCredit.refund(deductedMicrocredits, selectedModel, "参考生脚本取消退款");
-                }
-                return;
-            }
-
-            setLocalProgress({ stage: "complete", percent: 100, message: "参考生脚本生成成功！" });
+            reportProgress({ stage: "complete", percent: 100, message: "参考生脚本生成成功！" });
+            if (!isCurrentExecution(node.id, currentExecutionId)) return;
             const cleanScript = normalizeCreationAssistantScript(response, assetReferenceMap);
 
-            setScriptResult(cleanScript);
-            setErrorMsg("");
-
             updateMetadata?.(node.id, {
+                status: "success",
+                taskStatus: "succeeded",
+                isClientMockTask: true,
                 content: cleanScript,
                 prompt: cleanScript,
                 composerContent: cleanScript,
@@ -774,6 +858,7 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
                     ...meta,
                     model: selectedModel,
                     status: "success",
+                    activeExecutionId: currentExecutionId,
                     errorDetails: "",
                     businessScenario,
                     language,
@@ -810,40 +895,50 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
                     updatedAt: Date.now(),
                 },
             });
+
+            finishNodeTask(node.id, currentExecutionId);
+            setRunning(false);
+            setLocalProgress(null);
+            setStreamedScript("");
+            setScriptResult(cleanScript);
+            setErrorMsg("");
             message.success("参考生脚本生成成功！");
         } catch (error) {
-            if (deductedMicrocredits > 0) {
-                void featureCredit.refund(deductedMicrocredits, selectedModel, "参考生脚本失败退款");
-            }
-            if (controller.signal.aborted || !isMountedRef.current) return;
+            await refundIfDeducted();
+            if (!isCurrentExecution(node.id, currentExecutionId)) return;
             const msg = error instanceof Error ? error.message : String(error);
             setErrorMsg(msg);
+            const hasAnyResult = Boolean(scriptResult || meta.classic?.script || meta.result?.script);
             updateMetadata?.(node.id, {
+                status: hasAnyResult ? "success" : "error",
+                taskStatus: "idle",
+                isClientMockTask: true,
                 refScript: {
                     ...meta,
-                    status: "error",
+                    status: hasAnyResult ? "success" : "error",
                     errorDetails: msg,
                     classic: {
                         ...meta.classic,
-                        status: "error",
+                        status: hasAnyResult ? "success" : "error",
                         errorDetails: msg,
                         updatedAt: Date.now(),
                     },
                     updatedAt: Date.now(),
                 },
             });
+            failNodeTask(node.id, msg, currentExecutionId);
+            setRunning(false);
+            setLocalProgress(null);
+            setStreamedScript("");
         } finally {
             if (progressTimer) clearInterval(progressTimer);
-            setStreamedScript("");
             setLocalProgress(null);
-            setRunning(false);
-            abortControllerRef.current = null;
+            setStreamedScript("");
+            if (abortControllerRef.current === controller) {
+                setRunning(false);
+                abortControllerRef.current = null;
+            }
         }
-    };
-
-    const cancelGenerate = () => {
-        abortControllerRef.current?.abort();
-        setRunning(false);
     };
 
     const handleClearScript = () => {
@@ -898,23 +993,26 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
 
     return (
         <div
-            className="flex h-full min-h-0 w-full flex-col gap-3.5 overflow-y-auto rounded-[inherit] p-4 text-sm"
+            className="relative flex h-full min-h-0 w-full flex-col rounded-[inherit] overflow-hidden text-sm"
             style={{ background: theme.node.panel, color: theme.node.text }}
             data-canvas-no-zoom
-            data-canvas-no-drag
-            onWheel={(e) => e.stopPropagation()}
         >
-            {/* 顶部标题与状态栏 */}
-            <div className="flex items-center justify-between border-b pb-2.5 gap-2" style={{ borderColor: theme.node.stroke }}>
+            {/* 顶部标题与状态栏（画布拖拽把手） */}
+            <div
+                className="flex h-12 shrink-0 cursor-grab items-center justify-between border-b px-4 gap-2 active:cursor-grabbing select-none"
+                style={{ borderColor: theme.node.stroke, background: theme.node.panel }}
+            >
                 <div className="flex items-center gap-2.5 min-w-0">
                     <div className="flex items-center gap-1.5 font-bold text-base shrink-0">
                         <Clapperboard className="size-5 text-amber-500" />
                         <span>参考生脚本</span>
                     </div>
-                    <FeatureCreditBadge scene="ref_script" model={selectedModel} size="small" />
+                    <div onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+                        <FeatureCreditBadge scene="ref_script" model={selectedModel} size="small" />
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                <div className="flex items-center gap-1.5 shrink-0 ml-auto" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
                     {running ? (
                         <span className="flex items-center gap-1.5 text-amber-500 text-sm font-medium">
                             <Loader2 className="size-4 animate-spin" />
@@ -928,6 +1026,16 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
                     ) : null}
                 </div>
             </div>
+
+            {/* 可滚动内容区域 */}
+            <div
+                data-canvas-wheel-scroll
+                data-canvas-no-drag
+                className="thin-scrollbar flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto p-4 select-text"
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                onWheel={(e) => e.stopPropagation()}
+            >
 
             {/* 模型选择 */}
             <div className="flex items-center gap-2 min-w-0">
@@ -1242,34 +1350,43 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
                 <span className="text-xs text-amber-500 font-semibold shrink-0 ml-2">编辑</span>
             </button>
 
-            {/* 进度显示条与实时流式推演 */}
-            {running && localProgress ? (
+            {/* 进度显示条与实时流式推演（严格仅在运行态展现，终态自动收敛清空） */}
+            {(running || isNodeExecuting) && effectiveProgress ? (
                 <div className="flex flex-col gap-2 rounded-lg border p-3 text-xs" style={{ background: theme.node.fill, borderColor: theme.node.stroke }}>
                     <div className="flex items-center justify-between">
                         <span className="font-semibold text-sm flex items-center gap-1.5" style={{ color: theme.accent.primary }}>
-                            <Loader2 className="size-4 animate-spin text-amber-500 shrink-0" />
-                            <span>参考复刻生成中</span>
+                            {effectiveProgress.percent >= 100 ? (
+                                <>
+                                    <Check className="size-4 text-emerald-500 shrink-0" />
+                                    <span className="text-emerald-500">参考复刻生成完成</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Loader2 className="size-4 animate-spin text-amber-500 shrink-0" />
+                                    <span>参考复刻生成中</span>
+                                </>
+                            )}
                         </span>
-                        <span className="font-mono font-semibold text-xs">{localProgress.percent}%</span>
+                        <span className={`font-mono font-semibold text-xs ${effectiveProgress.percent >= 100 ? "text-emerald-500" : ""}`}>{effectiveProgress.percent}%</span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
                         <div
-                            className="h-full bg-amber-500 transition-all duration-300"
-                            style={{ width: `${localProgress.percent}%` }}
+                            className={`h-full transition-all duration-300 ${effectiveProgress.percent >= 100 ? "bg-emerald-500" : "bg-amber-500"}`}
+                            style={{ width: `${effectiveProgress.percent}%` }}
                         />
                     </div>
-                    {localProgress.message ? (
+                    {effectiveProgress.message ? (
                         <div className="text-xs text-stone-500 dark:text-stone-400 truncate flex items-center gap-1">
-                            <span>{localProgress.message}</span>
+                            <span>{effectiveProgress.message}</span>
                         </div>
                     ) : null}
-                    {streamedScript ? (
+                    {effectiveStreamedScript ? (
                         <div className="mt-1 rounded-md bg-stone-900/5 dark:bg-stone-900/40 p-2 font-mono text-xs text-stone-600 dark:text-stone-300 max-h-32 overflow-y-auto thin-scrollbar break-all leading-relaxed border border-stone-200/50 dark:border-stone-800/50">
                             <div className="flex items-center justify-between text-stone-400 mb-1 text-[11px]">
-                                <span>⚡ 实时推演输出 ({streamedScript.length} 字)</span>
+                                <span>⚡ 实时推演输出 ({effectiveStreamedScript.length} 字)</span>
                                 <span className="animate-pulse text-amber-500 font-semibold">写入中...</span>
                             </div>
-                            <div className="whitespace-pre-wrap">{streamedScript.slice(-300)}</div>
+                            <div className="whitespace-pre-wrap">{effectiveStreamedScript.slice(-300)}</div>
                         </div>
                     ) : null}
                 </div>
@@ -1341,37 +1458,30 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
                     <span>清空</span>
                 </button>
 
-                <div className="flex items-center gap-2">
+                <button
+                    type="button"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={runGenerate}
+                    disabled={running}
+                    className={`flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-semibold text-white shadow-sm transition-all select-none ${
+                        running
+                            ? "bg-amber-500/75 cursor-not-allowed opacity-80"
+                            : "bg-amber-500 hover:bg-amber-600 active:scale-95 cursor-pointer"
+                    }`}
+                >
                     {running ? (
-                        <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={cancelGenerate}
-                                className="flex h-9 items-center gap-1.5 rounded-lg border border-rose-300 dark:border-rose-800 px-3 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-                            >
-                                <span>取消</span>
-                            </button>
-                            <button
-                                type="button"
-                                disabled
-                                className="flex h-9 items-center gap-2 rounded-lg bg-neutral-300 dark:bg-neutral-700 px-4 text-sm font-semibold text-neutral-500 dark:text-neutral-400 cursor-not-allowed border-none shadow-none select-none"
-                            >
-                                <Loader2 className="size-4 animate-spin text-neutral-400 dark:text-neutral-500" />
-                                <span>生成中</span>
-                            </button>
-                        </div>
+                        <>
+                            <Loader2 className="size-4 animate-spin text-white" />
+                            <span>脚本生成中...</span>
+                        </>
                     ) : (
-                        <button
-                            type="button"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={runGenerate}
-                            className="flex h-9 items-center gap-2 rounded-lg bg-amber-500 px-4 text-sm font-semibold text-white shadow-sm transition-transform hover:bg-amber-600 active:scale-95 cursor-pointer"
-                        >
+                        <>
                             <Play className="size-3.5 fill-current" />
                             <span>{scriptResult ? "重新生成脚本" : "生成脚本"}</span>
-                        </button>
+                        </>
                     )}
-                </div>
+                </button>
+            </div>
             </div>
 
             {/* 参考脚本/爆款文案编辑弹窗 */}

@@ -1,12 +1,12 @@
 import localforage from "localforage";
 import { nanoid } from "nanoid";
 
-import { getActiveUserScope } from "@/lib/user-scope";
+import { getActiveUserScope, USER_SCOPE_CHANGED_EVENT } from "@/lib/user-scope";
 import { captureVideoPoster, detectVideoAudioTrackFromBlob } from "@/lib/video-poster";
 import { getResourceAccess, resolveResourceAccessURL, resourceFileUrl, resourceIdFromStorageKey, resourceStorageKey, ResourceUploadError, uploadResourceFile } from "@/services/api/resources";
 import { uploadImage, type UploadedImage } from "@/services/image-storage";
 import { getCachedResourceBlob, getCachedResourceObjectUrl, peekCachedResourceObjectUrl, primeResourceBlobCache } from "@/services/resource-blob-cache";
-import { peekLocalFirstMedia, resolveLocalFirstMedia } from "@/services/local-first-media-resolver";
+import { evictLocalFirstMedia, peekLocalFirstMedia, primeLocalFirstMedia, resolveLocalFirstMedia } from "@/services/local-first-media-resolver";
 // @opc-feature: asset-deduplication [start]
 import { computeBlobSha256 } from "@/lib/asset-fingerprint";
 // @opc-feature: asset-deduplication [end]
@@ -179,6 +179,12 @@ export async function resolveMediaUrl(storageKey?: string, fallback = "") {
     if (!blob) return fallback;
     const url = URL.createObjectURL(blob);
     objectUrls.set(storageKey, url);
+    const mediaType: "image" | "video" | "audio" = blob.type?.startsWith("video/")
+        ? "video"
+        : blob.type?.startsWith("audio/")
+        ? "audio"
+        : "image";
+    primeLocalFirstMedia(storageKey, url, blob, mediaType);
     return url;
 }
 
@@ -192,6 +198,12 @@ export async function setMediaBlob(storageKey: string, blob: Blob) {
     await store.setItem(storageKey, blob);
     const url = URL.createObjectURL(blob);
     objectUrls.set(storageKey, url);
+    const mediaType: "image" | "video" | "audio" = blob.type?.startsWith("video/")
+        ? "video"
+        : blob.type?.startsWith("audio/")
+        ? "audio"
+        : "image";
+    primeLocalFirstMedia(storageKey, url, blob, mediaType);
     return url;
 }
 
@@ -202,6 +214,7 @@ export async function deleteStoredMedia(keys: Iterable<string>) {
             const url = objectUrls.get(key);
             if (url) URL.revokeObjectURL(url);
             objectUrls.delete(key);
+            evictLocalFirstMedia(key, url);
             await store.removeItem(key);
         }),
     );
@@ -215,7 +228,7 @@ export async function cleanupUnusedMedia(usedData: unknown, scope = getActiveUse
         const parts = key.split(":");
         if (parts.length >= 3 && parts[1] === currentScope && !usedKeys.has(key)) unused.push(key);
     });
-    await Promise.all(unused.map((key) => store.removeItem(key)));
+    await deleteStoredMedia(unused);
 }
 
 export function collectMediaStorageKeys(value: unknown, keys = new Set<string>()) {
@@ -232,5 +245,15 @@ function readAudioMeta(url: string) {
         audio.onloadedmetadata = done;
         audio.onerror = done;
         audio.src = url;
+    });
+}
+
+// 监听账户变更事件（Session Epoch 切换时自动释放旧账号的所有内存 Object URL 句柄）
+if (typeof window !== "undefined") {
+    window.addEventListener(USER_SCOPE_CHANGED_EVENT, () => {
+        objectUrls.forEach((url) => {
+            try { URL.revokeObjectURL(url); } catch {}
+        });
+        objectUrls.clear();
     });
 }

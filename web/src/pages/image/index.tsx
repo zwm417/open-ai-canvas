@@ -26,7 +26,7 @@ import { formatBytes, formatDuration, getDataUrlByteSize, readImageMeta } from "
 import { defaultImageParamsForModel, mergedImageCapabilityConfig, modelRequestOptions, resolveCompatibleModel, type ModelRequirements } from "@/lib/model-selection";
 import { getActiveUserScope, USER_SCOPE_CHANGED_EVENT } from "@/lib/user-scope";
 import { requestEdit, requestGeneration } from "@/services/api/image";
-import { deleteStoredImages, resolveImageUrl, uploadImage } from "@/services/image-storage";
+import { collectImageStorageKeys, deleteStoredImages, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { resolveResourceUrl, resourceIdFromStorageKey } from "@/services/api/resources";
 import { submitBackendGenerationTask, parseBackendGenerationResult, type BackendGenerationResult } from "@/services/api/generation-task";
 import { waitForGenerationTask, refreshGenerationTaskStatus, type GenerationTask } from "@/services/api/task-center";
@@ -504,9 +504,19 @@ export default function ImagePage() {
         ];
     }, [activeSkill, slotFiles, references, textReferences]);
 
-    const currentSessionIdRef = useRef(nanoid());
+    const currentSessionIdRef = useRef<string>(draft.sessionId || "");
     const activeBatchIdsRef = useRef<Set<string>>(new Set());
     const generationAbortControllerRef = useRef<AbortController | null>(null);
+    interface ImageChargedCreditRecord {
+        batchId: string;
+        amount: number;
+        model: string;
+        deductKey: string;
+        refundKey: string;
+        userScope: string;
+    }
+    const activeChargedCreditsMapRef = useRef<Map<string, ImageChargedCreditRecord>>(new Map());
+
 
     interface ImageWorkbenchHistoryState {
         prompt: string;
@@ -674,6 +684,13 @@ export default function ImagePage() {
         const checkScope = () => {
             const currentScope = getActiveUserScope();
             if (currentScope !== userScope) {
+                generationAbortControllerRef.current?.abort();
+                for (const [, charged] of activeChargedCreditsMapRef.current.entries()) {
+                    if (charged && charged.amount > 0) {
+                        void imageFeatureCredit.refund(charged.amount, charged.model, "账号切换自动退款", charged.refundKey, charged.deductKey);
+                    }
+                }
+                activeChargedCreditsMapRef.current.clear();
                 setUserScope(currentScope);
                 createSession();
                 void refreshLogs();
@@ -927,19 +944,6 @@ export default function ImagePage() {
             return;
         }
 
-        setSubmitting(true);
-        let chargedMicrocredits = 0;
-        try {
-            const deductRes = await imageFeatureCredit.deduct(model, "生图工作台生成");
-            chargedMicrocredits = deductRes.deductedMicrocredits;
-        } catch (err) {
-            setSubmitting(false);
-            const errText = err instanceof Error ? err.message : "积分扣减失败";
-            message.error(errText);
-            if (agentTaskId) updateAgentTask(agentTaskId, { status: "failed", error: errText });
-            return;
-        }
-
         sessionExplicitlyResetRef.current = false;
         const activeSessionId = draft.sessionId || nanoid();
         if (!draft.sessionId) {
@@ -949,6 +953,35 @@ export default function ImagePage() {
         const sessionId = activeSessionId;
         currentSessionIdRef.current = sessionId;
         activeBatchIdsRef.current.add(batchId);
+
+        const initialUserScope = getActiveUserScope();
+        const controller = new AbortController();
+        generationAbortControllerRef.current = controller;
+
+        const deductKey = `deduct:image_workbench:${batchId}`;
+        const refundKey = `refund:image_workbench:${batchId}`;
+
+        setSubmitting(true);
+        let chargedMicrocredits = 0;
+        try {
+            const deductRes = await imageFeatureCredit.deduct(model, "生图工作台生成", deductKey);
+            chargedMicrocredits = deductRes.deductedMicrocredits;
+            activeChargedCreditsMapRef.current.set(batchId, {
+                batchId,
+                amount: chargedMicrocredits,
+                model,
+                deductKey,
+                refundKey,
+                userScope: initialUserScope,
+            });
+        } catch (err) {
+            setSubmitting(false);
+            activeChargedCreditsMapRef.current.delete(batchId);
+            const errText = err instanceof Error ? err.message : "积分扣减失败";
+            message.error(errText);
+            if (agentTaskId) updateAgentTask(agentTaskId, { status: "failed", error: errText });
+            return;
+        }
 
         setElapsedMs(0);
         setPreviewLog(null);
@@ -988,20 +1021,45 @@ export default function ImagePage() {
 
         // 启动后台自持执行，绝不因前端切换会话/点击历史而中断或遗失
         void (async () => {
-            const tasks = newPendingSlots.map((slot) => runGenerationSlot(slot.id, slot.slotIndex || 0, snapshot, batchId));
+            const tasks = newPendingSlots.map((slot) => runGenerationSlot(slot.id, slot.slotIndex || 0, snapshot, batchId, controller.signal));
 
-            const result = await Promise.allSettled(tasks);
-            const successImages = result.filter((item): item is PromiseFulfilledResult<GeneratedImage | null> => item.status === "fulfilled" && Boolean(item.value)).map((item) => item.value!);
-            const successCount = successImages.length;
-            const failCount = generationCount - successCount;
-            const failed = result.find((item): item is PromiseRejectedResult => item.status === "rejected");
-            const error = failed?.reason instanceof Error ? failed.reason.message : failCount ? t("workbench.generationFailed") : undefined;
-            if (agentTaskId) updateAgentTask(agentTaskId, { status: successCount ? "succeeded" : "failed", successCount, failCount, error: successCount ? undefined : error });
+                const result = await Promise.allSettled(tasks);
+                if (controller.signal.aborted) {
+                    const charged = activeChargedCreditsMapRef.current.get(batchId);
+                    if (charged && charged.amount > 0) {
+                        activeChargedCreditsMapRef.current.delete(batchId);
+                        void imageFeatureCredit.refund(charged.amount, model, "生图任务中断退款", refundKey, deductKey);
+                    }
+                    setLogs((prev) => prev.map((l) => {
+                        if (l.id === batchId || l.batchId === batchId) {
+                            const aborted: GenerationLog = { ...l, status: "failed", error: "任务执行中断", chargedMicrocredits: 0, updatedAt: Date.now() };
+                            saveLog(aborted);
+                            return aborted;
+                        }
+                        return l;
+                    }));
+                    return;
+                }
+                const successImages = result.filter((item): item is PromiseFulfilledResult<GeneratedImage | null> => item.status === "fulfilled" && Boolean(item.value)).map((item) => item.value!);
+                const successCount = successImages.length;
+                const failCount = generationCount - successCount;
+                const failed = result.find((item): item is PromiseRejectedResult => item.status === "rejected");
+                const error = failed?.reason instanceof Error ? failed.reason.message : failCount ? t("workbench.generationFailed") : undefined;
+                if (agentTaskId) updateAgentTask(agentTaskId, { status: successCount ? "succeeded" : "failed", successCount, failCount, error: successCount ? undefined : error });
 
-            // 资金与积分安全：任何未产出有效图片的情况，必须 100% 自动原路退款
-            if (successCount === 0 && chargedMicrocredits > 0) {
-                void imageFeatureCredit.refund(chargedMicrocredits, model, "生图全部失败退款");
-            }
+                // 资金与积分安全：严格对齐“产出有效图片即扣积分，不设补偿免单”规则，仅在 0 图片产出时全额退款
+                if (successCount === 0 && chargedMicrocredits > 0) {
+                    void imageFeatureCredit.refund(chargedMicrocredits, model, "生图全部失败退款", refundKey, deductKey);
+                    activeChargedCreditsMapRef.current.delete(batchId);
+                } else if (successCount > 0) {
+                    activeChargedCreditsMapRef.current.delete(batchId);
+                }
+
+                if (getActiveUserScope() !== initialUserScope) {
+                    console.warn("[image-workbench] 检测到账号已切换，熔断丢弃前序账号图片回写");
+                    activeChargedCreditsMapRef.current.delete(batchId);
+                    return;
+                }
 
             try {
                 const logImages = await Promise.all(
@@ -1099,7 +1157,7 @@ export default function ImagePage() {
                             images: logImages,
                             failureCount: 0,
                             requestSignature,
-                            chargedMicrocredits: 0,
+                            chargedMicrocredits: chargedMicrocredits,
                             taskIds: batchTaskIds.length ? batchTaskIds : undefined,
                         }),
                     );
@@ -1115,6 +1173,7 @@ export default function ImagePage() {
                 console.error("保存生图记录失败:", saveErr);
             } finally {
                 activeBatchIdsRef.current.delete(batchId);
+                activeChargedCreditsMapRef.current.delete(batchId);
                 if (activeBatchIdsRef.current.size === 0) {
                     setStartedAt(0);
                 }
@@ -1218,7 +1277,11 @@ export default function ImagePage() {
     };
 
     const deleteSelectedLogs = () => {
-        const imageKeys = logs.filter((log) => selectedLogIds.includes(log.id)).flatMap((log) => log.images.map((image) => image.storageKey).filter((key): key is string => Boolean(key)));
+        const selectedLogs = logs.filter((log) => selectedLogIds.includes(log.id));
+        const imageKeys = new Set<string>();
+        selectedLogs.forEach((log) => {
+            collectImageStorageKeys(log, imageKeys);
+        });
         const idsToDelete = [...selectedLogIds];
         void Promise.all([deleteStoredImages(imageKeys), ...selectedLogIds.map((id) => logStore.removeItem(id))]).then(() => refreshLogs());
         void batchDeleteGenerationLogsFromRemote(idsToDelete);
@@ -1247,11 +1310,16 @@ export default function ImagePage() {
         activeBatchIdsRef.current.add(log.id);
         const isCurrentSession = () => !log.sessionId || !useImageWorkbenchStore.getState().draft.sessionId || log.sessionId === useImageWorkbenchStore.getState().draft.sessionId;
         const effectiveChargedCredits = log.chargedMicrocredits || 0;
+        let queueTimer: any = setTimeout(() => {
+            if (isCurrentSession()) {
+                message.info("当前生图算力高峰排队中，已转入后台长效托管，生成完成后将自动入库回填");
+            }
+        }, 45000);
 
         try {
             const taskResults = await Promise.allSettled(
                 log.taskIds.map(async (taskId) => {
-                    const completed = await waitForGenerationTask(taskId, { intervalMs: 2500, timeoutMs: 180000 });
+                    const completed = await waitForGenerationTask(taskId, { intervalMs: 2500, timeoutMs: 10 * 60 * 1000 });
                     return parseBackendGenerationResult(completed);
                 }),
             );
@@ -1302,7 +1370,7 @@ export default function ImagePage() {
                 failCount: Math.max(0, log.taskIds.length - logImages.length),
                 imageCount: logImages.length,
                 failureCount: 0,
-                chargedMicrocredits: 0,
+                chargedMicrocredits: log.chargedMicrocredits || effectiveChargedCredits,
                 updatedAt: Date.now(),
             };
 
@@ -1353,6 +1421,7 @@ export default function ImagePage() {
                 // [workbench-cross-session-notify] [end]
             }
         } finally {
+            clearTimeout(queueTimer);
             activeBatchIdsRef.current.delete(log.id);
             if (activeBatchIdsRef.current.size === 0) {
                 setStartedAt(0);
@@ -1378,6 +1447,22 @@ export default function ImagePage() {
             for (const log of pendingLogs) {
                 if (log.taskIds && log.taskIds.length > 0) {
                     void pollPendingImageLog(log);
+                } else {
+                    // 自愈孤儿态：无物理任务且无有效产物时，自愈为 failed 并退还在途预占
+                    if (log.images && log.images.length > 0) {
+                        const healed: GenerationLog = { ...log, status: "success", updatedAt: Date.now() };
+                        void logStore.setItem(healed.id, serializeLog(healed));
+                        setLogs((prev) => prev.map((l) => (l.id === healed.id ? healed : l)));
+                    } else {
+                        const healed: GenerationLog = { ...log, status: "failed", error: "任务执行中断", updatedAt: Date.now() };
+                        void logStore.setItem(healed.id, serializeLog(healed));
+                        setLogs((prev) => prev.map((l) => (l.id === healed.id ? healed : l)));
+                        if (log.chargedMicrocredits && log.chargedMicrocredits > 0) {
+                            const deductKey = `deduct:image_workbench:${log.batchId || log.id}`;
+                            const refundKey = `refund:image_workbench:${log.batchId || log.id}`;
+                            void imageFeatureCredit.refund(log.chargedMicrocredits, log.model, "生图任务中断自动对账补偿退款", refundKey, deductKey);
+                        }
+                    }
                 }
             }
         }
@@ -1431,7 +1516,8 @@ export default function ImagePage() {
                 slotFilesMap,
             });
             return {
-                text: assembled.finalPrompt,
+                text: expandedPrompt.trim() || activeSkill.name,
+                requestText: assembled.finalPrompt,
                 config: { ...effectiveConfig, model, count: "1" },
                 references: assembled.referenceImages.length > 0 ? assembled.referenceImages : [...references],
             };
@@ -1447,20 +1533,20 @@ export default function ImagePage() {
             openConfigDialog();
             return null;
         }
-        return { text, config: { ...effectiveConfig, model, count: "1" }, references: [...references] };
+        return { text, requestText: text, config: { ...effectiveConfig, model, count: "1" }, references: [...references] };
     };
 
     const runGenerationSlot = async (
         slotIdentifier: string | number,
-        indexOrSnapshot: number | { text: string; config: AiConfig; references: ReferenceImage[] },
-        snapshotOrSessionId: { text: string; config: AiConfig; references: ReferenceImage[] } | string,
+        indexOrSnapshot: number | { text: string; requestText?: string; config: AiConfig; references: ReferenceImage[] },
+        snapshotOrSessionId: { text: string; requestText?: string; config: AiConfig; references: ReferenceImage[] } | string,
         sessionIdOrSignal?: string | AbortSignal,
         signal?: AbortSignal,
     ) => {
         const itemStartedAt = performance.now();
         const cardId = typeof slotIdentifier === "string" ? slotIdentifier : undefined;
         const fallbackIndex = typeof slotIdentifier === "number" ? slotIdentifier : (typeof indexOrSnapshot === "number" ? indexOrSnapshot : 0);
-        const snapshot = (typeof indexOrSnapshot === "object" ? indexOrSnapshot : (typeof snapshotOrSessionId === "object" ? snapshotOrSessionId : undefined)) as { text: string; config: AiConfig; references: ReferenceImage[] };
+        const snapshot = (typeof indexOrSnapshot === "object" ? indexOrSnapshot : (typeof snapshotOrSessionId === "object" ? snapshotOrSessionId : undefined)) as { text: string; requestText?: string; config: AiConfig; references: ReferenceImage[] };
         const effectiveSignal = (sessionIdOrSignal instanceof AbortSignal ? sessionIdOrSignal : signal);
         const batchOrSessionId = typeof sessionIdOrSignal === "string" ? sessionIdOrSignal : (typeof snapshotOrSessionId === "string" ? snapshotOrSessionId : undefined);
 
@@ -1468,7 +1554,7 @@ export default function ImagePage() {
         try {
             backendTask = await submitBackendGenerationTask({
                 mode: "image",
-                prompt: snapshot.text,
+                prompt: snapshot.requestText || snapshot.text,
                 config: snapshot.config,
                 referenceImages: snapshot.references,
                 signal: effectiveSignal,
@@ -1497,7 +1583,17 @@ export default function ImagePage() {
 
         try {
             if (backendTask?.id) {
-                const completed = await waitForGenerationTask(backendTask.id, { signal: effectiveSignal, initialTask: backendTask });
+                let slotQueueTimer: any = setTimeout(() => {
+                    if (!effectiveSignal?.aborted) {
+                        message.info("当前生图算力高峰排队中，已转入后台长效托管，生成完成后将自动入库回填");
+                    }
+                }, 45000);
+                let completed: GenerationTask;
+                try {
+                    completed = await waitForGenerationTask(backendTask.id, { signal: effectiveSignal, initialTask: backendTask, timeoutMs: 10 * 60 * 1000 });
+                } finally {
+                    clearTimeout(slotQueueTimer);
+                }
                 const parsed = parseBackendGenerationResult(completed);
                 const rawImg = parsed.images?.[0];
                 if (!rawImg) throw new Error(t("imageWorkbench.missingResult"));
@@ -1542,9 +1638,10 @@ export default function ImagePage() {
                 return nextImage;
             }
 
+            const promptToSend = snapshot.requestText || snapshot.text;
             const result = snapshot.references.length
-                ? await requestEdit(snapshot.config, snapshot.text, snapshot.references, undefined, { signal: effectiveSignal })
-                : await requestGeneration(snapshot.config, snapshot.text, { signal: effectiveSignal });
+                ? await requestEdit(snapshot.config, promptToSend, snapshot.references, undefined, { signal: effectiveSignal })
+                : await requestGeneration(snapshot.config, promptToSend, { signal: effectiveSignal });
             const image = result[0];
             if (!image) throw new Error(t("imageWorkbench.missingResult"));
             const meta = await readImageMeta(image.dataUrl);
@@ -1964,13 +2061,25 @@ export default function ImagePage() {
                                 type="primary"
                                 size="large"
                                 block
-                                icon={isUploading ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                                icon={
+                                    isUploading || submitting ? (
+                                        <LoaderCircle className="size-4 animate-spin" />
+                                    ) : (
+                                        <Sparkles className="size-4" />
+                                    )
+                                }
                                 loading={submitting}
                                 disabled={!canGenerate || submitting || isUploading || hasUploadError}
                                 onClick={() => void generate()}
                                 className="!h-11 !rounded-full !border-0 !text-white !font-medium shadow-[0_2px_12px_rgba(245,158,11,0.25)] hover:!opacity-95 active:scale-[0.99] transition-all duration-200 !bg-gradient-to-r !from-amber-500 !to-amber-600 disabled:!opacity-50 disabled:!pointer-events-none disabled:!shadow-none"
                             >
-                                {isUploading ? "素材上传中..." : hasUploadError ? "存在上传失败素材" : t("workbench.generate")}
+                                {isUploading
+                                    ? "素材上传中..."
+                                    : hasUploadError
+                                      ? "存在上传失败素材"
+                                      : submitting
+                                        ? "正在提交任务..."
+                                        : t("workbench.generate")}
                             </Button>
                         </div>
                     </div>

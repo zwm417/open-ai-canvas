@@ -28,7 +28,7 @@ import { normalizeVideoSizeValue, videoSizeLabel } from "@/components/video-sett
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { boolConfig, isSeedanceVideoConfig, normalizeSeedanceRatio, seedanceVideoReferenceError, seedanceVideoReferenceHint, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
 import { getActiveUserScope, USER_SCOPE_CHANGED_EVENT } from "@/lib/user-scope";
-import { resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
+import { collectMediaStorageKeys, deleteStoredMedia, resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
 import { resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { resolveResourceUrl } from "@/services/api/resources";
 import { CachedResourceImage } from "@/components/cached-resource-image";
@@ -407,25 +407,6 @@ export default function VideoPage() {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [undoDraft, redoDraft]);
 
-    // 用户切换监听与隔离刷新
-    const [userScope, setUserScope] = useState(getActiveUserScope());
-    useEffect(() => {
-        const checkScope = () => {
-            const currentScope = getActiveUserScope();
-            if (currentScope !== userScope) {
-                setUserScope(currentScope);
-                void createSession(false);
-                void refreshLogs(true, true);
-            }
-        };
-        window.addEventListener("storage", checkScope);
-        window.addEventListener(USER_SCOPE_CHANGED_EVENT, checkScope);
-        return () => {
-            window.removeEventListener("storage", checkScope);
-            window.removeEventListener(USER_SCOPE_CHANGED_EVENT, checkScope);
-        };
-    }, [userScope]);
-
     const videoCommand = useWorkbenchAgentStore((state) => state.videoCommand);
     const clearVideoCommand = useWorkbenchAgentStore((state) => state.clearVideoCommand);
     const updateAgentTask = useWorkbenchAgentStore((state) => state.updateTask);
@@ -455,6 +436,43 @@ export default function VideoPage() {
     }), [prompt, textReferences, references.length, videoReferences.length, audioReferences.length, draft.durationSec, draft.aspectRatio, draft.resolution, effectiveConfig, preferredModel]);
     const model = resolveCompatibleModel(effectiveConfig, preferredModel, modelRequirements) || preferredModel;
     const videoFeatureCredit = useFeatureCredit("video_workbench", model);
+
+    interface VideoChargedCreditRecord {
+        runId: string;
+        amount: number;
+        model: string;
+        deductKey: string;
+        refundKey: string;
+        userScope: string;
+    }
+    const activeChargedCreditsMapRef = useRef<Map<string, VideoChargedCreditRecord>>(new Map());
+
+
+    // 用户切换监听与隔离刷新
+    const [userScope, setUserScope] = useState(getActiveUserScope());
+    useEffect(() => {
+        const checkScope = () => {
+            const currentScope = getActiveUserScope();
+            if (currentScope !== userScope) {
+                generationAbortControllerRef.current?.abort();
+                for (const [, charged] of activeChargedCreditsMapRef.current.entries()) {
+                    if (charged && charged.amount > 0) {
+                        void videoFeatureCredit.refund(charged.amount, charged.model, "账号切换自动退款", charged.refundKey, charged.deductKey);
+                    }
+                }
+                activeChargedCreditsMapRef.current.clear();
+                setUserScope(currentScope);
+                void createSession(false);
+                void refreshLogs(true, true);
+            }
+        };
+        window.addEventListener("storage", checkScope);
+        window.addEventListener(USER_SCOPE_CHANGED_EVENT, checkScope);
+        return () => {
+            window.removeEventListener("storage", checkScope);
+            window.removeEventListener(USER_SCOPE_CHANGED_EVENT, checkScope);
+        };
+    }, [userScope, videoFeatureCredit]);
     const isUploading = useMemo(
         () => references.some((r) => r.uploading) || videoReferences.some((v) => v.uploading) || audioReferences.some((a) => a.uploading),
         [references, videoReferences, audioReferences],
@@ -1112,19 +1130,6 @@ export default function VideoPage() {
         const requestedBatchId = resumeLog?.segmentBatch?.batchId;
         if (isMultiSegment && requestedBatchId && activeSegmentBatchIdsRef.current.has(requestedBatchId)) return;
 
-        setSubmitting(true);
-        let chargedMicrocredits = 0;
-        try {
-            const deductRes = await videoFeatureCredit.deduct(snapshot.model, "生视频工作台生成");
-            chargedMicrocredits = deductRes.deductedMicrocredits;
-        } catch (err) {
-            setSubmitting(false);
-            const errText = err instanceof Error ? err.message : "积分扣减失败";
-            message.error(errText);
-            if (agentTaskId) updateAgentTask(agentTaskId, { status: "failed", error: errText });
-            return;
-        }
-
         sessionExplicitlyResetRef.current = false;
         const batchStartedAt = performance.now();
         const runId = resumeLog?.runId || nanoid();
@@ -1133,6 +1138,35 @@ export default function VideoPage() {
             updateDraft({ sessionId: activeSessionId });
         }
         const isCurrentSession = () => !activeSessionId || !useVideoWorkbenchStore.getState().draft.sessionId || activeSessionId === useVideoWorkbenchStore.getState().draft.sessionId;
+
+        const initialUserScope = getActiveUserScope();
+        const controller = new AbortController();
+        generationAbortControllerRef.current = controller;
+
+        const deductKey = `deduct:video_workbench:${runId}`;
+        const refundKey = `refund:video_workbench:${runId}`;
+
+        setSubmitting(true);
+        let chargedMicrocredits = 0;
+        try {
+            const deductRes = await videoFeatureCredit.deduct(snapshot.model, "生视频工作台生成", deductKey);
+            chargedMicrocredits = deductRes.deductedMicrocredits;
+            activeChargedCreditsMapRef.current.set(runId, {
+                runId,
+                amount: chargedMicrocredits,
+                model: snapshot.model,
+                deductKey,
+                refundKey,
+                userScope: initialUserScope,
+            });
+        } catch (err) {
+            setSubmitting(false);
+            activeChargedCreditsMapRef.current.delete(runId);
+            const errText = err instanceof Error ? err.message : "积分扣减失败";
+            message.error(errText);
+            if (agentTaskId) updateAgentTask(agentTaskId, { status: "failed", error: errText });
+            return;
+        }
 
         if (isMultiSegment && creationPlan) {
             const batchId = resumeLog?.segmentBatch?.batchId || runId;
@@ -1188,6 +1222,7 @@ export default function VideoPage() {
                         references: snapshot.references,
                         videoReferences: snapshot.videoReferences,
                         audioReferences: snapshot.audioReferences,
+                        signal: controller.signal,
                         resume: { tasks: resumeTasks, outputs: resumeOutputs },
                         onProgress: (progress) => {
                             if (isCurrentSession()) {
@@ -1224,6 +1259,20 @@ export default function VideoPage() {
                             }
                         },
                     });
+
+                    if (controller.signal.aborted) {
+                        const completedOutputsCount = activeSegmentLogRef.current?.runs?.[0]?.outputs?.length || 0;
+                        if (completedOutputsCount === 0 && chargedMicrocredits > 0) {
+                            void videoFeatureCredit.refund(chargedMicrocredits, snapshot.model, "视频分段任务中断退款", refundKey, deductKey);
+                        }
+                        activeChargedCreditsMapRef.current.delete(runId);
+                        return;
+                    }
+                    if (getActiveUserScope() !== initialUserScope) {
+                        console.warn("[video-workbench] 检测到账号已切换，熔断丢弃前序账号分段视频回写");
+                        activeChargedCreditsMapRef.current.delete(runId);
+                        return;
+                    }
 
                     const finalStatus = batchResult.status === "completed" ? "success" : "failed";
                     const outputRecords = batchResult.outputs.map((item) => buildSegmentOutputRecord(item));
@@ -1302,9 +1351,10 @@ export default function VideoPage() {
                     // 资金与积分安全：严格对齐“产出有效视频即扣积分，不设补偿免单”规则，仅在 0 视频产出时全额退款
                     if (outputRecords.length === 0) {
                         if (chargedMicrocredits > 0) {
-                            void videoFeatureCredit.refund(chargedMicrocredits, snapshot.model, "视频分段生成未成功退款");
+                            void videoFeatureCredit.refund(chargedMicrocredits, snapshot.model, "视频分段生成未成功退款", refundKey, deductKey);
                         }
                     }
+                    activeChargedCreditsMapRef.current.delete(runId);
 
                     if (isCurrentSession()) {
                         setPreviewLog(finalLog);
@@ -1327,12 +1377,33 @@ export default function VideoPage() {
                     }
                 } catch (batchErr) {
                     console.error("分段任务后台执行异常:", batchErr);
+                    const isAborted = controller.signal.aborted || (batchErr instanceof DOMException && batchErr.name === "AbortError");
                     const completedOutputsCount = activeSegmentLogRef.current?.runs?.[0]?.outputs?.length || 0;
-                    if (completedOutputsCount === 0 && chargedMicrocredits > 0) {
-                        void videoFeatureCredit.refund(chargedMicrocredits, snapshot.model, "视频分段生成异常退款");
+                    const charged = activeChargedCreditsMapRef.current.get(runId);
+                    if (completedOutputsCount === 0) {
+                        if (charged && charged.amount > 0) {
+                            activeChargedCreditsMapRef.current.delete(runId);
+                            void videoFeatureCredit.refund(charged.amount, snapshot.model, isAborted ? "视频分段中断退款" : "视频分段生成异常退款", charged.refundKey, charged.deductKey);
+                        } else if (chargedMicrocredits > 0) {
+                            void videoFeatureCredit.refund(chargedMicrocredits, snapshot.model, isAborted ? "视频分段中断退款" : "视频分段生成异常退款", refundKey, deductKey);
+                        }
+                    } else {
+                        activeChargedCreditsMapRef.current.delete(runId);
+                    }
+                    const errMsg = isAborted ? "任务执行中断" : (batchErr instanceof Error ? batchErr.message : "分段生成异常");
+                    if (activeSegmentLogRef.current) {
+                        const failedSegmentLog: GenerationLog = {
+                            ...activeSegmentLogRef.current,
+                            status: "failed",
+                            error: errMsg,
+                            chargedMicrocredits: 0,
+                            updatedAt: Date.now(),
+                        };
+                        activeSegmentLogRef.current = failedSegmentLog;
+                        void saveLog(failedSegmentLog, false);
+                        setLogs((prev) => prev.map((l) => (l.id === batchId || l.runId === batchId ? failedSegmentLog : l)));
                     }
                     if (isCurrentSession()) {
-                        const errMsg = batchErr instanceof Error ? batchErr.message : "分段生成异常";
                         message.error(errMsg);
                         const failedCard: GenerationResult = { id: batchId, status: "failed", error: errMsg };
                         setResults((prev) => {
@@ -1348,6 +1419,7 @@ export default function VideoPage() {
                     }
                 } finally {
                     activeSegmentBatchIdsRef.current.delete(batchId);
+                    activeChargedCreditsMapRef.current.delete(runId);
                 }
             })();
             return;
@@ -1367,6 +1439,7 @@ export default function VideoPage() {
                 snapshot.references,
                 snapshot.videoReferences,
                 snapshot.audioReferences,
+                { signal: controller.signal },
             );
 
             const log = buildLog({
@@ -1409,13 +1482,14 @@ export default function VideoPage() {
             message.success("视频生成任务已提交，后台全自动执行中！");
 
             // 后台自持轮询，保证即使页面跳转或查看历史，仍能正常保存成片与退款
-            void pollGenerationLog(log, snapshot.config, agentTaskId, undefined, chargedMicrocredits);
+            void pollGenerationLog(log, snapshot.config, agentTaskId, controller.signal, chargedMicrocredits);
         } catch (error) {
             setSubmitting(false);
             const errorMessage = error instanceof Error ? error.message : t("workbench.generationFailed");
             if (chargedMicrocredits > 0) {
-                void videoFeatureCredit.refund(chargedMicrocredits, snapshot.model, "视频生成异常退款");
+                void videoFeatureCredit.refund(chargedMicrocredits, snapshot.model, "视频生成异常退款", refundKey, deductKey);
             }
+            activeChargedCreditsMapRef.current.delete(runId);
             if (isCurrentSession()) {
                 const submitFailedCard: GenerationResult = { id: targetLogId, status: "failed", error: errorMessage };
                 setResults((prev) => {
@@ -1457,6 +1531,12 @@ export default function VideoPage() {
                 if (signal?.aborted) throw new DOMException("The operation was aborted", "AbortError");
                 const state = await pollVideoGenerationTask(taskConfig, log.task, { signal });
                 if (state.status === "completed") {
+                    if (getActiveUserScope() !== (log.userId || getActiveUserScope())) {
+                        console.warn("[video-workbench] 检测到账号已切换，熔断丢弃前序账号视频成片回写");
+                        activeChargedCreditsMapRef.current.delete(log.runId || log.id);
+                        return;
+                    }
+                    activeChargedCreditsMapRef.current.delete(log.runId || log.id);
                     const stored = await storeGeneratedVideo(state.result);
                     const nextVideo: GeneratedVideo = {
                         id: nanoid(),
@@ -1481,7 +1561,7 @@ export default function VideoPage() {
                         failCount: 0,
                         itemCount: 1,
                         failureCount: 0,
-                        chargedMicrocredits: 0,
+                        chargedMicrocredits: log.chargedMicrocredits || effectiveChargedCredits,
                     };
                     if (isCurrentSession()) {
                         setPreviewLog(savedSuccessLog);
@@ -1513,21 +1593,21 @@ export default function VideoPage() {
 
                 // [tiered-video-polling] [start]
                 const currentElapsed = Date.now() - startedAt;
+                if (currentElapsed >= 90 * 1000 && !notifiedSoftTimeout) {
+                    notifiedSoftTimeout = true;
+                    if (isCurrentSession()) {
+                        message.info("当前模型算力高峰排队中，已转入后台长效托管，成片后将自动入库回填，请耐心等待");
+                    }
+                }
                 if (isLongRunningProvider) {
                     if (currentElapsed >= VIDEO_SEGMENT_HARD_TIMEOUT_MS) {
                         throw new Error(t("videoWorkbench.timeout"));
-                    }
-                    if (currentElapsed >= VIDEO_SEGMENT_SOFT_TIMEOUT_MS && !notifiedSoftTimeout) {
-                        notifiedSoftTimeout = true;
-                        if (isCurrentSession()) {
-                            message.info("视频生成耗时较长，已转入后台长效托管，成片后将自动入库");
-                        }
                     }
                     const nextInterval = getTieredPollingIntervalMs(currentElapsed);
                     await delay(nextInterval, signal);
                 } else {
                     const delayMs = log.task?.provider === "agnes" ? 1500 : 2500;
-                    if (currentElapsed >= 5 * 60 * 1000) {
+                    if (currentElapsed >= 15 * 60 * 1000) {
                         throw new Error(t("videoWorkbench.timeout"));
                     }
                     await delay(delayMs, signal);
@@ -1535,11 +1615,30 @@ export default function VideoPage() {
                 // [tiered-video-polling] [end]
             }
         } catch (error) {
-            // 失败或中断时无论当前在哪个页面，100% 执行退款，杜绝吞积分
-            if (effectiveChargedCredits > 0) {
-                void videoFeatureCredit.refund(effectiveChargedCredits, log.model, "视频生成未完成退款");
+            const isAborted = signal?.aborted || (error instanceof DOMException && error.name === "AbortError");
+            const targetRunId = log.runId || log.id;
+            const charged = activeChargedCreditsMapRef.current.get(targetRunId);
+            if (charged && charged.amount > 0) {
+                activeChargedCreditsMapRef.current.delete(targetRunId);
+                void videoFeatureCredit.refund(charged.amount, log.model, isAborted ? "视频生成中断退款" : "视频生成未完成退款", charged.refundKey, charged.deductKey);
+            } else if (effectiveChargedCredits > 0) {
+                const logDeductKey = `deduct:video_workbench:${targetRunId}`;
+                const logRefundKey = `refund:video_workbench:${targetRunId}`;
+                void videoFeatureCredit.refund(effectiveChargedCredits, log.model, isAborted ? "视频生成中断退款" : "视频生成未完成退款", logRefundKey, logDeductKey);
             }
-            if (signal?.aborted || (error instanceof DOMException && error.name === "AbortError")) {
+            if (isAborted) {
+                const savedAbortedLog: GenerationLog = {
+                    ...log,
+                    status: "failed",
+                    durationMs: Date.now() - log.createdAt,
+                    runs: (log.runs || []).map((run) => (run.runId === log.runId ? { ...run, status: "failed" as const, error: "任务执行中断" } : run)),
+                    error: "任务执行中断",
+                    successCount: 0,
+                    failCount: 1,
+                    chargedMicrocredits: 0,
+                };
+                void saveLog(savedAbortedLog, false);
+                setLogs((prev) => prev.map((l) => (l.id === log.id ? savedAbortedLog : l)));
                 return;
             }
             const errorMessage = error instanceof Error ? error.message : t("workbench.generationFailed");
@@ -1585,6 +1684,7 @@ export default function VideoPage() {
             await saveLog(savedFailedLog);
         } finally {
             activeLogIdsRef.current.delete(log.id);
+            activeChargedCreditsMapRef.current.delete(log.runId || log.id);
             if (!activeLogIdsRef.current.size) {
                 if (isCurrentSession()) {
                     setStartedAt(0);
@@ -2113,10 +2213,37 @@ export default function VideoPage() {
             }
 
             if (resumePending) {
-                const pendingLogs = nextLogs.filter((log) => log.status === "pending" && log.task && !activeLogIdsRef.current.has(log.id) && (log.userId === scope || (!log.userId && scope === "guest")));
+                const pendingLogs = nextLogs.filter((log) => log.status === "pending" && (log.userId === scope || (!log.userId && scope === "guest")));
                 for (const log of pendingLogs) {
-                    activeLogIdsRef.current.add(log.id);
-                    void pollGenerationLog(log);
+                    if (log.task || log.segmentBatch) {
+                        if (!activeLogIdsRef.current.has(log.id)) {
+                            activeLogIdsRef.current.add(log.id);
+                            if (log.segmentBatch) {
+                                void handleRecheck(undefined, log);
+                            } else if (log.task) {
+                                void pollGenerationLog(log);
+                            }
+                        }
+                    } else {
+                        // 自愈孤儿态：既无物理 task 也无 segmentBatch 的 pending 记录
+                        const hasOutputs = Boolean(log.video || (log.runs && log.runs.some((r) => r.outputs && r.outputs.length > 0)));
+                        if (hasOutputs) {
+                            const healed: GenerationLog = { ...log, status: "success", updatedAt: Date.now() };
+                            void logStore.setItem(healed.id, healed);
+                            setLogs((prev) => prev.map((l) => (l.id === healed.id ? healed : l)));
+                        } else {
+                            const healed: GenerationLog = { ...log, status: "failed", error: "任务执行中断", updatedAt: Date.now() };
+                            void logStore.setItem(healed.id, healed);
+                            setLogs((prev) => prev.map((l) => (l.id === healed.id ? healed : l)));
+                            const charged = log.chargedMicrocredits || 0;
+                            if (charged > 0) {
+                                const logRunId = log.runId || log.id;
+                                const logDeductKey = `deduct:video_workbench:${logRunId}`;
+                                const logRefundKey = `refund:video_workbench:${logRunId}`;
+                                void videoFeatureCredit.refund(charged, log.model, "视频任务中断自动对账补偿退款", logRefundKey, logDeductKey);
+                            }
+                        }
+                    }
                 }
             }
             return nextLogs;
@@ -2223,7 +2350,16 @@ export default function VideoPage() {
 
     const deleteSelectedLogs = () => {
         const idsToDelete = [...selectedLogIds];
-        void Promise.all(selectedLogIds.map((id) => logStore.removeItem(id))).then(async () => {
+        const selectedLogs = logs.filter((log) => selectedLogIds.includes(log.id));
+        const mediaKeys = new Set<string>();
+        selectedLogs.forEach((log) => {
+            collectMediaStorageKeys(log, mediaKeys);
+        });
+
+        void Promise.all([
+            deleteStoredMedia(mediaKeys),
+            ...selectedLogIds.map((id) => logStore.removeItem(id)),
+        ]).then(async () => {
             await refreshLogs();
         });
         void batchDeleteGenerationLogsFromRemote(idsToDelete);
@@ -2807,12 +2943,24 @@ export default function VideoPage() {
                                     size="large"
                                     block
                                     className="!h-11 !rounded-full !border-0 !text-white font-medium shadow-[0_2px_12px_rgba(245,158,11,0.25)] hover:!opacity-95 active:scale-[0.99] transition-all duration-200 !bg-gradient-to-r !from-amber-500 !to-amber-600 disabled:!opacity-50 disabled:!pointer-events-none disabled:!shadow-none"
-                                    icon={isUploading ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                                    icon={
+                                        isUploading || submitting ? (
+                                            <LoaderCircle className="size-4 animate-spin" />
+                                        ) : (
+                                            <Sparkles className="size-4" />
+                                        )
+                                    }
                                     loading={submitting}
                                     disabled={!canGenerate || submitting || isUploading || hasUploadError}
                                     onClick={() => void generate()}
                                 >
-                                    {isUploading ? "素材同步中..." : hasUploadError ? "存在未就绪素材" : t("videoWorkbench.generateNow")}
+                                    {isUploading
+                                        ? "素材同步中..."
+                                        : hasUploadError
+                                          ? "存在未就绪素材"
+                                          : submitting
+                                            ? "正在提交任务..."
+                                            : t("videoWorkbench.generateNow")}
                                 </Button>
                             </div>
                         </div>
@@ -3091,15 +3239,20 @@ function VideoSlotThumbnail({ item }: { item: ReferencePreviewItem }) {
     useEffect(() => {
         if (item.posterUrl || item.posterStorageKey || !item.url) return;
         let cancelled = false;
+        let createdUrl = "";
         void captureVideoPoster(item.url)
             .then((res) => {
                 if (!cancelled && res?.poster) {
-                    setLocalPoster(URL.createObjectURL(res.poster));
+                    createdUrl = URL.createObjectURL(res.poster);
+                    setLocalPoster(createdUrl);
                 }
             })
             .catch(() => undefined);
         return () => {
             cancelled = true;
+            if (createdUrl) {
+                URL.revokeObjectURL(createdUrl);
+            }
         };
     }, [item.posterStorageKey, item.posterUrl, item.url]);
 
@@ -3401,7 +3554,7 @@ function ResultVideoCard({
                         </Button>
                     </div>
                 ) : (
-                    <video src={videoSrc} controls onError={handleVideoError} className="aspect-video w-full bg-black object-contain" />
+                    <video src={videoSrc} controls preload="none" onError={handleVideoError} className="aspect-video w-full bg-black object-contain" />
                 )}
                 {isMerged ? (
                     <span className="absolute left-2.5 top-2.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 px-2.5 py-0.5 text-xs font-semibold text-white shadow-md">

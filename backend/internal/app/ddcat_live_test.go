@@ -20,8 +20,11 @@ func TestDDCatLiveImageRoundTrip(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
 	defer cancel()
-	ctx = withProtocolRegistry(ctx, loadOfficialFallbackRegistry())
-	input := canvasGenerationInput{Mode: "image", Prompt: "A single blue ceramic cup on a plain white background, no text.", Config: providerConfig{BaseURL: "https://api.ddcat.pronhubcn.com/v1", APIKey: key, Model: "gpt-image-2.5", InterfaceType: "openai-image", Size: "1:1"}}
+	baseURL := os.Getenv("DDCAT_SMOKE_BASE_URL")
+	if baseURL == "" {
+		baseURL = "https://api.openai.com/v1"
+	}
+	input := canvasGenerationInput{Mode: "image", Prompt: "A single blue ceramic cup on a plain white background, no text.", Config: providerConfig{BaseURL: baseURL, APIKey: key, Model: "gpt-image-2.5", InterfaceType: "openai-image", Size: "1:1"}}
 	for _, mode := range []string{"generate", "edit"} {
 		result, err := runImageTask(ctx, input)
 		if err != nil {
