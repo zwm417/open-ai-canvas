@@ -1,6 +1,7 @@
 // @opc-feature: creative-prompt-templates [start]
 import { useState, useMemo, useEffect } from "react";
-import { Modal, Input, Button, Tabs, Tag, message, Popconfirm, Select, Tooltip } from "antd";
+import { Modal, Input, Button, Tabs, Tag, message, Popconfirm, Select } from "antd";
+import { Tooltip } from "@/components/ui/base/tooltip";
 import { 
     Sparkles, 
     ImageIcon, 

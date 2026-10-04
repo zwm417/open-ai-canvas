@@ -13,7 +13,8 @@ import {
     ZoomIn,
     X,
 } from "lucide-react";
-import { message, Tooltip, Popover, Image as AntdImage } from "antd";
+import { message, Popover, Image as AntdImage } from "antd";
+import { Tooltip } from "@/components/ui/base/tooltip";
 import type { ActiveSlotFile, WorkbenchSkill } from "../types/skill-contract";
 import { SlotOutlineIcon, SlotUploadBadge } from "./skill-icons";
 

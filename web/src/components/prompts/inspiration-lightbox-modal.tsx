@@ -5,7 +5,8 @@ import {
     Copy, Check, Sparkles, Maximize2, MoveRight, Film, FolderArchive, LayoutGrid,
     ImagePlus, Video, BookmarkCheck, BookmarkPlus
 } from "lucide-react";
-import { Button, Tooltip, message } from "antd";
+import { Button, message } from "antd";
+import { Tooltip } from "@/components/ui/base/tooltip";
 import { useNavigate } from "react-router";
 import { AestheticBlueprintCard } from "./aesthetic-blueprint-card";
 import { type PromptPresetItem, saveCustomPrompt, savePresetOverride } from "@/pages/prompts/prompt-data";

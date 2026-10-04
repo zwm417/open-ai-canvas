@@ -1,7 +1,8 @@
 // @opc-feature: image_workbench [start]
 import { AlertCircle, ArrowLeft, ArrowRight, BookOpen, BookmarkPlus, CheckSquare, ClipboardPaste, Download, FileText, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, RefreshCw, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, Checkbox, Drawer, Image, Input, Modal, Tag, Tooltip, Typography } from "antd";
+import { App, Button, Checkbox, Drawer, Image, Input, Modal, Tag, Typography } from "antd";
+import { Tooltip } from "@/components/ui/base/tooltip";
 import { EmptyState } from "@/components/ui/product/empty-state";
 import localforage from "localforage";
 import { saveAs } from "file-saver";
@@ -1952,15 +1953,21 @@ export default function ImagePage() {
                                 <div className="mb-2 flex items-center justify-between gap-3 shrink-0">
                                     <span className="text-base font-semibold">{t("workbench.prompt")}</span>
                                     <div className="flex gap-2">
-                                        <Button size="small" icon={<Sparkles className="size-3.5 text-amber-500" />} onClick={() => { setPromptDialogMode("select"); setPromptDialogOpen(true); }}>
-                                            提示词模板
-                                        </Button>
-                                        <Button size="small" icon={<BookmarkPlus className="size-3.5 text-amber-500" />} onClick={() => { setPromptDialogMode("save"); setPromptDialogOpen(true); }}>
-                                            保存为模板
-                                        </Button>
-                                        <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => setAssetPickerOpen(true)}>
-                                            {t("workbench.viewAssets")}
-                                        </Button>
+                                        <Tooltip title="提示词模板" placement="top" mouseEnterDelay={0.15}>
+                                            <Button size="small" icon={<Sparkles className="size-3.5 text-amber-500" />} onClick={() => { setPromptDialogMode("select"); setPromptDialogOpen(true); }}>
+                                                提示词模板
+                                            </Button>
+                                        </Tooltip>
+                                        <Tooltip title="保存为模板" placement="top" mouseEnterDelay={0.15}>
+                                            <Button size="small" icon={<BookmarkPlus className="size-3.5 text-amber-500" />} onClick={() => { setPromptDialogMode("save"); setPromptDialogOpen(true); }}>
+                                                保存为模板
+                                            </Button>
+                                        </Tooltip>
+                                        <Tooltip title="查看我的资产" placement="top" mouseEnterDelay={0.15}>
+                                            <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => setAssetPickerOpen(true)}>
+                                                {t("workbench.viewAssets")}
+                                            </Button>
+                                        </Tooltip>
                                     </div>
                                 </div>
                                 <div className="relative flex-1 flex flex-col rounded-xl border border-black/[0.08] bg-white p-3 dark:border-white/[0.08] dark:bg-[#1c1c1e] focus-within:ring-2 focus-within:ring-amber-500/20 focus-within:border-amber-500/50 transition-all">

@@ -20,7 +20,8 @@ import {
     ClipboardPaste,
     FolderPlus,
 } from "lucide-react";
-import { Button, Tooltip, App } from "antd";
+import { Button, App } from "antd";
+import { Tooltip } from "@/components/ui/base/tooltip";
 import type { VideoWorkbenchSkill } from "../types/video-skill-contract";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";

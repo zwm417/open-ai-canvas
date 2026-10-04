@@ -31,21 +31,29 @@ const PLACEMENT_MAP: Record<TooltipPlacement, Placement> = {
 export interface TooltipProps {
     title?: ReactNode;
     placement?: TooltipPlacement;
-    /** 悬停延迟 ms（默认 350，贴近 AntD mouseEnterDelay） */
+    /** 悬停延迟 ms（默认 150，商业级即时响应） */
     delay?: number;
+    /** 兼容 AntD 属性，支持秒数（如 0.15）或毫秒数 */
+    mouseEnterDelay?: number;
     className?: string;
     children: ReactNode;
 }
 
-export function Tooltip({ title, placement = "top", delay = 350, className, children }: TooltipProps) {
+export function Tooltip({ title, placement = "top", delay, mouseEnterDelay, className, children }: TooltipProps) {
     if (!title) return <>{children}</>;
+
+    const effectiveDelay = mouseEnterDelay !== undefined
+        ? (mouseEnterDelay <= 10 ? Math.round(mouseEnterDelay * 1000) : Math.round(mouseEnterDelay))
+        : (delay ?? 150);
 
     const child = isValidElement<{ disabled?: boolean; loading?: boolean; tabIndex?: number }>(children) ? children : null;
     const directTrigger =
         child && child.type !== Fragment && !child.props.disabled && !child.props.loading && (typeof child.type !== "string" || ["button", "a", "input", "select", "textarea", "summary"].includes(child.type) || child.props.tabIndex !== undefined);
 
+    const racPlacement = PLACEMENT_MAP[placement] || "top";
+
     return (
-        <TooltipTrigger delay={delay}>
+        <TooltipTrigger delay={effectiveDelay}>
             {/*
              * RAC 1.21 的 TooltipTrigger 通过 context 下发 hover/focus 处理与 triggerRef，
              * 只有消费该上下文的组件才会真正挂上（原生 <span>/<button> 不会读）。直接套
@@ -63,7 +71,15 @@ export function Tooltip({ title, placement = "top", delay = 350, className, chil
                     </Focusable>
                 )}
             </span>
-            <RACTooltip placement={PLACEMENT_MAP[placement]} offset={6} className={cn("z-50 max-w-64 rounded-md border border-border bg-surface-strong px-2 py-1 text-xs leading-relaxed text-foreground shadow-md", "ra-pop-in", className)}>
+            <RACTooltip
+                placement={racPlacement}
+                offset={6}
+                className={cn(
+                    "z-[10080] max-w-72 rounded-md border border-white/15 bg-[#18181b] px-2.5 py-1 text-xs font-medium leading-relaxed text-[#fafafa] shadow-xl backdrop-blur-sm select-none pointer-events-none dark:border-white/20 dark:bg-[#27272a] dark:text-[#f4f4f5]",
+                    "ra-pop-in",
+                    className
+                )}
+            >
                 {title}
             </RACTooltip>
         </TooltipTrigger>

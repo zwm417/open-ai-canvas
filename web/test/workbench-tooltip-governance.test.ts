@@ -115,5 +115,37 @@ describe("工作台商业级 Tooltip 规范与悬停防重叠防遮挡治理测�
         expect(directorContent).toContain('<Tooltip title="移除图片" placement="top" mouseEnterDelay={0.15}>');
         expect(directorContent).toContain('<Tooltip title="移除音频" placement="top" mouseEnterDelay={0.15}>');
     });
+
+    it("规范六：架构防线治理——工作台严禁直接从 antd 引入 Tooltip（防止 -1000vw 离屏渲染 bug），必须统一引入自研 @/components/ui/base/tooltip 并覆盖提示词表头按钮", () => {
+        const imageContent = fs.readFileSync(imagePagePath, "utf-8");
+        const videoContent = fs.readFileSync(videoPagePath, "utf-8");
+        const slotsContent = fs.readFileSync(skillUploadSlotsPath, "utf-8");
+        const refRepContent = fs.readFileSync(referenceReplicationPanelPath, "utf-8");
+        const directorContent = fs.readFileSync(directorAssistantPanelPath, "utf-8");
+
+        const targetFiles = [
+            { name: "image/index.tsx", content: imageContent },
+            { name: "video/index.tsx", content: videoContent },
+            { name: "skill-upload-slots.tsx", content: slotsContent },
+            { name: "reference-replication-panel.tsx", content: refRepContent },
+            { name: "director-assistant-panel.tsx", content: directorContent },
+        ];
+
+        for (const file of targetFiles) {
+            // 必须从自研 base/tooltip 导入
+            expect(file.content).toContain('from "@/components/ui/base/tooltip"');
+            // 严禁从 antd 导入 Tooltip
+            expect(file.content).not.toMatch(/import\s*\{[^}]*\bTooltip\b[^}]*\}\s*from\s*["']antd["']/);
+        }
+
+        // 提示词表头三大操作按钮（提示词模板、保存为模板、查看我的资产）必须包含 Tooltip 气泡包裹
+        expect(imageContent).toMatch(/<Tooltip\s+title="提示词模板"[^>]*>[\s\S]*?提示词模板[\s\S]*?<\/Tooltip>/);
+        expect(imageContent).toMatch(/<Tooltip\s+title="保存为模板"[^>]*>[\s\S]*?保存为模板[\s\S]*?<\/Tooltip>/);
+        expect(imageContent).toMatch(/<Tooltip\s+title="查看我的资产"[^>]*>[\s\S]*?viewAssets[\s\S]*?<\/Tooltip>/);
+
+        expect(videoContent).toMatch(/<Tooltip\s+title="提示词模板"[^>]*>[\s\S]*?提示词模板[\s\S]*?<\/Tooltip>/);
+        expect(videoContent).toMatch(/<Tooltip\s+title="保存为模板"[^>]*>[\s\S]*?保存为模板[\s\S]*?<\/Tooltip>/);
+        expect(videoContent).toMatch(/<Tooltip\s+title="查看我的资产"[^>]*>[\s\S]*?viewAssets[\s\S]*?<\/Tooltip>/);
+    });
 });
 // @opc-feature: workbench-tooltip-governance-test [end]

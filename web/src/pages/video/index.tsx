@@ -8,7 +8,8 @@ import {
 } from "@/extensions/video-workbench-skills";
 import { AlertCircle, BookOpen, BookmarkPlus, Check, CheckSquare, ChevronDown, ClipboardPaste, Download, FileText, Film, FolderPlus, History, ImagePlus, List, LoaderCircle, Music2, Play, Plus, RefreshCw, RotateCcw, Send, SlidersHorizontal, Sparkles, Trash2, Video as VideoIcon, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
-import { App, Button, Checkbox, Drawer, Input, Modal, Tag, Tooltip, Typography } from "antd";
+import { App, Button, Checkbox, Drawer, Input, Modal, Tag, Typography } from "antd";
+import { Tooltip } from "@/components/ui/base/tooltip";
 import { EmptyState } from "@/components/ui/product/empty-state";
 import localforage from "localforage";
 import { nanoid } from "nanoid";
@@ -2798,15 +2799,21 @@ export default function VideoPage() {
                                     <div className="mb-2 flex items-center justify-between gap-3 shrink-0">
                                         <span className="text-base font-semibold">{t("workbench.prompt")}</span>
                                         <div className="flex gap-2">
-                                            <Button size="small" icon={<Sparkles className="size-3.5 text-amber-500" />} onClick={() => { setPromptDialogMode("select"); setPromptDialogOpen(true); }}>
-                                                提示词模板
-                                            </Button>
-                                            <Button size="small" icon={<BookmarkPlus className="size-3.5 text-amber-500" />} onClick={() => { setPromptDialogMode("save"); setPromptDialogOpen(true); }}>
-                                                保存为模板
-                                            </Button>
-                                            <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => setAssetPickerOpen(true)}>
-                                                {t("workbench.viewAssets")}
-                                            </Button>
+                                            <Tooltip title="提示词模板" placement="top" mouseEnterDelay={0.15}>
+                                                <Button size="small" icon={<Sparkles className="size-3.5 text-amber-500" />} onClick={() => { setPromptDialogMode("select"); setPromptDialogOpen(true); }}>
+                                                    提示词模板
+                                                </Button>
+                                            </Tooltip>
+                                            <Tooltip title="保存为模板" placement="top" mouseEnterDelay={0.15}>
+                                                <Button size="small" icon={<BookmarkPlus className="size-3.5 text-amber-500" />} onClick={() => { setPromptDialogMode("save"); setPromptDialogOpen(true); }}>
+                                                    保存为模板
+                                                </Button>
+                                            </Tooltip>
+                                            <Tooltip title="查看我的资产" placement="top" mouseEnterDelay={0.15}>
+                                                <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => setAssetPickerOpen(true)}>
+                                                    {t("workbench.viewAssets")}
+                                                </Button>
+                                            </Tooltip>
                                         </div>
                                     </div>
                                     <div className="relative flex-1 min-h-0 flex flex-col rounded-xl border border-black/[0.08] bg-white p-3 dark:border-white/[0.08] dark:bg-[#1c1c1e] focus-within:ring-2 focus-within:ring-amber-500/20 focus-within:border-amber-500/50 transition-all">

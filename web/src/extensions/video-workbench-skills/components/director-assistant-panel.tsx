@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ArrowUp, ChevronDown, ChevronUp, Image as ImageIcon, Mic, Sparkles, BookmarkPlus, X, Maximize2, LoaderCircle, Clapperboard, Check, ClipboardPaste, FolderPlus, Square, Trash2 } from "lucide-react";
-import { Button, Modal, Tooltip, App } from "antd";
+import { Button, Modal, App } from "antd";
+import { Tooltip } from "@/components/ui/base/tooltip";
 import type { VideoWorkbenchSkill } from "../types/video-skill-contract";
 import { DirectorLanguageDurationPopover } from "./director-language-duration-popover";
 import type { ReferenceImage } from "@/types/image";
