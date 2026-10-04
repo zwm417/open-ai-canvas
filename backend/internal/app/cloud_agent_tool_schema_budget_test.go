@@ -57,7 +57,13 @@ func TestCloudAgentToolSchemaStaysCompact(t *testing.T) {
 	// canvas_create_character（角色卡打包创建，设定字段已压成一行描述）后为 25 个工具、实测
 	// 29,938 字节，因此显式上调到 30,500（约 1.9% 余量）。新增工具或字段时请重新测量并
 	// 有意识地调整这个数字，而不是让 schema 悄悄膨胀（它每一步都要发、还在前缀最前面）。
-	if len(raw) > 30500 {
-		t.Fatalf("平台工具 schema 体积 %d 字节超出预算 30500：请压缩描述或显式调整预算", len(raw))
+	// @opc-adapter: custom-agent-nodes-schema-budget [start]
+	// 体积预算：上游基线在合入分镜连线、句柄与资产更新工具后实测为 30,367 字节（预算 30,500）；
+	// 本地二次开发注册了 4 个短视频编导节点类型（video-reverse、creation-assistant 等），枚举增量 144 字节，实测为 30,511 字节。
+	// 按上游预算管理规范显式上调至 30,700（留存 0.6% 安全余量并持续严控膨胀）。
+	maxBudget := 30700
+	if len(raw) > maxBudget {
+		t.Fatalf("平台工具 schema 体积 %d 字节超出预算 %d：请压缩描述或显式调整预算", len(raw), maxBudget)
 	}
+	// @opc-adapter: custom-agent-nodes-schema-budget [end]
 }

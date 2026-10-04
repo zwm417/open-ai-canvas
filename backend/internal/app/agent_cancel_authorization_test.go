@@ -10,7 +10,9 @@ import (
 	"infinite-canvas/backend/internal/model"
 	"infinite-canvas/backend/internal/repository"
 
+	// @opc-adapter: cgo-sqlite-replacement [start]
 	"github.com/glebarez/sqlite"
+	// @opc-adapter: cgo-sqlite-replacement [end]
 	"gorm.io/gorm"
 )
 
