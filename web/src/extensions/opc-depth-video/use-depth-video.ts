@@ -11,6 +11,7 @@ import { nanoid } from "nanoid";
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { createCanvasNode } from "@/lib/canvas/canvas-project-domain";
 import { videoMetadata } from "@/lib/canvas/canvas-generation-task-sync";
+import { fitNodeSize, VIDEO_NODE_MAX_SIZE } from "@/lib/canvas/canvas-node-size";
 import { resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "@/types/canvas";
 import type { StartCanvasUploadStatus } from "@/pages/canvas/use-canvas-upload";
@@ -119,10 +120,17 @@ export function useDepthVideo({
                         handle?.update("上传深度视频", DEPTH_TOTAL_STEPS);
                         const output = await bridge.readOutput(event.jobId);
                         const uploaded = await uploadMediaFile(new Blob([output.buffer], { type: "video/mp4" }), "video");
+                        // 产物宽高以实际输出文件为准（标准 1920x1080），节点框按 fitNodeSize 适配
+                        const size = fitNodeSize(output.meta.width || 1920, output.meta.height || 1080, VIDEO_NODE_MAX_SIZE.width, VIDEO_NODE_MAX_SIZE.height);
                         const finalNode: CanvasNodeData = {
                             ...childNode,
+                            width: size.width,
+                            height: size.height,
                             metadata: {
                                 ...videoMetadata(uploaded),
+                                naturalWidth: output.meta.width || 1920,
+                                naturalHeight: output.meta.height || 1080,
+                                durationMs: output.meta.durationMs || uploaded.durationMs,
                                 depthSourceNodeId: childNode.metadata?.depthSourceNodeId,
                                 depthDevice: output.meta.device,
                                 prompt: childNode.metadata?.prompt,
