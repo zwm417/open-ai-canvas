@@ -4,6 +4,10 @@ import { CONTENT_MODERATION_ERROR_CODE, isContentModerationError } from "@/lib/g
 import { registerToolbarTools, type ToolContext, type ToolDefinition } from "@/lib/canvas/tool-registry";
 import { CanvasNodeType } from "@/types/canvas";
 import { isCanvasImageSourceNode } from "@/lib/canvas/canvas-image-source";
+// @opc-feature: depth-video [start]
+// 深度视频工具经扩展注册表追加（挂 primary 原字幕位），本文件仅需引入注册副作用
+import "@/extensions/opc-depth-video/tool-definition";
+// @opc-feature: depth-video [end]
 
 // 节点状态判定辅助函数——从 ToolContext 派生
 function isImage(ctx: ToolContext) { return ctx.node?.type === CanvasNodeType.Image; }
@@ -255,7 +259,10 @@ export const nodeHoverToolbarTools: ToolDefinition[] = [
         icon: <Captions className="size-3.5" />,
         defaultVisible: true,
         defaultOrder: 145,
-        nodeToolbar: { group: "primary", order: 20 },
+        // @opc-feature: depth-video [start]
+        // 字幕让出 primary 位给「深度视频」，移入「更多 → 视频处理」菜单（功能本体不变）
+        nodeToolbar: { group: "more", order: 30, section: "视频处理" },
+        // @opc-feature: depth-video [end]
         applicable: (ctx) => hasVideo(ctx),
         run: (ctx) => ctx.handlers.onNodeSubtitles(ctx.node!),
     },

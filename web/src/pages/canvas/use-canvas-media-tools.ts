@@ -1298,6 +1298,9 @@ export function useCanvasMediaTools({
         openVideoSegmentExtractor,
         upscaleImageNode,
         upscaleNodeId,
+        // @opc-feature: depth-video [start]
+        persistMediaNodes,
+        // @opc-feature: depth-video [end]
     };
 }
 

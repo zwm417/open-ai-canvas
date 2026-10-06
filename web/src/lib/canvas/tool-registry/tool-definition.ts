@@ -98,6 +98,9 @@ export type ToolbarHandlers = {
     onNodeExtractAudioFromVideo: (node: CanvasNodeData) => void;
     onNodeTrimVideoSegments: (node: CanvasNodeData) => void;
     onNodeSubtitles: (node: CanvasNodeData) => void;
+    // @opc-feature: depth-video [start]
+    onNodeDepthVideo: (node: CanvasNodeData) => void;
+    // @opc-feature: depth-video [end]
     onNodeTimeline: (node: CanvasNodeData) => void;
     onNodeReversePrompt: (node: CanvasNodeData) => void;
     onNodeToggleFreeResize: (node: CanvasNodeData) => void;

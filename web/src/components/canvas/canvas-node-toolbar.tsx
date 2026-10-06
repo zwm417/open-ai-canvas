@@ -55,6 +55,9 @@ type CanvasNodeToolbarProps = {
     onExtractAudioFromVideo: (node: CanvasNodeData) => void;
     onTrimVideoSegments: (node: CanvasNodeData) => void;
     onSubtitles: (node: CanvasNodeData) => void;
+    // @opc-feature: depth-video [start]
+    onDepthVideo: (node: CanvasNodeData) => void;
+    // @opc-feature: depth-video [end]
     onTimeline: (node: CanvasNodeData) => void;
     extractingVideoFrames: boolean;
     extractingAudio: boolean;
@@ -121,6 +124,9 @@ export function CanvasNodeToolbar({
     onExtractAudioFromVideo,
     onTrimVideoSegments,
     onSubtitles,
+    // @opc-feature: depth-video [start]
+    onDepthVideo,
+    // @opc-feature: depth-video [end]
     onTimeline,
     extractingVideoFrames,
     extractingAudio,
@@ -242,7 +248,11 @@ export function CanvasNodeToolbar({
         onNodeSaveAsset: onSaveAsset, onNodeMaskEdit: onMaskEdit, onNodeRemoveBackground: onRemoveBackground, onNodeEmotion: onEmotion, onNodePortraitTexture: onPortraitTexture, onNodeCrop: onCrop,
         onNodeSplit: (target) => onSplit(target, { rows: 2, columns: 2 }), onNodeUpscale: onUpscale, onNodeSuperResolve: onSuperResolve, onNodeAngle: onAngle, onNodeViewImage: onViewImage,
         onNodeExtractVideoFrames: onExtractVideoFrames, onNodeExtractAudioFromVideo: onExtractAudioFromVideo, onNodeTrimVideoSegments: onTrimVideoSegments, onNodeReversePrompt: onReversePrompt, onNodeToggleFreeResize: onToggleFreeResize,
-        onNodeSubtitles: onSubtitles, onNodeTimeline: onTimeline, onNodeToggleLocked: onToggleLocked, onNodeCopyPrompt: copyImagePrompt,
+        onNodeSubtitles: onSubtitles,
+        // @opc-feature: depth-video [start]
+        onNodeDepthVideo: onDepthVideo,
+        // @opc-feature: depth-video [end]
+        onNodeTimeline: onTimeline, onNodeToggleLocked: onToggleLocked, onNodeCopyPrompt: copyImagePrompt,
     } as Partial<ToolbarHandlers> as ToolbarHandlers;
 
     const nodeHoverCtx: ToolContext = {

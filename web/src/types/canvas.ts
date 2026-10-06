@@ -409,6 +409,11 @@ export type CanvasNodeMetadata = {
     videoEndFrameNodeId?: string;
     videoFrameSourceNodeId?: string;
     videoFrameTimeMs?: number;
+    // @opc-feature: depth-video [start]
+    depthSourceNodeId?: string;
+    depthJobId?: string;
+    depthDevice?: string;
+    // @opc-feature: depth-video [end]
     versionOfNodeId?: string;
     versionLabel?: string;
     versionPrimary?: boolean;

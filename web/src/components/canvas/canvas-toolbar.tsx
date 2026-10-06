@@ -167,6 +167,9 @@ export function CanvasToolbar({
         onNodeToggleDialog: () => {}, onNodeAnnotate: () => {}, onNodeGenerateImage: () => {}, onNodeUpload: () => {}, onNodeDownload: () => {}, onNodeSaveAsset: () => {},
         onNodeMaskEdit: () => {}, onNodeImageEdit: () => {}, onNodeRemoveBackground: () => {}, onNodeEmotion: () => {}, onNodePortraitTexture: () => {}, onNodeCrop: () => {}, onNodeSplit: () => {}, onNodeUpscale: () => {},
         onNodeSuperResolve: () => {}, onNodeAngle: () => {}, onNodeViewImage: () => {}, onNodeExtractVideoFrames: () => {}, onNodeExtractAudioFromVideo: () => {}, onNodeTrimVideoSegments: () => {}, onNodeSubtitles: () => {}, onNodeTimeline: () => {}, onNodeReversePrompt: () => {},
+        // @opc-feature: depth-video [start]
+        onNodeDepthVideo: () => {},
+        // @opc-feature: depth-video [end]
         onNodeToggleFreeResize: () => {}, onNodeToggleLocked: () => {}, onNodeCopyPrompt: () => {},
     } as ToolbarHandlers;
 

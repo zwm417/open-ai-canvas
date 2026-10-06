@@ -178,6 +178,9 @@ import { useCanvasGenerationRetry } from "./use-canvas-generation-retry";
 import { useCanvasHistory } from "./use-canvas-history";
 import { useCanvasKeyboard } from "./use-canvas-keyboard";
 import { useCanvasMediaTools } from "./use-canvas-media-tools";
+// @opc-feature: depth-video [start]
+import { useDepthVideo } from "@/extensions/opc-depth-video/use-depth-video";
+// @opc-feature: depth-video [end]
 import { useCanvasNodeEditor } from "./use-canvas-node-editor";
 import { useCanvasNodeOperations } from "./use-canvas-node-operations";
 import { useCanvasProjectLifecycle } from "./use-canvas-project-lifecycle";
@@ -1002,6 +1005,9 @@ function InfiniteCanvasPage() {
         openVideoSegmentExtractor,
         upscaleImageNode,
         upscaleNodeId,
+        // @opc-feature: depth-video [start]
+        persistMediaNodes,
+        // @opc-feature: depth-video [end]
     } = useCanvasMediaTools({
         projectId,
         domainProjectId: linkedProjectId,
@@ -1022,6 +1028,23 @@ function InfiniteCanvasPage() {
         finishGenerationRequest,
         bindGenerationTask,
     });
+
+    // @opc-feature: depth-video [start]
+    const { runDepthVideo } = useDepthVideo({
+        projectId,
+        domainProjectId: linkedProjectId,
+        nodesRef,
+        connectionsRef,
+        setNodes,
+        setConnections,
+        setSelectedNodeIds,
+        setSelectedConnectionId,
+        setHoveredNodeId,
+        setToolbarNodeId,
+        startUploadStatus,
+        persistMediaNodes,
+    });
+    // @opc-feature: depth-video [end]
 
     const handleNodesDeleted = useCallback(
         (removedIds: Set<string>, nextNodes: CanvasNodeData[], removedNodes: CanvasNodeData[]) => {
@@ -4842,6 +4865,9 @@ function InfiniteCanvasPage() {
                             onExtractAudioFromVideo={(node) => void extractAudioFromVideo(node)}
                             onTrimVideoSegments={openVideoSegmentExtractor}
                             onSubtitles={(node) => setSubtitleNodeId(node.id)}
+                            // @opc-feature: depth-video [start]
+                            onDepthVideo={(node) => void runDepthVideo(node)}
+                            // @opc-feature: depth-video [end]
                             onTimeline={(node) => setTimelineNodeId(node.id)}
                             extractingVideoFrames={toolbarNode?.id === extractingVideoFramesNodeId}
                             extractingAudio={segmentRunningMode === "audio"}
