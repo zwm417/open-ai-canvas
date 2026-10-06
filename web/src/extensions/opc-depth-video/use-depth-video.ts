@@ -18,6 +18,7 @@ import type { StartCanvasUploadStatus } from "@/pages/canvas/use-canvas-upload";
 import { ensureDepthVideoCapabilityProbe, getDepthVideoCapability } from "./capability-store";
 import { getDepthVideoBridge } from "./bridge";
 import { markDepthJobActive, markDepthJobSettled } from "./job-registry";
+import { DEPTH_TOTAL_STEPS, depthStageStep } from "./stage-steps";
 
 const NODE_STATUS_LOADING = "loading" as const;
 const NODE_STATUS_SUCCESS = "success" as const;
@@ -68,6 +69,7 @@ export function useDepthVideo({
     const jobContextsRef = useRef(new Map<string, DepthJobContext>());
     const progressHandlesRef = useRef(new Map<string, ReturnType<StartCanvasUploadStatus>>());
     const bufferedEventsRef = useRef(new Map<string, Array<{ stage?: string; progress?: number }>>());
+    const recoveryUnsubscribersRef = useRef<Array<() => void>>([]);
 
     const setChildNodeState = useCallback((childNodeId: string, metadata: CanvasNodeData["metadata"]) => {
         setNodes((current) => current.map((item) => (item.id === childNodeId ? { ...item, metadata } : item)));
@@ -86,7 +88,12 @@ export function useDepthVideo({
             const context = jobContextsRef.current.get(event.jobId);
             if (event.kind === "progress") {
                 if (context) {
-                    progressHandlesRef.current.get(event.jobId)?.update(event.stage || "处理中", Math.max(2, Math.round(event.progress || 0)));
+                    // 占位节点已被用户删除：立即取消本机作业，避免推理白跑
+                    if (!nodesRef.current.some((item) => item.id === context.childNodeId)) {
+                        void bridge.cancel(event.jobId);
+                        return;
+                    }
+                    progressHandlesRef.current.get(event.jobId)?.update(event.stage || "处理中", depthStageStep(event.stage));
                 } else {
                     // start 尚未返回（事件先于 invoke 应答）：缓冲，待映射后回放
                     const buffer = bufferedEventsRef.current.get(event.jobId) || [];
@@ -109,7 +116,7 @@ export function useDepthVideo({
                             handle?.done("源节点已删除，深度任务已取消");
                             return;
                         }
-                        handle?.update("上传深度视频", 94);
+                        handle?.update("上传深度视频", DEPTH_TOTAL_STEPS);
                         const output = await bridge.readOutput(event.jobId);
                         const uploaded = await uploadMediaFile(new Blob([output.buffer], { type: "video/mp4" }), "video");
                         const finalNode: CanvasNodeData = {
@@ -164,7 +171,7 @@ export function useDepthVideo({
                 timer = setTimeout(attempt, 500);
                 return;
             }
-            const pendingDepthNodes = nodes.filter((item) => item.metadata?.depthSourceNodeId && item.metadata?.status === NODE_STATUS_LOADING && item.metadata?.depthJobId);
+            const pendingDepthNodes = nodes.filter((item) => item.metadata?.depthSourceNodeId && item.metadata?.status === NODE_STATUS_LOADING);
             if (!pendingDepthNodes.length) return;
             void (async () => {
                 const bridge = getDepthVideoBridge();
@@ -178,22 +185,31 @@ export function useDepthVideo({
                 if (cancelled) return;
                 const activeIds = new Set(active.map((item) => item.jobId));
                 for (const node of pendingDepthNodes) {
+                    // 无 jobId（提交与落账之间刷新）：无法重连，按会话中断落账
+                    if (!node.metadata?.depthJobId) {
+                        setNodes((current) => current.map((item) => (
+                            item.id === node.id
+                                ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_ERROR, errorDetails: "本机深度组件会话已中断，请重新生成" } }
+                                : item
+                        )));
+                        continue;
+                    }
                     const jobId = String(node.metadata?.depthJobId);
                     const sourceNodeId = String(node.metadata?.depthSourceNodeId);
                     if (activeIds.has(jobId)) {
                         // 页面刷新后作业仍在跑：重建进度条并补挂上下文
                         jobContextsRef.current.set(jobId, { sourceNodeId, childNodeId: node.id });
                         markDepthJobActive(sourceNodeId, jobId);
-                        const handle = startUploadStatus("深度视频", "分析视频", 35);
+                        const handle = startUploadStatus("深度视频", "分析视频", DEPTH_TOTAL_STEPS);
                         progressHandlesRef.current.set(jobId, handle);
                         const buffered = bufferedEventsRef.current.get(jobId);
                         bufferedEventsRef.current.delete(jobId);
-                        bridge.onProgress((event) => {
+                        recoveryUnsubscribersRef.current.push(bridge.onProgress((event) => {
                             if (event.jobId !== jobId) return;
-                            handle.update(event.stage || "处理中", Math.max(2, Math.round(event.progress || 0)));
-                        });
+                            handle.update(event.stage || "处理中", depthStageStep(event.stage));
+                        }));
                         for (const bufferedEvent of buffered || []) {
-                            handle.update(bufferedEvent.stage || "处理中", Math.max(2, Math.round(bufferedEvent.progress || 0)));
+                            handle.update(bufferedEvent.stage || "处理中", depthStageStep(bufferedEvent.stage));
                         }
                     } else {
                         setNodes((current) => current.map((item) => (
@@ -209,6 +225,10 @@ export function useDepthVideo({
         return () => {
             cancelled = true;
             if (timer) clearTimeout(timer);
+            for (const unsubscribe of recoveryUnsubscribersRef.current) {
+                try { unsubscribe(); } catch { /* 桥接已销毁时忽略 */ }
+            }
+            recoveryUnsubscribersRef.current = [];
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [nodesRef, setNodes, startUploadStatus]);
@@ -246,11 +266,11 @@ export function useDepthVideo({
         setHoveredNodeId(null);
         setToolbarNodeId(null);
 
-        const progress = startUploadStatus("深度视频", "读取视频资源", 2);
+        const progress = startUploadStatus("深度视频", "读取视频资源", DEPTH_TOTAL_STEPS);
         let childNodeId = childNode?.id || "";
         try {
             // 1. 读取源视频字节（命中本地优先缓存则 0 下载）
-            const resolved = await resolveMediaUrl(sourceNode.metadata?.storageKey, sourceNode.metadata?.content || "", "video");
+            const resolved = await resolveMediaUrl(sourceNode.metadata?.storageKey, sourceNode.metadata?.content || "");
             const url = resolved || sourceNode.metadata?.content || "";
             if (!url) throw new Error("无法解析视频资源地址");
             const response = await fetch(url);
@@ -283,7 +303,7 @@ export function useDepthVideo({
                 setSelectedNodeIds(new Set([childNodeId]));
                 setSelectedConnectionId(null);
             }
-            progress.update("检查深度组件", 4);
+            progress.update("检查深度组件", 2);
 
             // 3. 占住防重复闸门后提交；事件先于应答到达时走缓冲回放
             markDepthJobActive(sourceNodeId, "pending");
@@ -292,13 +312,13 @@ export function useDepthVideo({
             jobContextsRef.current.set(jobId, { sourceNodeId, childNodeId });
             setNodes((current) => current.map((item) => (item.id === childNodeId ? { ...item, metadata: { ...item.metadata, depthJobId: jobId } } : item)));
             if (queuePosition > 0) {
-                progress.update(`排队等待深度组件（第 ${queuePosition} 位）`, 3);
+                progress.update(`排队等待深度组件（第 ${queuePosition} 位）`, 2);
             }
             const buffered = bufferedEventsRef.current.get(jobId);
             bufferedEventsRef.current.delete(jobId);
             progressHandlesRef.current.set(jobId, progress);
             for (const bufferedEvent of buffered || []) {
-                progress.update(bufferedEvent.stage || "处理中", Math.max(2, Math.round(bufferedEvent.progress || 0)));
+                progress.update(bufferedEvent.stage || "处理中", depthStageStep(bufferedEvent.stage));
             }
         } catch (error) {
             const details = error instanceof Error ? error.message : "深度视频任务提交失败";
