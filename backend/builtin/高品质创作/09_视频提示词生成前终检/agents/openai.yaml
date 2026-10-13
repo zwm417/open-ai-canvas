@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Video Prompt Preflight"
+  short_description: "Final generation preflight: feasibility, assets, overload, model risk, retries."
+  default_prompt: "Use $ai-video-prompt-preflight as the generation-readiness gate: check feasibility, references/assets, timing overload, continuity, model risk, split strategy and retry control; use the independent cold auditor for full semantic/professional fulfillment review."

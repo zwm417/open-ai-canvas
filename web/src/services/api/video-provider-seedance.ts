@@ -146,10 +146,12 @@ async function buildSeedanceVideosPayload(config: AiConfig, model: string, promp
         imagePayload.image_url = imageUrls[0];
         if (imageUrls.length > 1) imagePayload.reference_image_urls = imageUrls.slice(1);
     }
+    const hasVisualReference = references.length > 0 || videoReferences.length > 0;
+    const finalRatio = resolveSeedanceAdaptiveRatio(ratio, hasVisualReference);
     return {
         model: modelOptionName(model),
         prompt: prompt.trim(),
-        aspect_ratio: ratio === "adaptive" ? "16:9" : ratio,
+        aspect_ratio: finalRatio,
         duration,
         ...(profile.generateAudio.supported ? { generate_audio: boolConfig(config.videoGenerateAudio, profile.generateAudio.default) } : {}),
         ...imagePayload,
@@ -213,7 +215,29 @@ async function resolveSeedanceVideosMediaUrl(media: ReferenceVideo | ReferenceAu
     return deps.response.blobToDataUrl(blob);
 }
 
+export function resolveSeedanceAdaptiveRatio(ratio: string, hasVisualReference: boolean): string {
+    return ratio === "adaptive" && !hasVisualReference ? "16:9" : ratio;
+}
+
+const SEEDANCE_ERROR_TRANSLATIONS: Record<string, string> = {
+    TaskTypeConstraint: "任务类型或输入素材不满足模型约束（请检查首尾帧或时长设置）",
+    InvalidParameter: "请求参数不合法，请检查模型配置",
+    ModelNotFound: "未找到指定的 Seedance 模型",
+    QuotaExceeded: "服务调用配额已超限，请检查渠道配额",
+    RateLimitExceeded: "请求过于频繁，请稍后重试",
+};
+
+export function formatSeedanceErrorMessage(state: SeedanceTask): string {
+    const code = state.error?.code || state.error_code;
+    const rawMessage = state.error?.message;
+    const translation = code ? SEEDANCE_ERROR_TRANSLATIONS[code] : undefined;
+    if (code && rawMessage) {
+        return translation ? `${translation} (${code}: ${rawMessage})` : `${code}：${rawMessage}`;
+    }
+    if (code && translation) return `${translation} (${code})`;
+    return rawMessage || code || "";
+}
+
 function seedanceErrorMessage(state: SeedanceTask) {
-    if (state.error?.message && state.error.code) return `${state.error.code}：${state.error.message}`;
-    return state.error?.message || state.error_code || "";
+    return formatSeedanceErrorMessage(state);
 }

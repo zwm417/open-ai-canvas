@@ -4,6 +4,9 @@ import { modelProtocolSupportsTokenBilling, type ModelProtocolDefinition } from 
 import type { ChannelModel } from "@/services/api/wallet";
 import type { ModelTag } from "@/lib/model-tags";
 import { defaultPriceTier, legacyPriceTierToForm, priceTierToForm, type PriceTierFormValues } from "./channel-model-price-tier-form";
+// @opc-feature: seedance-jimeng-icon-governance [start]
+import { resolveModelIcon } from "@/lib/seedance-video";
+// @opc-feature: seedance-jimeng-icon-governance [end]
 
 export type ChannelModelFormValues = {
     modelKey: string;
@@ -37,7 +40,7 @@ export function initialChannelModelValues(item: ChannelModel | null, protocols: 
         channelLabel: item?.channelLabel || "",
         tags: item?.tags?.map((tag) => ({ ...tag })) || [],
         description: item?.description || "",
-        icon: item?.icon || "",
+        icon: resolveModelIcon(item?.icon, upstreamModel, protocol, item?.displayName) || item?.icon || "",
         capability,
         protocol,
         priceTiers: item ? (item.priceTiers?.length ? item.priceTiers.map(priceTierToForm) : [legacyPriceTierToForm(item)]) : [defaultPriceTier()],

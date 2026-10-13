@@ -23,7 +23,7 @@ const (
 )
 
 var (
-	taskErrorNetworkPattern        = regexp.MustCompile(`(?i)\b(?:dial tcp|connection refused|connection reset|no such host|i/o timeout|context deadline exceeded|network error|failed to fetch|fetch failed|socket hang up|econnrefused|econnreset|etimedout|broken pipe|unexpected eof|tls handshake timeout)\b`)
+	taskErrorNetworkPattern        = regexp.MustCompile(`(?i)(?:\b(?:dial tcp|connection refused|connection reset|no such host|i/o timeout|context deadline exceeded|network error|failed to fetch|fetch failed|socket hang up|econnrefused|econnreset|etimedout|broken pipe|unexpected eof|tls handshake timeout|wsaeconnreset|wsaeconnaborted)\b|forcibly closed|connection abort)`)
 	taskErrorInfrastructurePattern = regexp.MustCompile(`(?i)(?:接口请求失败|Request failed with status code|https?://|\b(?:GET|POST|PUT|PATCH|DELETE)\s+["']?|Bad Gateway|Service Unavailable|Gateway Timeout|upstream_error|\bread tcp\b|\bwrite tcp\b)`)
 	taskErrorWrappedInterface      = regexp.MustCompile(`(?s)^接口请求失败[:：]\s*(.*)$`)
 	taskErrorWrappedRequest        = regexp.MustCompile(`(?is)^Request failed with status code \d{3}\s*[:：-]?\s*(.+)$`)

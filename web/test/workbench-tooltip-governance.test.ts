@@ -96,30 +96,27 @@ describe("工作台商业级 Tooltip 规范与悬停防重叠防遮挡治理测�
         expect(slotsContent).toContain('<Tooltip title="替换图片" placement="top" mouseEnterDelay={0.15}>');
     });
 
-    it("规范五：视频深度复刻面板与导演助手面板所有操作入口必须统一对齐 Tooltip 规范", () => {
-        const refRepContent = fs.readFileSync(referenceReplicationPanelPath, "utf-8");
-        expect(refRepContent).toContain('<Tooltip title="从剪切板粘贴" placement="top" mouseEnterDelay={0.15}>');
-        expect(refRepContent).toContain('<Tooltip title="提示词模板" placement="top" mouseEnterDelay={0.15}>');
-        expect(refRepContent).toContain('<Tooltip title="保存为模板" placement="top" mouseEnterDelay={0.15}>');
-        expect(refRepContent).toContain('<Tooltip title="查看我的资产" placement="top" mouseEnterDelay={0.15}>');
-        expect(refRepContent).toContain('<Tooltip title="清空素材" placement="top" mouseEnterDelay={0.15}>');
-        expect(refRepContent).toContain('<Tooltip title="替换素材" placement="top" mouseEnterDelay={0.15}>');
-        expect(refRepContent).toContain('<Tooltip title="移除素材" placement="top" mouseEnterDelay={0.15}>');
+    const videoSkillSlotsPath = path.join(
+        webRoot,
+        "src/extensions/video-workbench-skills/components/video-workbench-skill-slots.tsx",
+    );
 
-        const directorContent = fs.readFileSync(directorAssistantPanelPath, "utf-8");
-        expect(directorContent).toContain('<Tooltip title="从剪切板粘贴" placement="top" mouseEnterDelay={0.15}>');
-        expect(directorContent).toContain('<Tooltip title="提示词模板" placement="top" mouseEnterDelay={0.15}>');
-        expect(directorContent).toContain('<Tooltip title="保存为模板" placement="top" mouseEnterDelay={0.15}>');
-        expect(directorContent).toContain('<Tooltip title="查看我的资产" placement="top" mouseEnterDelay={0.15}>');
-        expect(directorContent).toContain('<Tooltip title="清空素材" placement="top" mouseEnterDelay={0.15}>');
-        expect(directorContent).toContain('<Tooltip title="移除图片" placement="top" mouseEnterDelay={0.15}>');
-        expect(directorContent).toContain('<Tooltip title="移除音频" placement="top" mouseEnterDelay={0.15}>');
+    it("规范五：生视频工作台技能插槽组件（video-workbench-skill-slots）所有操作入口必须统一对齐 Tooltip 规范", () => {
+        const videoSlotsContent = fs.readFileSync(videoSkillSlotsPath, "utf-8");
+        expect(videoSlotsContent).toContain('<Tooltip title="从剪切板粘贴" placement="top" mouseEnterDelay={0.15}>');
+        expect(videoSlotsContent).toContain('<Tooltip title="提示词模板" placement="top" mouseEnterDelay={0.15}>');
+        expect(videoSlotsContent).toContain('<Tooltip title="保存为模板" placement="top" mouseEnterDelay={0.15}>');
+        expect(videoSlotsContent).toContain('<Tooltip title="查看我的资产" placement="top" mouseEnterDelay={0.15}>');
+        expect(videoSlotsContent).toContain('<Tooltip title="清空素材" placement="top" mouseEnterDelay={0.15}>');
+        expect(videoSlotsContent).toContain('<Tooltip title="替换此素材" placement="top" mouseEnterDelay={0.15}>');
+        expect(videoSlotsContent).toContain('<Tooltip title="删除素材" placement="top" mouseEnterDelay={0.15}>');
     });
 
     it("规范六：架构防线治理——工作台严禁直接从 antd 引入 Tooltip（防止 -1000vw 离屏渲染 bug），必须统一引入自研 @/components/ui/base/tooltip 并覆盖提示词表头按钮", () => {
         const imageContent = fs.readFileSync(imagePagePath, "utf-8");
         const videoContent = fs.readFileSync(videoPagePath, "utf-8");
         const slotsContent = fs.readFileSync(skillUploadSlotsPath, "utf-8");
+        const videoSlotsContent = fs.readFileSync(videoSkillSlotsPath, "utf-8");
         const refRepContent = fs.readFileSync(referenceReplicationPanelPath, "utf-8");
         const directorContent = fs.readFileSync(directorAssistantPanelPath, "utf-8");
 
@@ -127,7 +124,7 @@ describe("工作台商业级 Tooltip 规范与悬停防重叠防遮挡治理测�
             { name: "image/index.tsx", content: imageContent },
             { name: "video/index.tsx", content: videoContent },
             { name: "skill-upload-slots.tsx", content: slotsContent },
-            { name: "reference-replication-panel.tsx", content: refRepContent },
+            { name: "video-workbench-skill-slots.tsx", content: videoSlotsContent },
             { name: "director-assistant-panel.tsx", content: directorContent },
         ];
 
@@ -137,6 +134,9 @@ describe("工作台商业级 Tooltip 规范与悬停防重叠防遮挡治理测�
             // 严禁从 antd 导入 Tooltip
             expect(file.content).not.toMatch(/import\s*\{[^}]*\bTooltip\b[^}]*\}\s*from\s*["']antd["']/);
         }
+
+        // 深度复刻面板也严禁从 antd 导入 Tooltip
+        expect(refRepContent).not.toMatch(/import\s*\{[^}]*\bTooltip\b[^}]*\}\s*from\s*["']antd["']/);
 
         // 提示词表头三大操作按钮（提示词模板、保存为模板、查看我的资产）必须包含 Tooltip 气泡包裹
         expect(imageContent).toMatch(/<Tooltip\s+title="提示词模板"[^>]*>[\s\S]*?提示词模板[\s\S]*?<\/Tooltip>/);

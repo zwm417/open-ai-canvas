@@ -12,6 +12,9 @@ import (
 func RegisterCanvasAPI(api *gin.RouterGroup, svc *service.Service) {
 	RegisterOpenAPIRoutes(api)
 	RegisterAuthRoutes(api, svc)
+	// @opc-adapter: custom-license [start]
+	RegisterLicenseRoutes(api, svc)
+	// @opc-adapter: custom-license [end]
 	RegisterAppearanceRoutes(api, svc)
 	RegisterFeatureAvailabilityRoutes(api, svc)
 	RegisterAgentRoutes(api, svc)

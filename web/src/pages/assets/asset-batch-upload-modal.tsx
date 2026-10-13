@@ -125,11 +125,13 @@ export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose,
 
     return <Modal className="library-modal library-batch-upload-modal" title="批量上传图片" open={open} onCancel={close} footer={null} destroyOnHidden>
         <div className="space-y-4">
+            {/* @opc-feature: fix-label-select-conflict [start] */}
             <div className="grid gap-3 sm:grid-cols-3">
-                <label className="text-xs font-medium text-foreground/65">业务分类<Select className="mt-1 w-full" value={category} options={ASSET_CATEGORY_OPTIONS} onChange={(value) => setCategory(value)} /></label>
-                <label className="text-xs font-medium text-foreground/65">自定义分类<Select className="mt-1 w-full" value={folderId} options={folderOptions} onChange={setFolderId} /></label>
-                <label className="text-xs font-medium text-foreground/65">公共标签<Select mode="tags" className="mt-1 w-full" value={tags} tokenSeparators={[",", "，"]} onChange={setTags} placeholder="输入后回车" /></label>
+                <div className="block text-xs font-medium text-foreground/65">业务分类<Select className="mt-1 w-full" value={category} options={ASSET_CATEGORY_OPTIONS} onChange={(value) => setCategory(value)} /></div>
+                <div className="block text-xs font-medium text-foreground/65">自定义分类<Select className="mt-1 w-full" value={folderId} options={folderOptions} onChange={setFolderId} /></div>
+                <div className="block text-xs font-medium text-foreground/65">公共标签<Select mode="tags" className="mt-1 w-full" value={tags} tokenSeparators={[",", "，"]} onChange={setTags} placeholder="输入后回车" /></div>
             </div>
+            {/* @opc-feature: fix-label-select-conflict [end] */}
             <button type="button" className="batch-upload-dropzone" onClick={() => inputRef.current?.click()}>
                 <UploadCloud className="size-7" /><strong>选择多张图片</strong><span>支持拖拽思路的多选上传，标题默认取文件名</span>
             </button>

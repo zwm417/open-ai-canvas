@@ -210,6 +210,7 @@ func NormalizeModelCapabilityConfigForModel(capability string, protocol string, 
 	return value, nil
 }
 
+// @opc-adapter: model-pricing-and-capability-governance [start]
 func applyModelSpecificVideoCapability(profile *VideoCapabilityConfig, protocol string, modelName string) *VideoCapabilityConfig {
 	if profile == nil || model.ChannelInterfaceType(strings.TrimSpace(protocol)) != model.ChannelInterfaceAgnesVideo {
 		return profile
@@ -218,36 +219,69 @@ func applyModelSpecificVideoCapability(profile *VideoCapabilityConfig, protocol 
 	if normalizedModel != "agnes-video-2.5" && normalizedModel != "agnes-video-2.5-flash" {
 		return profile
 	}
-	value := *profile
-	value.References = profile.References
 	flash := normalizedModel == "agnes-video-2.5-flash"
-	value.References.MaxImages = 9
-	value.References.MaxVideos = 3
-	value.References.MaxAudios = 3
-	value.References.MaxVideoBytes = 200 * 1024 * 1024
-	value.References.MaxVideoDuration = 15
-	value.References.MaxAudioBytes = 15 * 1024 * 1024
-	value.References.MaxAudioDuration = 15
-	if flash {
-		value.References.MaxImages = 5
-		value.References.MaxVideos = 0
-		value.References.MaxVideoBytes = 0
-		value.References.MaxVideoDuration = 0
+	value := *profile
+
+	// 识别是否为尚未定制的通用遗留模板（例如 legacy-video 模板的 1~15 秒与 480p~2160p 全集）
+	isLegacyGenericDuration := value.Duration.Min == 1 && value.Duration.Max == 15
+	isLegacyGenericResolutions := len(value.Resolutions) == 5 &&
+		containsCapabilityString(value.Resolutions, "480p") &&
+		containsCapabilityString(value.Resolutions, "2160p")
+
+	// 1. 时长：仅在未配置或为遗留未适配通配模板时，应用官方基准区间 4~12s
+	if (value.Duration.Min == 0 && value.Duration.Max == 0) || isLegacyGenericDuration {
+		value.Duration = VideoDurationConfig{Selection: "range", Min: 4, Max: 12, Step: 1, Default: 5}
 	}
-	value.Duration = VideoDurationConfig{Selection: "range", Min: 4, Max: 12, Step: 1, Default: 5}
-	value.Ratios = []string{"21:9", "16:9", "4:3", "1:1", "3:4", "9:16"}
-	value.DefaultRatio = "16:9"
-	value.Resolutions = []string{"720P", "960P", "2K"}
-	if flash {
-		value.Resolutions = []string{"720P"}
+
+	// 2. 分辨率：仅在未配置或为遗留未适配通配模板时，应用官方基准档位
+	if len(value.Resolutions) == 0 || isLegacyGenericResolutions {
+		if flash {
+			value.Resolutions = []string{"720P"}
+		} else {
+			value.Resolutions = []string{"720P", "960P", "2K"}
+		}
+		if value.DefaultResolution == "" || isLegacyGenericResolutions {
+			value.DefaultResolution = "720P"
+		}
 	}
-	value.DefaultResolution = "720P"
-	value.GenerateAudio = VideoBooleanConfig{Supported: false, Default: false}
-	value.Watermark = VideoBooleanConfig{Supported: false, Default: false}
-	value.Operations = []string{"text_to_video", "image_to_video", "reference_to_video", "audio_to_video"}
-	value.DefaultOperation = "text_to_video"
+
+	// 3. 画幅：仅在未配置时提供官方支持画幅
+	if len(value.Ratios) == 0 {
+		value.Ratios = []string{"21:9", "16:9", "4:3", "1:1", "3:4", "9:16"}
+		value.DefaultRatio = "9:16"
+	}
+
+	// 4. 参考素材上限：仅在为 0 或未初始化时填充官方建议上限，若管理员已有显式配置则予以保留
+	if value.References.PromptMaxChars == 0 {
+		value.References.PromptMaxChars = DefaultVideoPromptMaxChars
+	}
+	if value.References.MaxImages == 0 {
+		if flash {
+			value.References.MaxImages = 5
+		} else {
+			value.References.MaxImages = 9
+		}
+	}
+	if !flash && value.References.MaxVideos == 0 {
+		value.References.MaxVideos = 3
+		value.References.MaxVideoBytes = 200 * 1024 * 1024
+		value.References.MaxVideoDuration = 15
+	}
+	if !flash && value.References.MaxAudios == 0 {
+		value.References.MaxAudios = 3
+		value.References.MaxAudioBytes = 15 * 1024 * 1024
+		value.References.MaxAudioDuration = 15
+	}
+
+	// 5. 操作集：仅在未配置时补充支持的 operations
+	if len(value.Operations) == 0 {
+		value.Operations = []string{"text_to_video", "image_to_video", "reference_to_video", "audio_to_video"}
+		value.DefaultOperation = "text_to_video"
+	}
+
 	return &value
 }
+// @opc-adapter: model-pricing-and-capability-governance [end]
 
 // CapabilitySpecFromModelCapabilityConfig 将渠道模型的真实供应能力投影为路由能力规格。
 // 渠道模型能力参数是唯一事实来源，前台模型供应线路直接引用该规格。

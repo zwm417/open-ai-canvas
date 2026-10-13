@@ -8,13 +8,20 @@ const MIME_EXTENSIONS: Record<string, string> = {
     "image/webp": "webp",
     "image/gif": "gif",
     "image/svg+xml": "svg",
+    "image/avif": "avif",
+    "image/bmp": "bmp",
+    "image/x-ms-bmp": "bmp",
+    "image/tiff": "tiff",
     "video/mp4": "mp4",
     "video/webm": "webm",
     "video/quicktime": "mov",
     "video/ogg": "ogv",
     "video/mpeg": "mpeg",
+    "video/x-msvideo": "avi",
+    "video/x-matroska": "mkv",
     "audio/mpeg": "mp3",
     "audio/mp4": "m4a",
+    "audio/x-m4a": "m4a",
     "audio/wav": "wav",
     "audio/x-wav": "wav",
     "audio/aac": "aac",
@@ -23,7 +30,11 @@ const MIME_EXTENSIONS: Record<string, string> = {
     "audio/opus": "opus",
 };
 
-const CONTENT_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "gif", "svg", "mp4", "webm", "mov", "ogv", "ogg", "mpeg", "mpg", "mp3", "m4a", "wav", "aac", "flac", "opus"]);
+const CONTENT_EXTENSIONS = new Set([
+    "png", "jpg", "jpeg", "webp", "gif", "svg", "avif", "bmp", "tiff", "tif",
+    "mp4", "webm", "mov", "ogv", "ogg", "mpeg", "mpg", "avi", "mkv",
+    "mp3", "m4a", "wav", "aac", "flac", "opus",
+]);
 
 export function buildCanvasMediaDownloadFileName(canvasTitle: string, node: CanvasNodeData, now = new Date()) {
     const canvasName = safeFileNamePart(canvasTitle, "未命名画布");
@@ -52,6 +63,7 @@ function extensionFromContent(content?: string) {
     if (!extension || !CONTENT_EXTENSIONS.has(extension)) return undefined;
     if (extension === "jpeg") return "jpg";
     if (extension === "mpg") return "mpeg";
+    if (extension === "tif") return "tiff";
     return extension;
 }
 

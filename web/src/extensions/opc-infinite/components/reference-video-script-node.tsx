@@ -38,6 +38,7 @@ import { requestImageQuestion } from "@/services/api/image";
 import { resolveResourceUrl } from "@/services/api/resources";
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
 import { useResolvedCanvasResourceReferences } from "@/components/canvas/use-resolved-canvas-resource-references";
+import { HEADER_CANVAS_SYSTEM_PROMPT_ID, VAULT_PROMPT_IDS } from "@/services/api/prompt-vault";
 import {
     buildReferenceScriptCreationAssistantPrompts,
     normalizeCreationAssistantScript,
@@ -837,7 +838,17 @@ export function CreationAssistantRefScriptNodeContent({ node, theme }: Props) {
                 { ...config, model: effectiveScriptModel, systemPrompt: effectiveSystemPrompt },
                 [{ role: "user", content: finalContentParts }],
                 handleDelta,
-                { temperature: 0.85, presence_penalty: 0.2, signal: controller.signal, scene: "ref_script" },
+                {
+                    temperature: 0.85,
+                    presence_penalty: 0.2,
+                    signal: controller.signal,
+                    scene: "ref_script",
+                    headers: !useCustomPrompt
+                        ? {
+                              [HEADER_CANVAS_SYSTEM_PROMPT_ID]: VAULT_PROMPT_IDS.CREATION_ASSISTANT_REFERENCE,
+                          }
+                        : undefined,
+                },
             );
 
             clearInterval(progressTimer);

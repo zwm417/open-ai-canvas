@@ -443,3 +443,162 @@ func TestMediaRecoveryAudioKeepsAllReturnedResults(t *testing.T) {
 		t.Fatal("legacy singular audio result missing")
 	}
 }
+
+// @opc-adapter: media-dual-track [start]
+func TestMediaDeliveryDualTrackAndEarlySettlement(t *testing.T) {
+	t.Setenv("CANVAS_ALLOW_PRIVATE_UPSTREAMS", "true")
+	s, db := newMediaRecoveryTestService(t)
+	picture := mediaTestPNG(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write(picture)
+	}))
+	defer server.Close()
+
+	orderID := newID()
+	billingOrder := &model.BillingOrder{
+		ID:                          orderID,
+		UserID:                      "media-user",
+		Status:                      model.BillingStatusRunning,
+		ReservedAmountMicrocredits:  1000,
+		ActualAmountMicrocredits:    0,
+		CreatedAt:                   time.Now(),
+		UpdatedAt:                   time.Now(),
+	}
+	if err := db.Create(billingOrder).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.CreditAccount{UserID: "media-user", AvailableMicrocredits: 10000, ReservedMicrocredits: 1000}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	upstreamURL := server.URL + "/generated_video.mp4?secret=test-secret"
+	expires := time.Now().Add(time.Hour)
+	input, _ := json.Marshal(canvasGenerationInput{Mode: "image", Config: providerConfig{BaseURL: server.URL}, Prompt: "dual-track test"})
+	task := &model.Task{
+		ID:                newID(),
+		UserID:            "media-user",
+		Type:              "canvas_image",
+		Status:            model.TaskStatusRunning,
+		BillingOrderID:    orderID,
+		ProviderRequestID: "req-123",
+		InputJSON:         string(input),
+		LeaseOwner:        "worker-test",
+		LeaseExpiresAt:    &expires,
+		RouteRun:          1,
+		CreatedAt:         time.Now(),
+	}
+	if err := db.Create(task).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.WithValue(withProviderAnalytics(context.Background(), s, *task), mediaExecutionTaskKey{}, *task)
+	result, handled, err := recoverProtocolMedia(ctx, providerConfig{BaseURL: server.URL}, "image", []protocol.MediaReference{
+		{URL: upstreamURL, MIMEType: "image/png"},
+	})
+	if !handled || err != nil {
+		t.Fatalf("recoverProtocolMedia failed: handled=%v, err=%v", handled, err)
+	}
+	if len(result) == 0 {
+		t.Fatal("empty result")
+	}
+
+	// 1. 验证计费订单已出片即结算平账
+	var settledOrder model.BillingOrder
+	if err := db.First(&settledOrder, "id = ?", orderID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if settledOrder.Status != model.BillingStatusSettled {
+		t.Fatalf("expected billing status settled, got %s", settledOrder.Status)
+	}
+
+	// 2. 验证任务中的双轨状态与不可抵赖上游凭据
+	savedTask, err := s.repo.Task(task.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if savedTask.UpstreamURL != upstreamURL {
+		t.Fatalf("expected task upstream url %s, got %s", upstreamURL, savedTask.UpstreamURL)
+	}
+	if savedTask.LocalStatus != model.LocalStatusReady {
+		t.Fatalf("expected task local status ready, got %s", savedTask.LocalStatus)
+	}
+	if savedTask.OSSSyncStatus != model.OSSSyncStatusSkipped {
+		t.Fatalf("expected task oss sync status skipped, got %s", savedTask.OSSSyncStatus)
+	}
+
+	// 3. 验证向前端输出的任务已被脱敏，不泄漏凭据
+	publicOutput := taskForOutput(*savedTask)
+	if publicOutput.UpstreamURL != "" {
+		t.Fatalf("expected empty public upstream url, got %s", publicOutput.UpstreamURL)
+	}
+
+	// 4. 验证资源表的双轨状态与上游地址归档
+	images, ok := result["images"].([]interface{})
+	if !ok || len(images) == 0 {
+		t.Fatal("no images in result")
+	}
+	imgMap := images[0].(map[string]interface{})
+	resourceID := imgMap["resourceId"].(string)
+	resource, err := s.repo.Resource(resourceID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resource.UpstreamURL != upstreamURL {
+		t.Fatalf("expected resource upstream url %s, got %s", upstreamURL, resource.UpstreamURL)
+	}
+	if resource.LocalStatus != model.LocalStatusReady {
+		t.Fatalf("expected resource local status ready, got %s", resource.LocalStatus)
+	}
+	if resource.OSSSyncStatus != model.OSSSyncStatusSkipped {
+		t.Fatalf("expected resource oss sync status skipped, got %s", resource.OSSSyncStatus)
+	}
+
+	// 5. 验证多图产物独立归档场景（各资源准确绑定自身独立上游URL）
+	url1 := server.URL + "/img1.png"
+	url2 := server.URL + "/img2.png"
+	multiTask := &model.Task{
+		ID:             newID(),
+		UserID:         "media-user",
+		Type:           "canvas_image",
+		Status:         model.TaskStatusRunning,
+		InputJSON:      string(input),
+		LeaseOwner:     "worker-test",
+		LeaseExpiresAt: &expires,
+		RouteRun:       1,
+		CreatedAt:      time.Now(),
+	}
+	if err := db.Create(multiTask).Error; err != nil {
+		t.Fatal(err)
+	}
+	multiCtx := context.WithValue(withProviderAnalytics(context.Background(), s, *multiTask), mediaExecutionTaskKey{}, *multiTask)
+	multiResult, multiHandled, multiErr := recoverProtocolMedia(multiCtx, providerConfig{BaseURL: server.URL}, "image", []protocol.MediaReference{
+		{URL: url1, MIMEType: "image/png"},
+		{URL: url2, MIMEType: "image/png"},
+	})
+	if !multiHandled || multiErr != nil {
+		t.Fatalf("multi recoverProtocolMedia failed: handled=%v err=%v", multiHandled, multiErr)
+	}
+	multiImages, ok := multiResult["images"].([]interface{})
+	if !ok || len(multiImages) != 2 {
+		t.Fatalf("expected 2 images, got %#v", multiResult["images"])
+	}
+	res1ID := multiImages[0].(map[string]interface{})["resourceId"].(string)
+	res2ID := multiImages[1].(map[string]interface{})["resourceId"].(string)
+	res1, err := s.repo.Resource(res1ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res2, err := s.repo.Resource(res2ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res1.UpstreamURL != url1 {
+		t.Fatalf("expected res1 upstream url %s, got %s", url1, res1.UpstreamURL)
+	}
+	if res2.UpstreamURL != url2 {
+		t.Fatalf("expected res2 upstream url %s, got %s", url2, res2.UpstreamURL)
+	}
+}
+// @opc-adapter: media-dual-track [end]
+

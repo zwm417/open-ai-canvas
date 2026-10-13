@@ -1,0 +1,98 @@
+﻿{
+  "id": "tvc_director",
+  "name": "TVC 商业广告导演",
+  "description": "使用智影自有媒体生成和后期链路，把品牌与产品 brief 制作成品牌 TVC、产品宣传片和商业广告短片成片。",
+  "icon": "🎥",
+  "color": "#8B1E2D",
+  "category": "Video",
+  "scenarios": [
+    "品牌 TVC",
+    "产品宣传片",
+    "商业广告短片",
+    "产品 Hero Film",
+    "品牌形象广告",
+    "产品发布片",
+    "TVC storyboard",
+    "commercial advertising film"
+  ],
+  "promptTemplate": "使用 $tvc-director 完成当前任务。所有图片、视频、音频和 3D 生成必须通过智影 Platform Media，禁止直连外部供应商。用户要求成片时，必须完成品牌与产品真相、创意、脚本、分镜、资产、关键帧、逐镜视频、声音、Remotion/FFmpeg 合成和最终 MP4 验收，不得只交付提示词或分镜。\n\n用户需求：{userInput}",
+  "negativePrompt": "wrong product, product identity drift, wrong packaging, wrong logo, invented claim, fake specification, copied competitor branding, generic stock commercial, random montage, product missing, inconsistent character, broken continuity, unreadable text, timing drift, flicker, watermark, low quality",
+  "preferredModel": "auto",
+  "outputType": "video",
+  "aspectRatio": "auto",
+  "analysisPrompt": "先核验品牌与产品事实、权利、产品参考素材和交付规格，建立 brand-product bible。提出并确认有差异的 TVC 创意方向，在分镜中锁定准确时间线、对白/旁白、环境声、拟音、音乐意图、字幕原文和起止时间以及 End Frame。通过智影 Platform Media 逐项生成产品/角色/场景资产与每镜 start/peak/end 关键帧，再用支持原生同步声音的模型以 generateAudio=true 逐镜生成商业视频。使用 Remotion/FFmpeg 保留合格原生声轨与字幕并完成镜头拼接、Logo、CTA、转场和必要的背景音乐修整。只有最终 MP4 渲染并通过品牌、资产、镜头、时间线和技术终检后才宣称成片完成。",
+  "displayName": "TVC Director",
+  "shortDescription": "用智影完成品牌 TVC、产品宣传片和商业广告成片。",
+  "skillIds": [
+    "tvc_director",
+    "tvc-director"
+  ],
+  "role": "品牌 TVC 创意导演、产品摄影导演与商业成片制作人",
+  "agentType": "tvc-commercial-film-director",
+  "workflowProfile": "staged",
+  "workflow": {
+    "mode": "staged",
+    "confirmationPolicy": "phase_gated",
+    "stages": [
+      "核验品牌产品 brief、权利和交付规格",
+      "建立产品真相、品牌世界和连续性圣经",
+      "提出并确认 TVC 创意方向",
+      "锁定脚本、分镜时间线、声音和 End Frame",
+      "通过智影 Platform Media 生成一致性资产",
+      "逐镜生成 start/peak/end 商业关键帧",
+      "根据分镜和关键帧逐镜生成视频",
+      "制作旁白、音乐、音效、字幕和品牌文字",
+      "使用 Remotion 和 FFmpeg 合成渲染",
+      "执行品牌、资产、镜头、时间线和技术终检"
+    ],
+    "requiredInputs": [
+      {
+        "key": "brand_product_brief",
+        "label": "品牌、产品、目标受众、广告目标与核心卖点",
+        "required": true,
+        "blocking": true,
+        "accepts": ["text", "image", "images", "video"],
+        "prompt": "请提供品牌和产品 brief，至少包含产品、广告目标与希望突出卖点。"
+      },
+      {
+        "key": "product_brand_assets",
+        "label": "产品多角度图、包装、Logo 和品牌视觉资产",
+        "required": true,
+        "blocking": true,
+        "accepts": ["image", "images", "video", "text"],
+        "prompt": "如需制作成片，请上传可锁定产品身份的多角度图、包装、Logo 和品牌视觉资产。"
+      },
+      {
+        "key": "delivery_spec",
+        "label": "时长、画幅、平台、语言和交付版本",
+        "required": true,
+        "blocking": true,
+        "accepts": ["text", "choice", "number"],
+        "prompt": "请确认广告时长、画幅、发布平台和语言。"
+      },
+      {
+        "key": "claim_evidence",
+        "label": "卖点、参数、价格、资质和禁用表述证据",
+        "required": false,
+        "blocking": false,
+        "accepts": ["text", "image", "images", "document"]
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "web_research",
+      "image_generation",
+      "video_generation",
+      "audio_generation",
+      "multi_asset_planning",
+      "task_status",
+      "post_production_handoff"
+    ]
+  },
+  "tools": [
+    "image_generate",
+    "web_search",
+    "web_extract",
+    "fetch_url_context"
+  ]
+}

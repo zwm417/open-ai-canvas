@@ -133,7 +133,9 @@ func (s *Service) ImportAdminChannelModels(ctx context.Context, actor *model.Use
 		if idErr != nil {
 			return nil, idErr
 		}
-		missing = append(missing, model.ChannelModel{ID: modelID, ChannelID: channelID, ModelKey: name, DisplayName: name, BillingMode: "fixed_request", Enabled: false, PriceConfigured: false, PriceVersion: 1})
+		// @opc-adapter: seedance-jimeng-icon-governance [start]
+		missing = append(missing, model.ChannelModel{ID: modelID, ChannelID: channelID, ModelKey: name, DisplayName: name, Icon: normalizeChannelModelIcon("", name, name, name, ""), BillingMode: "fixed_request", Enabled: false, PriceConfigured: false, PriceVersion: 1})
+		// @opc-adapter: seedance-jimeng-icon-governance [end]
 		known[key] = struct{}{}
 	}
 	added, err := s.repo.CreateMissingChannelModels(missing)

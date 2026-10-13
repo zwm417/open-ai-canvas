@@ -578,7 +578,7 @@ func cloudAgentBatchTableState(table map[string]any, offset int, precise bool) m
 		operation = "try_on"
 	}
 	concurrency := 10
-	if value, ok := cloudAgentInteger(table["concurrency"]); ok && (value == 1 || value == 5 || value == 10) {
+	if value, ok := cloudAgentInteger(table["concurrency"]); ok && value >= 1 && value <= 10 {
 		concurrency = value
 	}
 	columns := []any{}

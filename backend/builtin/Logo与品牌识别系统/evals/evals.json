@@ -1,0 +1,34 @@
+{
+  "skill_name": "logo-brand",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "为一家精品咖啡连锁建立完整 Logo 和 VI 系统。",
+      "should_trigger": true,
+      "expected_output": "品牌诊断；多路线确认；生产交接",
+      "assertions": [
+        "品牌诊断",
+        "多路线确认",
+        "生产交接"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "只要三个图标型 Logo 草案。",
+      "should_trigger": false,
+      "expected_output": "应优先路由到 logo-generator",
+      "assertions": [
+        "应优先路由到 logo-generator"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "现有 Logo 不变，只做新品发布 Campaign。",
+      "should_trigger": false,
+      "expected_output": "应路由到 brand-extension",
+      "assertions": [
+        "应路由到 brand-extension"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+interface:
+  display_name: "亚马逊产品套图"
+  short_description: "按站点规则规划并生成亚马逊主图、辅图和移动端信息图套图"
+  default_prompt: "使用 $amazon-listing-images 根据商品参考资料规划并生成合规的亚马逊产品套图。"
+policy:
+  allow_implicit_invocation: true

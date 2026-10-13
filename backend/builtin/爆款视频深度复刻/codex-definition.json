@@ -1,0 +1,95 @@
+﻿{
+  "id": "video_replication",
+  "name": "视频逐镜复刻",
+  "description": "解析授权参考视频的每秒帧、真实分镜和背景音乐，使用用户参考图生成替换关键帧，再逐镜生成视频并按原时间线合成验收。",
+  "icon": "🎬",
+  "color": "#1B3C73",
+  "category": "Video",
+  "scenarios": [
+    "1:1 视频复刻",
+    "带货视频商品替换",
+    "逐镜头视频重建",
+    "参考图角色替换",
+    "视频本地化复刻",
+    "shot-by-shot video recreation",
+    "product swap video"
+  ],
+  "promptTemplate": "使用 $video-replication 完成当前任务。必须依次解析原视频、每秒抽帧并识别分镜、提取或分离 BGM、用用户参考图生成每镜 start/peak/end 替换关键帧、逐镜生成视频、按原时间线合成并验收最终 MP4。不得把抽帧、关键帧或生成任务完成冒充成片完成；所有 AI 媒体生成只能通过智影 Platform Media。\n\n用户需求：{userInput}",
+  "negativePrompt": "subject identity drift, wrong product, wrong packaging, copied competitor logo, missing one-second samples, missed shot boundary, full mix mislabeled as BGM, camera direction drift, action discontinuity, timing drift, caption mismatch, broken transition, flicker, unreadable text, watermark, low quality",
+  "preferredModel": "auto",
+  "outputType": "video",
+  "aspectRatio": "auto",
+  "analysisPrompt": "先核验原视频授权、用户主体参考图和替换事实。按 1 Hz 抽取原片分析帧并补齐镜头切点前后帧，探测准确 FPS、帧数和时间戳；提取完整音轨，混有人声时完成 stem separation 以分析原声结构。建立逐镜蓝图，为每镜规划 start/peak/end 锚点、原生对白/环境声/拟音/音乐意图和字幕原文/起止帧；通过智影 Platform Media 使用用户参考图和原构图帧生成新关键帧，再以 generateAudio=true 逐镜图生视频。最后使用 Remotion/ffmpeg 保留合格原生声轨和字幕，按原时间线及转场合成；仅在原生背景音乐不符合授权复刻目标时替换 BGM，并验收最终 MP4。",
+  "displayName": "Video Replication",
+  "shortDescription": "用用户参考图逐镜重建关键帧、视频和原片时间线。",
+  "skillIds": [
+    "video_replication",
+    "video-replication"
+  ],
+  "role": "逐镜视频复刻导演与参考图一致性工程师",
+  "agentType": "shot-by-shot-video-replication-director",
+  "workflowProfile": "staged",
+  "workflow": {
+    "mode": "staged",
+    "confirmationPolicy": "phase_gated",
+    "stages": [
+      "核验授权原视频、用户参考图和替换事实",
+      "探测媒体参数并建立原始帧时间基准",
+      "每秒抽帧、识别真实分镜并补齐边界帧",
+      "提取完整音轨并分离背景音乐、人声和音效",
+      "建立逐镜蓝图和 start/peak/end 锚点计划",
+      "用用户参考图逐镜生成替换关键帧并建立映射",
+      "根据分镜、动作、运镜和新关键帧逐镜生成视频",
+      "按原时间线、BGM、字幕和转场合成",
+      "执行资产、时间线、成片和音频验收"
+    ],
+    "requiredInputs": [
+      {
+        "key": "authorized_reference_video",
+        "label": "已获授权的原始参考视频和复刻区间",
+        "required": true,
+        "blocking": true,
+        "accepts": ["video", "text"],
+        "prompt": "请上传已获授权的原始参考视频，并说明需要复刻的准确区间。"
+      },
+      {
+        "key": "subject_reference_images",
+        "label": "用于替换的商品或人物参考图",
+        "required": true,
+        "blocking": true,
+        "accepts": ["image", "images"],
+        "prompt": "请上传需要锁定身份的商品或人物参考图；建议包含正面、侧面、背面和关键细节。"
+      },
+      {
+        "key": "substitution_facts",
+        "label": "替换对象、商品事实、品牌文案和禁止项",
+        "required": true,
+        "blocking": true,
+        "accepts": ["text", "image", "images"],
+        "prompt": "请说明要替换的主体，并提供商品名称、规格、价格、卖点、CTA 和禁用表述。"
+      },
+      {
+        "key": "delivery_spec",
+        "label": "交付画幅、分辨率、语言和版本",
+        "required": false,
+        "blocking": false,
+        "accepts": ["text", "choice", "number"]
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "audio_analysis",
+      "image_generation",
+      "video_generation",
+      "multi_asset_planning",
+      "task_status",
+      "post_production_handoff"
+    ]
+  },
+  "tools": [
+    "image_generate",
+    "web_search",
+    "web_extract",
+    "fetch_url_context"
+  ]
+}

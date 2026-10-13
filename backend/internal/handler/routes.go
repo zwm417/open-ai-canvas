@@ -113,6 +113,14 @@ func RegisterTaskRoutes(r *gin.RouterGroup, svc *service.Service) {
 			Limit:      pageSize,
 			ProjectID:  c.Query("projectId"),
 			ActiveOnly: c.Query("activeOnly") == "true",
+			// @opc-adapter: task_list_batch_id [start]
+			BatchID: func() string {
+				if b := c.Query("batchId"); b != "" {
+					return b
+				}
+				return c.Query("batch_id")
+			}(),
+			// @opc-adapter: task_list_batch_id [end]
 		})
 		if err != nil {
 			failService(c, err)

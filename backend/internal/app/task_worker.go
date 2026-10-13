@@ -227,6 +227,11 @@ func (w *taskWorkerCoordinator) processClaimedTask(task *model.Task, globalSlot 
 		return readErr
 	}
 	task.MediaRecoveryJSON, task.MediaStage = latestMedia.MediaRecoveryJSON, latestMedia.MediaStage
+	// @opc-adapter: media-dual-track [start]
+	task.UpstreamURL = latestMedia.UpstreamURL
+	task.LocalStatus = latestMedia.LocalStatus
+	task.OSSSyncStatus = latestMedia.OSSSyncStatus
+	// @opc-adapter: media-dual-track [end]
 	var deliveryFailure *mediaRecoveryError
 	if task.MediaRecoveryJSON != "" || errors.As(err, &deliveryFailure) {
 		return s.finishTaskMediaRecovery(task, result, err)

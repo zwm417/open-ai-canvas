@@ -2,12 +2,43 @@
 import { useState, useEffect } from "react";
 
 const CACHE_NAME = "opc-inspiration-cache-v1";
+const MAX_MEMORY_ENTRIES = 120;
 
 /**
  * 内存 L1 缓存 (In-Memory LRU Map)
- * 映射: 原始 URL ➔ 本地已解析的 Blob URL 或 本地静态路径
+ * 映射: 规范化 Key ➔ 本地已解析的 Blob URL 或 本地静态路径
  */
 const memoryCache = new Map<string, string>();
+
+function getInspirationCanonicalKey(url: string): string {
+    if (url.startsWith("/") || url.startsWith("./") || url.startsWith("blob:") || url.startsWith("data:")) {
+        return url;
+    }
+    try {
+        const parsed = new URL(url, typeof window !== "undefined" ? window.location?.origin : "http://localhost");
+        return `url:${parsed.origin}${parsed.pathname}`;
+    } catch {
+        return `url:${url.split("?")[0]}`;
+    }
+}
+
+function setMemoryCacheWithLimit(key: string, objectUrl: string) {
+    if (memoryCache.has(key)) {
+        memoryCache.delete(key);
+    } else if (memoryCache.size >= MAX_MEMORY_ENTRIES) {
+        const oldestKey = memoryCache.keys().next().value;
+        if (oldestKey) {
+            const oldUrl = memoryCache.get(oldestKey);
+            if (oldUrl?.startsWith("blob:")) {
+                try {
+                    URL.revokeObjectURL(oldUrl);
+                } catch {}
+            }
+            memoryCache.delete(oldestKey);
+        }
+    }
+    memoryCache.set(key, objectUrl);
+}
 
 /**
  * 是否支持浏览器原生 CacheStorage API
@@ -32,30 +63,33 @@ export const InspirationCache = {
             return url;
         }
 
+        const canonicalKey = getInspirationCanonicalKey(url);
+
         // 2. L1: 内存缓存命中检查
-        if (memoryCache.has(url)) {
-            return memoryCache.get(url)!;
+        if (memoryCache.has(canonicalKey)) {
+            return memoryCache.get(canonicalKey)!;
         }
 
         // 3. L2: 本地磁盘持久缓存 (CacheStorage) 检查
         if (isCacheStorageSupported) {
             try {
                 const cache = await caches.open(CACHE_NAME);
-                const matched = await cache.match(url);
+                const pseudoRequest = new Request(`https://zhiying.local/inspiration/${encodeURIComponent(canonicalKey)}`);
+                const matched = await cache.match(pseudoRequest);
                 if (matched) {
                     const blob = await matched.blob();
                     const objectUrl = URL.createObjectURL(blob);
-                    memoryCache.set(url, objectUrl);
+                    setMemoryCacheWithLimit(canonicalKey, objectUrl);
                     return objectUrl;
                 }
 
                 // 4. 本地未命中：后台异步写入 CacheStorage，不阻塞前台当前渲染
                 fetch(url, { mode: "cors" }).then(async (response) => {
                     if (response.ok) {
-                        await cache.put(url, response.clone());
+                        await cache.put(pseudoRequest, response.clone());
                         const blob = await response.blob();
                         const objectUrl = URL.createObjectURL(blob);
-                        memoryCache.set(url, objectUrl);
+                        setMemoryCacheWithLimit(canonicalKey, objectUrl);
                     }
                 }).catch(() => {});
             } catch (err) {
@@ -75,7 +109,8 @@ export const InspirationCache = {
         if (url.startsWith("/") || url.startsWith("./") || url.startsWith("blob:")) {
             return url;
         }
-        return memoryCache.get(url) || null;
+        const canonicalKey = getInspirationCanonicalKey(url);
+        return memoryCache.get(canonicalKey) || null;
     },
 
     /**
@@ -96,10 +131,24 @@ export const InspirationCache = {
     },
 
     /**
-     * 清空本地磁盘持久缓存
+     * 清空内存缓存
+     */
+    clear(): void {
+        for (const objectUrl of memoryCache.values()) {
+            if (objectUrl.startsWith("blob:")) {
+                try {
+                    URL.revokeObjectURL(objectUrl);
+                } catch {}
+            }
+        }
+        memoryCache.clear();
+    },
+
+    /**
+     * 清空本地磁盘持久缓存与内存
      */
     async clearCache(): Promise<void> {
-        memoryCache.clear();
+        this.clear();
         if (isCacheStorageSupported) {
             try {
                 await caches.delete(CACHE_NAME);

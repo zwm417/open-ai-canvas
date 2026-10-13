@@ -13,7 +13,7 @@ function model(label = "", price = 300000, modelKey = "seedance-2.0", displayNam
     return {
         id: `${modelKey}-${label || "default"}`, modelKey, displayName, channelLabel: label,
         description: label ? `${label}的使用说明` : "",
-        icon: "ByteDance", capability: "video", protocol: "seedance", available: true,
+        icon: "Jimeng", capability: "video", protocol: "seedance", available: true,
         pricingMode: "provider", priceLabel: "",
         capabilityConfig: defaultModelCapabilityConfig("seedance", "seedance-2.0"),
         priceTiers: [{ id: "tier", selector: {}, resolution: "*", videoSeconds: 0, billingMode: "per_second", unitPriceMicrocredits: price, inputTokenPriceMicrocredits: 0, outputTokenPriceMicrocredits: 0, cachedTokenPriceMicrocredits: 0 }],

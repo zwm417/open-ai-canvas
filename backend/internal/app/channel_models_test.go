@@ -101,6 +101,64 @@ func TestSaveAdminChannelModelPersistsAndPublishesIcon(t *testing.T) {
 	}
 }
 
+// @opc-adapter: seedance-jimeng-icon-governance [start]
+func TestSaveAdminChannelModelNormalizesSeedanceToJimeng(t *testing.T) {
+	svc, db := newChannelModelTestService(t)
+	admin := &model.User{ID: "admin", Role: model.UserRoleAdmin}
+	channel := model.ModelChannel{ID: "channel-sd", UserID: admin.ID, Scope: model.ChannelScopeSystem, Enabled: true, Name: "Test SD", BaseURL: "https://example.com/v1", APIKey: "key", APIFormat: "openai", ModelsJSON: `[]`}
+	if err := db.Create(&channel).Error; err != nil {
+		t.Fatal(err)
+	}
+	enabled := true
+
+	// 1. 显式 ByteDance 图标的 Seedance 模型自动归一化为 Jimeng
+	savedSd, err := svc.SaveAdminChannelModel(admin, channel.ID, "", ChannelModelRequest{
+		ModelKey: "seedance-2.5", DisplayName: "Seedance 2.5", Icon: "ByteDance", Capability: "video", Protocol: "seedance-videos-compatible",
+		CapabilityConfig: DefaultModelCapabilityConfigForModel("seedance-videos-compatible", "seedance-2.5"),
+		PriceTiers:       []ChannelModelPriceTierRequest{{BillingMode: "per_second", PriceConfigured: true, Enabled: &enabled, UnitPriceMicrocredits: 100000}}, Enabled: &enabled,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if savedSd.Icon != "Jimeng" {
+		t.Fatalf("saved icon = %q, want Jimeng", savedSd.Icon)
+	}
+	var storedSd model.ChannelModel
+	if err := db.First(&storedSd, "id = ?", savedSd.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if storedSd.Icon != "Jimeng" {
+		t.Fatalf("stored icon = %q, want Jimeng", storedSd.Icon)
+	}
+
+	// 2. 空图标的 sd2.0 / dola 模型自动推导为 Jimeng
+	savedMini, err := svc.SaveAdminChannelModel(admin, channel.ID, "", ChannelModelRequest{
+		ModelKey: "sd2.0-720p", DisplayName: "Seedance 2.0", Icon: "", Capability: "video", Protocol: "lxmone-sd-videos",
+		CapabilityConfig: DefaultModelCapabilityConfigForModel("lxmone-sd-videos", "sd2.0-720p"),
+		PriceTiers:       []ChannelModelPriceTierRequest{{BillingMode: "per_second", PriceConfigured: true, Enabled: &enabled, UnitPriceMicrocredits: 100000}}, Enabled: &enabled,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if savedMini.Icon != "Jimeng" {
+		t.Fatalf("saved mini icon = %q, want Jimeng", savedMini.Icon)
+	}
+
+	// 3. 非 Seedance 模型的独立图标保持原样不受影响
+	savedWan, err := svc.SaveAdminChannelModel(admin, channel.ID, "", ChannelModelRequest{
+		ModelKey: "wan3.0-video", DisplayName: "wan3.0", Icon: "Alibaba", Capability: "video", Protocol: "lxmone-wan-videos",
+		CapabilityConfig: DefaultModelCapabilityConfigForModel("lxmone-wan-videos", "wan3.0-video"),
+		PriceTiers:       []ChannelModelPriceTierRequest{{BillingMode: "per_second", PriceConfigured: true, Enabled: &enabled, UnitPriceMicrocredits: 100000}}, Enabled: &enabled,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if savedWan.Icon != "Alibaba" {
+		t.Fatalf("saved wan icon = %q, want Alibaba", savedWan.Icon)
+	}
+}
+// @opc-adapter: seedance-jimeng-icon-governance [end]
+
 func TestSanitizeChannelModelRejectsCorruptCapabilityConfig(t *testing.T) {
 	svc := &Service{}
 	_, err := svc.sanitizeChannelModel(&model.ChannelModel{

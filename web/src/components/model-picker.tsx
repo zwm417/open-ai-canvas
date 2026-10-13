@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, memo, type CSSProperties, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, memo, type CSSProperties, type KeyboardEvent } from "react";
 import { Check, ChevronDown, Coins } from "lucide-react";
 import { Button as AriaButton, Dialog, DialogTrigger, Popover as AriaPopover } from "react-aria-components";
 
@@ -15,6 +15,9 @@ import { refreshSystemChannels } from "@/lib/user-session";
 import { ModelLogo } from "@/components/model-logo";
 import { ModelTags } from "@/components/model-tags";
 import { quoteModel, type LogicalModelQuote } from "@/services/api/logical-models";
+// @opc-feature: seedance-jimeng-icon-governance [start]
+import { resolveModelIcon } from "@/lib/seedance-video";
+// @opc-feature: seedance-jimeng-icon-governance [end]
 
 type ModelPickerProps = {
     config: AiConfig;
@@ -33,7 +36,7 @@ type ModelPickerProps = {
     showConfiguredModelName?: boolean;
 };
 
-export function ModelPicker({
+export const ModelPicker = memo(function ModelPicker({
     config,
     value,
     onChange,
@@ -50,7 +53,6 @@ export function ModelPicker({
     showConfiguredModelName = false,
 }: ModelPickerProps) {
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
-    const pickerId = useId();
     // 双保险：即使 store merge 写出非法 theme，这里也兜底到 dark，避免 "reading 'node'" 崩溃
     const rawTheme = useActiveTheme();
     const theme = (canvasThemes[rawTheme as keyof typeof canvasThemes] ?? canvasThemes.dark) as CanvasTheme;
@@ -67,7 +69,7 @@ export function ModelPicker({
     const resolvedCurrent = isDirectSystemModel(config, storedCurrent) ? storedCurrent : resolveCompatibleModel(config, storedCurrent, selectionRequirements) || storedCurrent;
     // 旧画布可能保存过已下架或前端历史内置模型；它们不能重新进入当前可选目录。
     const current = options.includes(resolvedCurrent) ? resolvedCurrent : "";
-    const currentPrice = modelMenuPrice(config, current, capability, false, requirements);
+    const currentPrice = useMemo(() => modelMenuPrice(config, current, capability, false, requirements), [capability, config, current, requirements]);
     const quoteRequest = useMemo(() => modelQuoteRequest(config, current, capability, requirements), [capability, config, current, requirements]);
     const [routeQuote, setRouteQuote] = useState<LogicalModelQuote | undefined>();
     const creationVariant = variant === "creation";
@@ -105,16 +107,6 @@ export function ModelPicker({
     }, [creditsEnabled, quoteRequest, showSelectedPrice]);
 
     useEffect(() => {
-        const closeOtherPicker = (event: Event) => {
-            if ((event as CustomEvent<string>).detail !== pickerId) {
-                setOpen((prev) => (prev ? false : prev));
-            }
-        };
-        window.addEventListener("model-picker-open", closeOtherPicker);
-        return () => window.removeEventListener("model-picker-open", closeOtherPicker);
-    }, [pickerId]);
-
-    useEffect(() => {
         if (!open) return;
         // 画布拖拽从 pointerdown 开始，须在捕获阶段关闭 Portal 菜单，避免菜单与触发器分离。
         const closeOnOutsidePointer = (event: PointerEvent) => {
@@ -134,26 +126,33 @@ export function ModelPicker({
             onMissingConfig?.();
         }
         if (nextOpen) {
-            window.dispatchEvent(new CustomEvent("model-picker-open", { detail: pickerId }));
             setActiveGroupKey(optionGroups.find((group) => group.models.some((item) => item.models.includes(current)))?.key ?? null);
         }
         setOpen(nextOpen);
     };
     // @opc-feature: resilient-model-picker-open [end]
-    const focusMenuOption = (last = false) => {
+
+    const handleSelectModel = useCallback((model: string) => {
+        onChange(model);
+        setPickerOpen(false);
+    }, [onChange]);
+
+    const focusMenuOption = useCallback((last = false) => {
         window.requestAnimationFrame(() => {
             const buttons = menuRef.current?.querySelectorAll<HTMLButtonElement>('[data-model-picker-item]:not(:disabled)');
             const target = last ? buttons?.item((buttons?.length || 1) - 1) : buttons?.item(0);
             target?.focus();
         });
-    };
-    const handleTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    }, []);
+
+    const handleTriggerKeyDown = useCallback((event: KeyboardEvent<HTMLButtonElement>) => {
         if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
         event.preventDefault();
         setPickerOpen(true);
         focusMenuOption(event.key === "ArrowUp");
-    };
-    const handleMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    }, [focusMenuOption]);
+
+    const handleMenuKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
         if (event.key === "Escape") {
             event.preventDefault();
             setOpen(false);
@@ -173,7 +172,8 @@ export function ModelPicker({
         const activeIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
         const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 : event.key === "ArrowUp" ? Math.max(0, activeIndex - 1) : Math.min(buttons.length - 1, activeIndex + 1);
         buttons[nextIndex]?.focus();
-    };
+    }, [activeGroupKey, focusMenuOption]);
+
     // @opc-feature: resilient-model-picker-popover [start]
     return (
         <div className={cn(fullWidth ? "w-full min-w-0" : "w-fit max-w-full")} title={current ? pickerModelOptionLabel(config, current, showConfiguredModelName) : placeholder}>
@@ -196,6 +196,7 @@ export function ModelPicker({
                 <AriaPopover
                     placement="bottom start"
                     offset={4}
+                    isNonModal
                     className={cn(
                         "canvas-model-picker-popover creation-model-picker-popover creation-model-picker-surface canvas-composer-popover-surface z-[10050] outline-none rounded-xl border border-border/80 bg-surface-strong p-1 shadow-2xl",
                         popoverClassName,
@@ -221,10 +222,7 @@ export function ModelPicker({
                                 showOptionPrices={showOptionPrices}
                                 creditsEnabled={creditsEnabled}
                                 handleMenuKeyDown={handleMenuKeyDown}
-                                onSelectModel={(model) => {
-                                    onChange(model);
-                                    setPickerOpen(false);
-                                }}
+                                onSelectModel={handleSelectModel}
                                 focusMenuOption={focusMenuOption}
                             />
                         ) : null}
@@ -234,7 +232,7 @@ export function ModelPicker({
         </div>
     );
     // @opc-feature: resilient-model-picker-popover [end]
-}
+});
 
 const BrandRailButton = memo(function BrandRailButton({
     group,
@@ -748,5 +746,7 @@ function modelMenuMeta(model: string, capability?: ModelCapability): { descripti
 }
 
 export function ModelIcon({ config, model, icon }: { config?: AiConfig; model?: string; icon?: string }) {
-    return <ModelLogo icon={icon || (config && model ? modelIcon(config, model) : "")} size={14} />;
+    const rawIcon = icon || (config && model ? modelIcon(config, model) : "");
+    const resolved = resolveModelIcon(rawIcon, model);
+    return <ModelLogo icon={resolved} size={14} />;
 }

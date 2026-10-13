@@ -31,6 +31,10 @@ type Settings struct {
 	SessionToken      string           `json:"sessionToken"`
 	StorageLocationID string           `json:"storageLocationId"`
 	AllowUserS3       bool             `json:"allowUserS3"`
+	// @opc-adapter: media-dual-track [start]
+	// OSSSyncMode 控制生成的媒体是否强制同步至远端对象存储: "eager" (默认) | "skip" (省流量模式，仅落本地并记录上游URL)
+	OSSSyncMode string `json:"ossSyncMode,omitempty"`
+	// @opc-adapter: media-dual-track [end]
 	Runtime           RuntimePolicy    `json:"-"`
 	// 平台切换云厂商后仍需读取历史资源，因此仅归档非当前厂商的访问密钥。
 	ArchivedCredentials map[string]Credentials `json:"archivedCredentials,omitempty"`
@@ -104,6 +108,12 @@ func NormalizeSettings(value Settings) Settings {
 	if value.Runtime.ErrorBodyLimit <= 0 {
 		value.Runtime.ErrorBodyLimit = 1024
 	}
+	// @opc-adapter: media-dual-track [start]
+	value.OSSSyncMode = strings.ToLower(strings.TrimSpace(value.OSSSyncMode))
+	if value.OSSSyncMode == "" {
+		value.OSSSyncMode = "eager"
+	}
+	// @opc-adapter: media-dual-track [end]
 	value.ArchivedCredentials = CloneCredentials(value.ArchivedCredentials)
 	return value
 }

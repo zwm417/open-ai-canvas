@@ -113,9 +113,34 @@ func recoverProtocolMedia(ctx context.Context, config providerConfig, mode strin
 		return nil, true, &mediaRecoveryError{stage: "checkpoint", cause: errors.New("生成结果数量超过恢复限制")}
 	}
 	if task.MediaRecoveryJSON != "" {
+		// @opc-adapter: media-dual-track [start]
+		// 收到上游出片断点即刻平账结算（生视频、生图等固定计费出片即结；按秒计费音频待测出真实时长结算）
+		if task.BillingOrderID != "" && mode != "audio" {
+			_ = s.taskBilling().SettleBilling(task.BillingOrderID, task.ProviderRequestID)
+		}
+		// @opc-adapter: media-dual-track [end]
 		result, err := s.resumeTaskMedia(ctx, task)
 		return result, true, err
 	}
+	// @opc-adapter: media-dual-track [start]
+	// 汇总所有上游产物链接（单产物存单链接，多产物用换行保留全部凭据）
+	var upstreamURLs []string
+	for _, ref := range references {
+		if u := strings.TrimSpace(ref.URL); u != "" {
+			upstreamURLs = append(upstreamURLs, u)
+		}
+	}
+	if len(upstreamURLs) > 0 {
+		task.UpstreamURL = strings.Join(upstreamURLs, "\n")
+		task.LocalStatus = model.LocalStatusPending
+		task.OSSSyncStatus = model.OSSSyncStatusPending
+		_ = s.repo.UpdateTaskUpstreamInfo(task.ID, task.UpstreamURL, task.LocalStatus, task.OSSSyncStatus)
+	}
+	// 收到上游出片链接即刻平账结算，彻底解耦物理下载/OSS回传，杜绝用户关机/断网造成单边账与存疑挂起
+	if task.BillingOrderID != "" && mode != "audio" {
+		_ = s.taskBilling().SettleBilling(task.BillingOrderID, task.ProviderRequestID)
+	}
+	// @opc-adapter: media-dual-track [end]
 	checkpoint := &mediaCheckpoint{Mode: mode, StartedAt: time.Now()}
 	for _, reference := range references {
 		if len(reference.URL) > 16_384 {
@@ -218,10 +243,16 @@ func (s *Service) materializeTaskMedia(ctx context.Context, task *model.Task, co
 				}
 			}
 			stage := "local_save"
-			_, _, oss, settingErr := s.activeResourceOSSSetting(task.UserID)
+			ossSetting, _, oss, settingErr := s.activeResourceOSSSetting(task.UserID)
 			if settingErr != nil {
 				return nil, &mediaRecoveryError{stage: "upload", cause: settingErr}
 			}
+			// @opc-adapter: media-dual-track [start]
+			// 若存储配置为省流量/免上传模式（OSSSyncMode == "skip"），跳过上传 OSS
+			if ossSetting.OSSSyncMode == "skip" {
+				oss = false
+			}
+			// @opc-adapter: media-dual-track [end]
 			if oss || (resource != nil && resource.Provider != "local") {
 				stage = "upload"
 			}
@@ -229,9 +260,16 @@ func (s *Service) materializeTaskMedia(ctx context.Context, task *model.Task, co
 				return nil, err
 			}
 			started := time.Now()
-			resource, err = s.storeTaskMediaFile(task, index, path, item.MIMEType, checkpoint.Mode, resource)
+			resource, err = s.storeTaskMediaFile(task, index, path, item.MIMEType, checkpoint.Mode, resource, item.Reference.URL)
 			s.logMediaStage(*task, stage, started, err)
 			if err != nil {
+				// @opc-adapter: media-dual-track [start]
+				if stage == "upload" {
+					task.LocalStatus = model.LocalStatusReady
+					task.OSSSyncStatus = model.OSSSyncStatusInterrupted
+					_ = s.repo.UpdateTaskDeliveryStatus(task.ID, task.LocalStatus, task.OSSSyncStatus)
+				}
+				// @opc-adapter: media-dual-track [end]
 				return nil, &mediaRecoveryError{stage: stage, retryable: retryableMediaRecovery(err), cause: err}
 			}
 		}
@@ -242,6 +280,24 @@ func (s *Service) materializeTaskMedia(ctx context.Context, task *model.Task, co
 		url := resourceFileURL(resource.ID)
 		items = append(items, map[string]interface{}{"dataUrl": url, "url": url, "resourceId": resource.ID, "storageKey": "resource:" + resource.ID, "mimeType": resource.MimeType, "bytes": resource.Size, "width": resource.Width, "height": resource.Height, "durationMs": resource.DurationMs})
 	}
+	// @opc-adapter: media-dual-track [start]
+	task.LocalStatus = model.LocalStatusReady
+	hasOSSResource := false
+	for _, itm := range checkpoint.Items {
+		if itm.ResourceID != "" {
+			if res, resErr := s.repo.Resource(itm.ResourceID); resErr == nil && res != nil && res.Provider != "local" {
+				hasOSSResource = true
+				break
+			}
+		}
+	}
+	if hasOSSResource {
+		task.OSSSyncStatus = model.OSSSyncStatusSynced
+	} else {
+		task.OSSSyncStatus = model.OSSSyncStatusSkipped
+	}
+	_ = s.repo.UpdateTaskDeliveryStatus(task.ID, task.LocalStatus, task.OSSSyncStatus)
+	// @opc-adapter: media-dual-track [end]
 	result = map[string]interface{}{"mode": checkpoint.Mode}
 	if checkpoint.Mode == "image" {
 		result["images"] = items
@@ -279,6 +335,8 @@ func retryableMediaRecovery(err error) bool {
 	msg := strings.ToLower(err.Error())
 	if strings.Contains(msg, "timeout") || strings.Contains(msg, "connection reset") ||
 		strings.Contains(msg, "broken pipe") || strings.Contains(msg, "eof") ||
+		strings.Contains(msg, "forcibly closed") || strings.Contains(msg, "connection abort") ||
+		strings.Contains(msg, "wsaeconnreset") || strings.Contains(msg, "wsaeconnaborted") ||
 		strings.Contains(msg, "500") || strings.Contains(msg, "502") || strings.Contains(msg, "503") || strings.Contains(msg, "504") {
 		return true
 	}
@@ -297,6 +355,11 @@ func (s *Service) handleMediaRecoveryFailure(task *model.Task, cause error) erro
 		return repository.ErrTaskStateConflict
 	}
 	task.MediaRecoveryJSON, task.MediaStage = latest.MediaRecoveryJSON, latest.MediaStage
+	// @opc-adapter: media-dual-track [start]
+	task.UpstreamURL = latest.UpstreamURL
+	task.LocalStatus = latest.LocalStatus
+	task.OSSSyncStatus = latest.OSSSyncStatus
+	// @opc-adapter: media-dual-track [end]
 	var failure *mediaRecoveryError
 	if !errors.As(cause, &failure) {
 		failure = &mediaRecoveryError{stage: task.MediaStage, retryable: true, cause: cause}

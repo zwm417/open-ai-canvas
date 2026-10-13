@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"infinite-canvas/backend/internal/model"
@@ -255,3 +256,83 @@ func TestBatchRepricingRollsBackOnConcurrentChange(t *testing.T) {
 		})
 	}
 }
+
+// @opc-adapter: model-pricing-and-capability-governance [start]
+func TestSaveAdminChannelModelPreservesPriceTiersWhenOmitted(t *testing.T) {
+	svc, db := newChannelModelTestService(t)
+	admin := &model.User{ID: "admin", Role: model.UserRoleAdmin}
+	if err := db.Create(&model.ModelChannel{ID: "ch-preserve", UserID: admin.ID, Scope: model.ChannelScopeSystem, Enabled: true}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. 创建具备多规格阶梯价格档的模型 (720p / 1080p 两档)
+	initialReq := ChannelModelRequest{
+		ModelKey:         "video-tiered-test",
+		DisplayName:      "Tiered Video Test",
+		Capability:       "video",
+		Protocol:         string(model.ChannelInterfaceAgnesVideo),
+		BillingMode:      "per_second",
+		CapabilityConfig: DefaultModelCapabilityConfigForModel(string(model.ChannelInterfaceAgnesVideo), "video-tiered-test"),
+		PriceTiers: []ChannelModelPriceTierRequest{
+			{
+				Resolution:            "720P",
+				VideoSeconds:          5,
+				BillingMode:           "per_second",
+				UnitPriceMicrocredits: 40_000,
+				PriceConfigured:       true,
+			},
+			{
+				Resolution:            "1080P",
+				VideoSeconds:          5,
+				BillingMode:           "per_second",
+				UnitPriceMicrocredits: 70_000,
+				PriceConfigured:       true,
+			},
+		},
+	}
+	saved, err := svc.SaveAdminChannelModel(admin, "ch-preserve", "", initialReq)
+	if err != nil {
+		t.Fatalf("SaveAdminChannelModel(initial) error = %v", err)
+	}
+	if len(saved.PriceTiers) != 2 {
+		t.Fatalf("expected 2 tiers initially, got %d", len(saved.PriceTiers))
+	}
+
+	// 2. 模拟调用方仅更新元数据（如一级展示名、二级渠道标签、描述），完全未传 priceTiers (req.PriceTiers == nil)
+	updateReq := ChannelModelRequest{
+		ModelKey:     saved.ModelKey,
+		DisplayName:  "Tiered Video Test Renamed",
+		ChannelLabel: "新二级渠道",
+		Description:  "Updated description without priceTiers",
+		Capability:   saved.Capability,
+		Protocol:     string(saved.Protocol),
+		PriceTiers:   nil, // 显式未携带 priceTiers
+	}
+	updated, err := svc.SaveAdminChannelModel(admin, "ch-preserve", saved.ID, updateReq)
+	if err != nil {
+		t.Fatalf("SaveAdminChannelModel(update) error = %v", err)
+	}
+
+	// 3. 验证多规格阶梯价格档 100% 完整保留，未被压缩删除为单一通配档
+	if updated.DisplayName != "Tiered Video Test Renamed" || updated.ChannelLabel != "新二级渠道" {
+		t.Fatalf("metadata not updated: displayName=%s, channelLabel=%s", updated.DisplayName, updated.ChannelLabel)
+	}
+	if len(updated.PriceTiers) != 2 {
+		t.Fatalf("CRITICAL: priceTiers was compressed or deleted! expected 2 tiers, got %d", len(updated.PriceTiers))
+	}
+
+	// 从数据库重新拉取深层核验
+	reloaded, err := svc.repo.ChannelModelByID("ch-preserve", saved.ID)
+	if err != nil {
+		t.Fatalf("ChannelModelByID error = %v", err)
+	}
+	if len(reloaded.PriceTiers) != 2 {
+		t.Fatalf("CRITICAL: reloaded priceTiers in DB was compressed or deleted! expected 2 tiers, got %d", len(reloaded.PriceTiers))
+	}
+	resolutions := []string{reloaded.PriceTiers[0].Resolution, reloaded.PriceTiers[1].Resolution}
+	r0, r1 := strings.ToLower(resolutions[0]), strings.ToLower(resolutions[1])
+	if !((r0 == "720p" && r1 == "1080p") || (r0 == "1080p" && r1 == "720p")) {
+		t.Fatalf("unexpected tier resolutions: %v", resolutions)
+	}
+}
+// @opc-adapter: model-pricing-and-capability-governance [end]

@@ -1,0 +1,58 @@
+{
+  "skill": "song-pastoral-aesthetics-prompts",
+  "total_entries": 468,
+  "files": [
+    {
+      "file": "core-anchors.json",
+      "tier": "hard",
+      "count": 48,
+      "categories": {
+        "worldview": 4,
+        "character": 6,
+        "attire": 7,
+        "setting_material": 6,
+        "light_palette": 7,
+        "optics": 6,
+        "motion": 5,
+        "mood": 3,
+        "anti_drift": 4
+      }
+    },
+    {
+      "file": "verified-lexicon.json",
+      "tier": "verified",
+      "count": 132,
+      "categories": {
+        "character": 14,
+        "attire": 16,
+        "architecture": 12,
+        "props_materials": 18,
+        "actions": 15,
+        "composition": 14,
+        "light_palette": 14,
+        "optics_motion": 12,
+        "mood_narrative": 7,
+        "anti_drift": 10
+      }
+    },
+    {
+      "file": "expansion-lexicon.json",
+      "tier": "extension",
+      "count": 288,
+      "categories": {
+        "season_weather": 24,
+        "spaces_architecture": 28,
+        "fields_crops": 32,
+        "food_domestic": 32,
+        "textile_craft": 24,
+        "waterside_boat": 20,
+        "flora_animals": 24,
+        "tools_materials": 28,
+        "composition_camera": 24,
+        "light_air": 20,
+        "motion_physics": 16,
+        "mood_narrative": 16
+      }
+    }
+  ]
+}

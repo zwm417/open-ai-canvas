@@ -8,9 +8,14 @@ import { analyzeCreationAssistantBatch, type AnalysisFile } from "@/services/cre
 import { disposeCreationAssistantVideoAnalyses, hasPreparedCreationAssistantVideos, isReusableCreationAssistantVideoAnalysis, prepareCreationAssistantVideos } from "@/services/creation-assistant-video-analysis";
 import { buildCreationAssistantPrompts, buildReferenceScriptCreationAssistantPrompts, normalizeCreationAssistantScript } from "@/lib/creation-assistant-prompts";
 import { segmentCreationAssistantTimeline } from "@/lib/creation-assistant-segmentation";
-import { buildVideoCreationPlan } from "@/lib/video-segment-contract";
+import { buildVideoCreationPlan, validateVideoCreationPlanForGeneration } from "@/lib/video-segment-contract";
 import { resolveChannelVideoModelDurationBounds, resolveChannelVideoModelMaxDuration } from "@/lib/model-capabilities";
-import { requestImageQuestion } from "@/services/api/image";
+import { requestImageQuestion, type AiTextMessage } from "@/services/api/image";
+// @opc-feature: multimodal-visual-channel [start]
+import { imageToDataUrl } from "@/services/image-storage";
+import { HEADER_CANVAS_SYSTEM_PROMPT_ID, VAULT_PROMPT_IDS } from "@/services/api/prompt-vault";
+// @opc-feature: multimodal-visual-channel [end]
+import { CachedResourceImage } from "@/components/cached-resource-image";
 import { ModelPicker } from "@/components/model-picker";
 import { useFeatureCredit } from "@/hooks/use-feature-credit";
 import { FeatureCreditBadge } from "@/components/feature-credit-badge";
@@ -32,7 +37,7 @@ import { useVideoWorkbenchStore } from "@/stores/use-video-workbench-store";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 import type { ReferenceImage } from "@/types/image";
 
-type SourceFile = { id: string; name: string; kind: "image" | "video" | "audio"; url: string; durationMs?: number; dataUrl?: string };
+type SourceFile = { id: string; name: string; kind: "image" | "video" | "audio"; url: string; durationMs?: number; dataUrl?: string; storageKey?: string };
 
 const translations: Record<string, string> = {
     "creationAssistant.title": "创作助手",
@@ -63,7 +68,7 @@ const translations: Record<string, string> = {
     "creationAssistant.language": "语言",
     "creationAssistant.generationMethod": "脚本生成方式",
     "creationAssistant.configGenerationDescription": "基于商品卖点、内容方向和拍摄偏好，生成适合当前商品的原创短视频脚本",
-    "creationAssistant.referenceGenerationDescription": "上传视频或输入视频直链，按时间顺序反推结构、节奏、镜头和声音",
+    "creationAssistant.referenceGenerationDescription": "从资产库导入或本地上传视频，按经典时序或创意分镜拆解反推结构、节奏、镜头和声音",
     "creationAssistant.primaryPlatform": "主发布平台",
     "creationAssistant.secondaryPlatforms": "兼容发布平台（可选）",
     "creationAssistant.scriptType": "脚本类型",
@@ -71,9 +76,9 @@ const translations: Record<string, string> = {
     "creationAssistant.duration": "视频时长",
     "creationAssistant.durationHint": "这是用户期望的总时长；脚本生成时会按当前视频模型能力自动分段和衔接。",
     "creationAssistant.durationRequired": "请输入有效的视频目标时长",
-    "creationAssistant.referenceRequired": "参考生脚本至少需要上传视频或输入视频直链",
+    "creationAssistant.referenceRequired": "参考生脚本至少需要从资产导入或上传视频，并完成反推",
     "creationAssistant.referenceMaterial": "参考素材",
-    "creationAssistant.referenceMaterialHint": "打开反推面板后，可上传视频或输入视频直链；反推结果会先进入可编辑预览。",
+    "creationAssistant.referenceMaterialHint": "打开反推面板后，可从资产导入或本地上传视频；反推结果会先进入可编辑预览。",
     "creationAssistant.openReferenceReverse": "打开反推面板",
     "creationAssistant.openReferenceScript": "打开参考脚本",
     "creationAssistant.referenceReverseReady": "已有反推结果",
@@ -142,7 +147,7 @@ export default function CreationAssistantPage() {
     const textConfig = useMemo(() => ({ ...config, model: effectiveModel }), [config, effectiveModel]);
     const multimodalConfig = textConfig;
     const reverseInferenceConfig = textConfig;
-    const materialCredit = useFeatureCredit("material_analysis", multimodalModel);
+    const materialCredit = useFeatureCredit("assistant_material_analysis", multimodalModel);
     const directingCredit = useFeatureCredit("directing_assistant", textModel);
     // @opc-feature: creation_assistant_model_picker [end]
     const [busy, setBusy] = useState(false);
@@ -219,7 +224,9 @@ export default function CreationAssistantPage() {
                 if (item) files.push({ id: file.id, name: file.name, kind: "audio", item });
                 return files;
             }, []);
-            const result = await analyzeCreationAssistantBatch({ ...multimodalConfig, systemPrompt: "" }, analysisFiles, videoAnalyses);
+            const result = await analyzeCreationAssistantBatch({ ...multimodalConfig, systemPrompt: "" }, analysisFiles, videoAnalyses, {
+                scene: "assistant_material_analysis",
+            });
             updateAssistant({ analysisStatus: "complete", fileSummaries: result.fileSummaries, insightSections: mergeCoreInsightSections(result.insightSections) });
             message.success(t("creationAssistant.analysisComplete"));
         } catch (error) {
@@ -290,14 +297,99 @@ export default function CreationAssistantPage() {
                           primaryPlatform: assistant.primaryPlatform,
                           secondaryPlatforms: assistant.secondaryPlatforms,
                       });
-            const script = await requestImageQuestion(
-                { ...textConfig, systemPrompt: prompts.systemPrompt },
-                [{ role: "user", content: prompts.userPrompt }],
-                () => undefined,
-                // @opc-feature: request-generation-options [start]
-                { temperature: 0.85, presence_penalty: 0.2, scene: "directing_assistant" },
-                // @opc-feature: request-generation-options [end]
-            );
+            // @opc-feature: multimodal-visual-channel [start]
+            const userContentParts: AiTextMessage["content"] = [
+                { type: "text", text: prompts.userPrompt },
+            ];
+
+            for (const file of sourceFiles) {
+                const refItem = assetReferenceMap.find((m) => m.fileId === file.id);
+                const refLabel = refItem ? refItem.ref : `@${file.name}`;
+                if (file.kind === "image") {
+                    const item = videoDraft.references.find((reference) => reference.id === file.id);
+                    if (item) {
+                        try {
+                            const dataUrl = await imageToDataUrl(item);
+                            if (dataUrl) {
+                                userContentParts.push({
+                                    type: "text",
+                                    text: `【视觉参考图片 ${refLabel}】`,
+                                });
+                                userContentParts.push({
+                                    type: "image_url",
+                                    image_url: { url: dataUrl },
+                                });
+                            }
+                        } catch {
+                            // 忽略单个图片读取异常
+                        }
+                    }
+                } else if (file.kind === "video") {
+                    const analysis = assistant.videoAnalyses.find((item) => item.videoId === file.id);
+                    const sheets = analysis?.sheets || [];
+                    for (let i = 0; i < sheets.length; i++) {
+                        const sheet = sheets[i];
+                        try {
+                            const dataUrl = await imageToDataUrl({ storageKey: sheet.storageKey, url: sheet.url });
+                            if (dataUrl) {
+                                userContentParts.push({
+                                    type: "text",
+                                    text: `【参考视频 ${refLabel} 抽帧拼图 ${i + 1}/${sheets.length}】`,
+                                });
+                                userContentParts.push({
+                                    type: "image_url",
+                                    image_url: { url: dataUrl },
+                                });
+                            }
+                        } catch {
+                            // 忽略单个拼图读取异常
+                        }
+                    }
+                }
+            }
+            // @opc-feature: multimodal-visual-channel [end]
+
+            const promptId = assistant.generationMethod === "reference_video"
+                ? VAULT_PROMPT_IDS.CREATION_ASSISTANT_REFERENCE
+                : VAULT_PROMPT_IDS.CREATION_ASSISTANT;
+
+            // @opc-feature: request-generation-options [start]
+            const requestOptions = {
+                temperature: 0.85,
+                presence_penalty: 0.2,
+                scene: "directing_assistant",
+                headers: {
+                    [HEADER_CANVAS_SYSTEM_PROMPT_ID]: promptId,
+                },
+            };
+            // @opc-feature: request-generation-options [end]
+
+            // @opc-feature: resilient-script-generation [start]
+            const hasVisualContent = userContentParts.length > 1;
+            let script = "";
+            try {
+                script = await requestImageQuestion(
+                    { ...textConfig, systemPrompt: prompts.systemPrompt },
+                    hasVisualContent
+                        ? [{ role: "user", content: userContentParts }]
+                        : [{ role: "user", content: prompts.userPrompt }],
+                    () => undefined,
+                    requestOptions,
+                );
+            } catch (multimodalErr) {
+                // 防御性优雅降级：若所选模型为纯文本模型不支持图像输入，自动回退纯文本重试
+                if (hasVisualContent) {
+                    script = await requestImageQuestion(
+                        { ...textConfig, systemPrompt: prompts.systemPrompt },
+                        [{ role: "user", content: prompts.userPrompt }],
+                        () => undefined,
+                        requestOptions,
+                    );
+                } else {
+                    throw multimodalErr;
+                }
+            }
+            // @opc-feature: resilient-script-generation [end]
             updateAssistant({ script: normalizeCreationAssistantScript(script.trim(), assetReferenceMap), stage: "result" });
         } catch (error) {
             if (deductedScriptMicrocredits > 0) {
@@ -327,6 +419,13 @@ export default function CreationAssistantPage() {
         if (creationPlan.warnings?.some((warning) => warning.includes("时间段无法解析"))) {
             message.error("脚本时间段无法解析，请修正后再应用");
             return;
+        }
+        if (creationPlan.segments.length > 1) {
+            const validation = validateVideoCreationPlanForGeneration(creationPlan);
+            if (!validation.valid) {
+                message.error(validation.error || "脚本分段校验未通过，请检查剧本分段标记");
+                return;
+            }
         }
         useVideoWorkbenchStore.getState().updateDraft({
             prompt: assistant.script.trim(),
@@ -434,7 +533,7 @@ function AnalysisStage({
                     description={t(analysisComplete ? "creationAssistant.analysisResultDescription" : "creationAssistant.analysisDescription")}
                 />
                 <div className="flex items-center gap-2">
-                    <FeatureCreditBadge scene="material_analysis" model={model} size="small" />
+                    <FeatureCreditBadge scene="assistant_material_analysis" model={model} size="small" />
                     <span className="text-xs text-stone-500 whitespace-nowrap dark:text-stone-400">分析模型:</span>
                     <ModelPicker
                         config={config}
@@ -678,12 +777,18 @@ function ConfigStage({
                             <div className="mt-1 text-xs text-stone-500 dark:text-stone-400">{t("creationAssistant.referenceMaterialHint")}</div>
                         </div>
                         <Button type="primary" className="!rounded-full !bg-amber-500 hover:!bg-amber-600 !border-0 font-medium" icon={<FileText className="size-4" />} onClick={onOpenReferenceReverse}>
-                            {assistant.referenceScript.trim() || assistant.reversePrompt.trim() ? t("creationAssistant.openReferenceScript") : t("creationAssistant.openReferenceReverse")}
+                            {assistant.referenceScript?.trim() || assistant.classicPrompt?.trim() || assistant.deconstructPrompt?.trim() || assistant.reversePrompt?.trim() ? t("creationAssistant.openReferenceScript") : t("creationAssistant.openReferenceReverse")}
                         </Button>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
-                        {assistant.referenceScript.trim() || assistant.reversePrompt.trim() ? <Tag color="success">{t("creationAssistant.referenceReverseReady")}</Tag> : <Tag>{t("creationAssistant.referenceReverseNotReady")}</Tag>}
-                        {assistant.reverseSourceUrl.trim() ? <span className="max-w-[520px] truncate">{assistant.reverseSourceUrl}</span> : null}
+                        {assistant.referenceScript?.trim() || assistant.classicPrompt?.trim() || assistant.deconstructPrompt?.trim() || assistant.reversePrompt?.trim() ? <Tag color="success">{t("creationAssistant.referenceReverseReady")}</Tag> : <Tag>{t("creationAssistant.referenceReverseNotReady")}</Tag>}
+                        {assistant.referenceVideos?.[0]?.name ? (
+                            <span className="max-w-[420px] truncate text-stone-600 dark:text-stone-300 font-medium">
+                                📹 {assistant.referenceVideos[0].name}
+                            </span>
+                        ) : assistant.reverseSourceUrl?.trim() ? (
+                            <span className="max-w-[420px] truncate">{assistant.reverseSourceUrl}</span>
+                        ) : null}
                     </div>
                 </div>
             ) : null}
@@ -823,7 +928,18 @@ function FileSummaryList({ summaries, sourceFiles, onUpdate }: { summaries: Crea
 }
 
 function SourceFilePreview({ file }: { file?: SourceFile }) {
-    if (file?.kind === "image") return <img src={file.dataUrl || file.url} alt="" className="size-full object-cover" />;
+    if (file?.kind === "image") {
+        return (
+            <CachedResourceImage
+                storageKey={file.storageKey}
+                src={file.dataUrl || file.url}
+                alt={file.name || "素材图片"}
+                className="size-full object-cover"
+                loadingFallback={<div className="size-full animate-pulse bg-stone-200 dark:bg-stone-800" />}
+                fallback={<div className="grid size-full place-items-center bg-stone-100 text-stone-400 text-xs dark:bg-stone-800">图片</div>}
+            />
+        );
+    }
     if (file?.kind === "video") return <video src={file.url} muted preload="metadata" className="size-full object-cover" />;
     return (
         <div className="grid size-full place-items-center">
@@ -1130,9 +1246,36 @@ function MultiOptionGrid<T extends string>({ options, values, onChange }: { opti
 
 function buildSourceFiles(images: ReferenceImage[], videos: ReferenceVideo[], audios: ReferenceAudio[], order: Array<{ id: string; kind: SourceFile["kind"] }> = []): SourceFile[] {
     const byId = new Map<string, SourceFile>();
-    images.forEach((item) => byId.set(item.id, { id: item.id, name: item.name, kind: "image", url: item.dataUrl, dataUrl: item.dataUrl }));
-    videos.forEach((item) => byId.set(item.id, { id: item.id, name: item.name, kind: "video", url: item.url, durationMs: item.durationMs }));
-    audios.forEach((item) => byId.set(item.id, { id: item.id, name: item.name, kind: "audio", url: item.url, durationMs: item.durationMs }));
+    images.forEach((item) =>
+        byId.set(item.id, {
+            id: item.id,
+            name: item.name,
+            kind: "image",
+            url: item.dataUrl || item.url || "",
+            dataUrl: item.dataUrl || item.url || "",
+            storageKey: item.storageKey,
+        }),
+    );
+    videos.forEach((item) =>
+        byId.set(item.id, {
+            id: item.id,
+            name: item.name,
+            kind: "video",
+            url: item.url,
+            durationMs: item.durationMs,
+            storageKey: item.storageKey,
+        }),
+    );
+    audios.forEach((item) =>
+        byId.set(item.id, {
+            id: item.id,
+            name: item.name,
+            kind: "audio",
+            url: item.url,
+            durationMs: item.durationMs,
+            storageKey: item.storageKey,
+        }),
+    );
     const ordered = order.map((entry) => byId.get(entry.id)).filter((item): item is SourceFile => Boolean(item));
     const seen = new Set(ordered.map((item) => item.id));
     return [...ordered, ...Array.from(byId.values()).filter((item) => !seen.has(item.id))];
@@ -1156,6 +1299,18 @@ function ScriptReferencePreview({ script, sourceFiles, onChange }: { script: str
             contentEditable={Boolean(onChange)}
             suppressContentEditableWarning
             onBlur={(event) => onChange?.(serializeScriptPreview(event.currentTarget))}
+            onCopy={(event) => {
+                const selection = window.getSelection();
+                if (!selection || selection.isCollapsed || !selection.rangeCount) return;
+                const range = selection.getRangeAt(0);
+                if (!event.currentTarget.contains(range.commonAncestorContainer)) return;
+                const fragment = range.cloneContents();
+                const serializedText = serializeScriptPreviewNodes(Array.from(fragment.childNodes));
+                if (serializedText) {
+                    event.preventDefault();
+                    event.clipboardData.setData("text/plain", serializedText);
+                }
+            }}
         >
             {script.split(/\r?\n/).map((line, lineIndex) => {
                 const isHeading = /^(视频总览|场景与光线|逐秒镜头拆解列表|时间段：)/.test(line.trim());
@@ -1169,11 +1324,27 @@ function ScriptReferencePreview({ script, sourceFiles, onChange }: { script: str
                                 <span
                                     key={`${part}-${index}`}
                                     data-ref-label={reference.ref}
+                                    title={file?.name ? `${reference.ref} (${file.name})` : reference.ref}
                                     contentEditable={false}
-                                    className="mx-0.5 inline-flex items-center gap-1 rounded bg-white px-1.5 py-0.5 align-baseline text-xs font-medium shadow-sm dark:bg-stone-900"
+                                    className="mx-0.5 inline-flex items-center gap-1 rounded bg-white px-1.5 py-0.5 align-baseline text-xs font-medium shadow-sm select-none dark:bg-stone-900"
                                 >
-                                    {file?.kind === "image" ? <img src={file.dataUrl || file.url} alt={file.name} className="size-4 rounded object-cover" /> : file?.kind === "video" ? <Video className="size-3.5" /> : <FileText className="size-3.5" />}
-                                    {reference.ref.slice(1)}
+                                    {file?.kind === "image" ? (
+                                        <span className="inline-flex size-4 shrink-0 rounded overflow-hidden align-middle">
+                                            <CachedResourceImage
+                                                storageKey={file?.storageKey}
+                                                src={file?.dataUrl || file?.url}
+                                                alt={reference.ref}
+                                                className="size-full object-cover"
+                                                loadingFallback={<span className="size-full bg-stone-200 dark:bg-stone-800 animate-pulse" />}
+                                                fallback={<span className="size-full bg-stone-200 dark:bg-stone-800 text-[9px] flex items-center justify-center">图</span>}
+                                            />
+                                        </span>
+                                    ) : file?.kind === "video" ? (
+                                        <Video className="size-3.5 shrink-0" />
+                                    ) : (
+                                        <FileText className="size-3.5 shrink-0" />
+                                    )}
+                                    <span>{reference.ref}</span>
                                 </span>
                             );
                         })}
@@ -1185,29 +1356,32 @@ function ScriptReferencePreview({ script, sourceFiles, onChange }: { script: str
     );
 }
 
+function serializeScriptPreviewNodes(nodes: Node[]): string {
+    let result = "";
+    nodes.forEach((node) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+            result += node.textContent || "";
+            return;
+        }
+        if (!(node instanceof HTMLElement)) return;
+        if (node.dataset.refLabel) {
+            result += node.dataset.refLabel;
+            return;
+        }
+        if (node.tagName === "BR") {
+            result += "\n";
+            return;
+        }
+        result += serializeScriptPreviewNodes(Array.from(node.childNodes));
+        if (node.tagName === "DIV" || node.tagName === "P") {
+            result += "\n";
+        }
+    });
+    return result;
+}
+
 function serializeScriptPreview(editor: HTMLElement) {
-    const visit = (nodes: NodeListOf<ChildNode>): string => {
-        let result = "";
-        nodes.forEach((node) => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                result += node.textContent || "";
-                return;
-            }
-            if (!(node instanceof HTMLElement)) return;
-            if (node.dataset.refLabel) {
-                result += node.dataset.refLabel;
-                return;
-            }
-            if (node.tagName === "BR") {
-                result += "\n";
-                return;
-            }
-            result += visit(node.childNodes);
-            if (node.tagName === "DIV") result += "\n";
-        });
-        return result;
-    };
-    return visit(editor.childNodes).replace(/\n+$/, "");
+    return serializeScriptPreviewNodes(Array.from(editor.childNodes)).replace(/\n+$/, "");
 }
 
 function mergeCoreInsightSections(sections: ReturnType<typeof useCreationAssistantStore.getState>["draft"]["insightSections"]) {

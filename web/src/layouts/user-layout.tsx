@@ -7,6 +7,9 @@ import { cn } from "@/lib/utils";
 import { isSpatialWorkbenchPath } from "@/lib/workspace-routes";
 import { getWorkspaceAntThemeConfig } from "@/lib/app-theme";
 import { useWorkspaceButtonFeedback } from "@/hooks/use-workspace-button-feedback";
+// @opc-feature: global_task_guardian [start]
+import { useGlobalWorkbenchTaskGuardian } from "@/services/global-task-guardian";
+// @opc-feature: global_task_guardian [end]
 import "@/styles/workspace-product.css";
 import "@/styles/workspace-menus.css";
 
@@ -19,6 +22,9 @@ export default function UserLayout({ children }: { children: ReactNode }) {
     const isCanvasEditor = /^\/canvas\/[^/]+(?:\/|$)/.test(pathname);
     const productWorkspace = !adminWorkspace && !isCanvasEditor;
     useWorkspaceButtonFeedback(productWorkspace);
+    // @opc-feature: global_task_guardian_mount [start]
+    useGlobalWorkbenchTaskGuardian();
+    // @opc-feature: global_task_guardian_mount [end]
 
     useLayoutEffect(() => {
         // Ant Design 浮层挂载在 body，必须用路由级标记隔离用户工作台与画布编辑器、运营后台。

@@ -109,10 +109,10 @@ function captureVideoPosterNow(source: string, options: CaptureVideoPosterOption
                 }
                 const avgLuma = samples > 0 ? totalLuma / samples : 0;
 
-                // If practically pitch-black (< 10) and video length allows, seek deeper into the video
-                if (avgLuma < 10 && attempts < 2 && Number.isFinite(video.duration) && video.duration > 1.2) {
+                // If practically pitch-black (< 12) and video length allows, seek deeper into the video
+                if (avgLuma < 12 && attempts < 3 && Number.isFinite(video.duration) && video.duration > 1.0) {
                     attempts++;
-                    const nextTime = Math.min(video.duration - 0.1, 0.4 + attempts * 0.8);
+                    const nextTime = Math.min(Math.max(0.6, video.duration * 0.3), 0.5 + attempts * 0.9);
                     seekFallbackTimer = window.setTimeout(tryCaptureFrame, 1200);
                     video.currentTime = nextTime;
                     return;
@@ -126,7 +126,7 @@ function captureVideoPosterNow(source: string, options: CaptureVideoPosterOption
         };
 
         signal?.addEventListener("abort", handleAbort, { once: true });
-        video.preload = "auto";
+        video.preload = "metadata";
         video.muted = true;
         video.playsInline = true;
         if (isCrossOriginHttpUrl(source)) video.crossOrigin = "anonymous";

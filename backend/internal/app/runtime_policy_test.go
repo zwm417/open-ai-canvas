@@ -175,9 +175,11 @@ func TestRuntimePolicySaveAndResetTakeEffectImmediately(t *testing.T) {
 		t.Fatal(err)
 	}
 	effective, err = svc.RuntimePolicy()
-	if err != nil || effective.Task.ActiveTaskLimit != 5 {
+	// @opc-adapter: workbench_batch_concurrency [start]
+	if err != nil || effective.Task.ActiveTaskLimit != defaultRuntimePolicy().Task.ActiveTaskLimit {
 		t.Fatalf("reset active task limit = %d, error = %v", effective.Task.ActiveTaskLimit, err)
 	}
+	// @opc-adapter: workbench_batch_concurrency [end]
 }
 
 func TestRuntimePolicyBackfillsRecycleBinRetentionForLegacyJSON(t *testing.T) {

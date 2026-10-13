@@ -217,7 +217,7 @@ export const defaultConfig: AiConfig = {
     textModels: [],
     audioModels: [],
     quality: "auto",
-    size: "1:1",
+    size: "9:16",
     transparentBackground: "false",
     count: "1",
     canvasImageCount: "1",

@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI 短剧与电影导演"
+  short_description: "把故事制作成角色连续、镜头专业且可验收的 AI 短剧或电影化视频"
+  default_prompt: "使用 $ai-film-director，把我的故事一键制作成电影化短剧成片。"

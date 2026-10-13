@@ -15,6 +15,9 @@ import (
 
 	"infinite-canvas/backend/internal/model"
 	"infinite-canvas/backend/internal/service"
+	// @opc-adapter: prompt-vault-macro-injection [start]
+	opcvault "infinite-canvas/backend/internal/custom/opc-vault"
+	// @opc-adapter: prompt-vault-macro-injection [end]
 
 	"github.com/gin-gonic/gin"
 )
@@ -352,6 +355,18 @@ func proxySystemRequestPath(c *gin.Context, svc *service.Service, user *model.Us
 		fail(c, http.StatusForbidden, err)
 		return
 	}
+	// @opc-adapter: prompt-vault-macro-injection [start]
+	if c.Request.Method == http.MethodPost && len(body) > 0 {
+		headerPromptID := c.GetHeader(opcvault.HeaderCanvasSystemPromptID)
+		if headerPromptID == "" {
+			headerPromptID = c.GetHeader(opcvault.HeaderVaultPromptID)
+		}
+		apiFormat := opcvault.ChannelAPIFormatForProtocol(channel.APIFormat, string(protocol))
+		if injectedBody, injectErr := opcvault.InjectVaultPromptToRequestBody(headerPromptID, apiFormat, body); injectErr == nil {
+			body = injectedBody
+		}
+	}
+	// @opc-adapter: prompt-vault-macro-injection [end]
 	if channelModel != nil && channelModel.BillingMode == "token" && protocol == model.ChannelInterfaceChatCompletion {
 		body, err = service.EnsureChatCompletionStreamUsageRequest(body)
 		if err != nil {

@@ -1,0 +1,35 @@
+{
+  "skill_name": "interior-design",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "根据客厅现状图和尺寸做两套布局，再出三个视角。",
+      "should_trigger": true,
+      "expected_output": "先做布局；确认后出图；保持现状结构",
+      "assertions": [
+        "先做布局",
+        "确认后出图",
+        "保持现状结构"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "给一个产品做室内生活场景广告图。",
+      "should_trigger": false,
+      "expected_output": "应路由到 ecommerce-product-system 或 ad-creative",
+      "assertions": [
+        "应路由到 ecommerce-product-system 或 ad-creative"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "要拆承重墙但没有结构图。",
+      "should_trigger": true,
+      "expected_output": "必须标注风险；不能给施工结论",
+      "assertions": [
+        "必须标注风险",
+        "不能给施工结论"
+      ]
+    }
+  ]
+}

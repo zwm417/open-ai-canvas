@@ -1,0 +1,7 @@
+interface:
+  display_name: "智影 10｜战斗设计导演"
+  short_description: "从零高复杂度打斗的主设计：战法、对位、阶段、奇观与大招"
+  default_prompt: "使用 $zhiying-combat-design-director 作为高复杂度战斗Primary，先建立战法、对位、阶段、Combat–VFX和奇观设计；已有编排仅修物理时再让05主导。"
+
+policy:
+  allow_implicit_invocation: true

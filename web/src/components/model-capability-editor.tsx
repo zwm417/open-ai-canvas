@@ -164,7 +164,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                                     disabled={disabled}
                                     value={profile.ratios}
                                     options={ratioOptions.map((item) => ({ label: item, value: item }))}
-                                    onChange={(ratios) => update({ ratios, defaultRatio: ratios.includes(profile.defaultRatio) ? profile.defaultRatio : ratios[0] || "16:9" })}
+                                    onChange={(ratios) => update({ ratios, defaultRatio: ratios.includes(profile.defaultRatio) ? profile.defaultRatio : ratios.includes("9:16") ? "9:16" : ratios[0] || "9:16" })}
                                 />
                             </Field>
                             <Field label="默认比例">
@@ -203,7 +203,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
             <div className="admin-capability-editor-heading flex flex-wrap items-start justify-between gap-2">
                 <div>
                     <div className="text-sm font-medium">视频能力参数</div>
-                    <div className="mt-0.5 text-[var(--fs-tiny)] text-foreground/48">这些参数会同步到创造页、画布和生成校验</div>
+                    <div className="mt-0.5 text-[var(--fs-tiny)] text-foreground/48">这些参数会同步到创作页、画布和生成校验</div>
                 </div>
                 <span className="text-[var(--fs-tiny)] text-foreground/40">协议模板可继续调整</span>
             </div>
@@ -281,7 +281,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                                 disabled={disabled}
                                 value={profile.ratios}
                                 options={ratioOptions.map((item) => ({ label: item, value: item }))}
-                                onChange={(ratios) => update({ ratios, defaultRatio: ratios.includes(profile.defaultRatio) ? profile.defaultRatio : ratios[0] || "16:9" })}
+                                onChange={(ratios) => update({ ratios, defaultRatio: ratios.includes(profile.defaultRatio) ? profile.defaultRatio : ratios.includes("9:16") ? "9:16" : ratios[0] || "9:16" })}
                             />
                         </Field>
                         <Field label="默认比例">
@@ -672,23 +672,25 @@ function ProtocolParameterCard({ step, title, description, children, className =
     );
 }
 
+// @opc-feature: fix-field-label-select-conflict [start]
 function Field({ label, children }: { label: string; children: ReactNode }) {
     return (
-        <label className="block min-w-0">
+        <div className="block min-w-0">
             <span className="mb-1 block text-[var(--fs-tiny)] text-foreground/48">{label}</span>
             {children}
-        </label>
+        </div>
     );
 }
 
 function NumberField({ label, value, min, max, disabled, onChange }: { label: string; value?: number; min: number; max?: number; disabled: boolean; onChange: (value: number | null) => void }) {
     return (
-        <label className="admin-capability-number-field block min-w-0">
+        <div className="admin-capability-number-field block min-w-0">
             <span className="admin-capability-field-label mb-1.5 block text-xs text-foreground/62">{label}</span>
             <InputNumber className="w-full" disabled={disabled} min={min} max={max} precision={0} value={value} onChange={onChange} />
-        </label>
+        </div>
     );
 }
+// @opc-feature: fix-field-label-select-conflict [end]
 
 function BooleanField({ label, value, disabled, onChange }: { label: string; value: { supported: boolean; default: boolean }; disabled: boolean; onChange: (value: { supported: boolean; default: boolean }) => void }) {
     return (

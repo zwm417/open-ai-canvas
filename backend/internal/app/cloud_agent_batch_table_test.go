@@ -325,3 +325,87 @@ func TestCloudAgentBatchTableRejectsUnsafeAndStaleEdits(t *testing.T) {
 		t.Fatalf("stale snapshot was not rejected: %v", err)
 	}
 }
+
+// @opc-adapter: custom-batch-tables [start]
+func TestCloudAgentCustomBatchTablesSupport(t *testing.T) {
+	s, db, _, _ := creationTestService(t)
+	tableTypes := []struct {
+		nodeType string
+		label    string
+	}{
+		{"creative-asset-table:table", "创意资产表"},
+		{"creative-voice-table:table", "创意配音"},
+		{"creative-storyboard-table:table", "创意分镜表"},
+		{"standard-batch-table:table", "批量创作表"},
+	}
+
+	for _, tt := range tableTypes {
+		t.Run(tt.nodeType, func(t *testing.T) {
+			desc, ok := cloudAgentNodeCapabilityForType(tt.nodeType)
+			if !ok {
+				t.Fatalf("capability %s missing", tt.nodeType)
+			}
+			nodeID := "table-" + strings.ReplaceAll(tt.nodeType, ":", "-")
+			nodes := []any{
+				map[string]any{"id": "img-1", "type": "image", "title": "参考图1", "position": map[string]any{"x": 0.0, "y": 0.0}, "width": 320.0, "height": 320.0, "metadata": map[string]any{"content": "data:image/png;base64,AA", "status": "success"}},
+				map[string]any{
+					"id": nodeID, "type": tt.nodeType, "title": tt.label + "测试",
+					"position": map[string]any{"x": 400.0, "y": 0.0}, "width": desc.DefaultWidth, "height": desc.DefaultHeight,
+					"metadata": desc.Metadata(""),
+				},
+			}
+			payload, err := json.Marshal(map[string]any{"nodes": nodes, "connections": []any{}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			canvasID := "canvas-" + nodeID
+			canvas := &model.CanvasProject{ID: canvasID, UserID: "user", Title: tt.label, PayloadJSON: string(payload)}
+			if err := db.Create(canvas).Error; err != nil {
+				t.Fatal(err)
+			}
+
+			doc, err := creationDocument(canvas.PayloadJSON)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// 1. 验证 batchTableNodeFromDocument 能够正确解析节点
+			node, metadata, table, rows, err := batchTableNodeFromDocument(doc, nodeID)
+			if err != nil {
+				t.Fatalf("failed to parse %s from document: %v", tt.nodeType, err)
+			}
+			if stringValue(node["type"]) != tt.nodeType {
+				t.Errorf("parsed node type = %v, want %s", node["type"], tt.nodeType)
+			}
+			if metadata == nil || table == nil || rows == nil {
+				t.Fatalf("nil parsed components for %s", tt.nodeType)
+			}
+
+			// 2. 验证追加行 (append row) 计划生成与审批
+			hash := cloudAgentCanvasHash(doc)
+			call := cloudAgentBatchTableCall(t, "canvas_edit_batch_table", "append-"+nodeID, map[string]any{
+				"snapshotHash": hash, "nodeId": nodeID, "action": "append",
+				"patch": map[string]any{"inputNodeIds": []string{"img-1"}, "prompt": "测试行任务提示词"},
+			})
+			plan, err := prepareCloudAgentBatchTableEdit(s.repo, "user", canvasID, call)
+			if err != nil {
+				t.Fatalf("failed to prepare edit for %s: %v", tt.nodeType, err)
+			}
+			expectedTitle := fmt.Sprintf("确认修改%s", tt.label)
+			if plan.Preview.Title != expectedTitle {
+				t.Errorf("preview title = %s, want %s", plan.Preview.Title, expectedTitle)
+			}
+
+			// 3. 验证应用变更
+			policy, err := s.RuntimePolicy()
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = applyCloudAgentBatchTableMutation(s.repo, "user", canvasID, call, policy)
+			if err != nil {
+				t.Fatalf("failed to apply mutation to %s: %v", tt.nodeType, err)
+			}
+		})
+	}
+}
+// @opc-adapter: custom-batch-tables [end]

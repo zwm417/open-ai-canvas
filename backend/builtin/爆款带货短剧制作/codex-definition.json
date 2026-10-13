@@ -1,0 +1,116 @@
+﻿{
+  "id": "viral_commerce_short_drama",
+  "name": "爆款带货短剧",
+  "description": "以真实商品为剧情因果核心，制作兼顾冲突反转、观看留存和成交转化的带货短剧成片。",
+  "icon": "🎭",
+  "color": "#E5484D",
+  "category": "Video",
+  "scenarios": [
+    "爆款带货短剧",
+    "剧情带货",
+    "情景剧卖货",
+    "剧情种草视频",
+    "反转商品广告",
+    "短剧商品植入",
+    "达人剧情广告",
+    "UGC 剧情广告",
+    "连续剧式商品推广",
+    "shoppable short drama",
+    "viral commerce drama"
+  ],
+  "promptTemplate": "使用 $viral-commerce-short-drama 完成当前任务。核验商品事实和证据，以真实受众痛点建立冲突与反转，让商品成为改变剧情结果的因果角色；完成演员和商品资产、逐镜分镜、start/peak/end 独立关键帧，在分镜中锁定对白/旁白、环境声、拟音、音乐意图及字幕原文/起止时间，再以 generateAudio=true 逐镜生成原生有声视频；Remotion/FFmpeg 仅保留合格原生声轨与字幕并完成拼接、CTA、必要的背景音乐修整和最终 MP4 七层验收。所有媒体必须通过智影 Platform Media，禁止直连外部供应商。\n\n用户需求：{userInput}",
+  "negativePrompt": "fake claim, fake review, fake testimonial, fake doctor, fake expert, fake discount, fake scarcity, unsupported before after, wrong product, packaging drift, logo drift, hard sell interruption, product unrelated to plot, weak first frame, slow intro, exposition dump, unearned twist, character inconsistency, deformed hands, broken product interaction, axis break, lip sync error, flicker, unreadable captions, unsafe text placement, watermark, missing CTA, placeholder, missing final render",
+  "preferredModel": "auto",
+  "outputType": "video",
+  "aspectRatio": "auto",
+  "analysisPrompt": "先建立商品事实与证据白名单、受众痛点和主要购买异议；选择能让商品真实改变人物选择或结果的剧情冲突，写出首帧强钩子、3 秒开环、持续升级、商品证据、反转回报和自然 CTA。完成剧作、留存、商品、成交与合规审校后，通过智影 Platform Media 生成商品/演员/场景资产和每镜 start/peak/end 独立关键帧，再逐镜生成视频和声音；使用 Remotion/FFmpeg 合成。只有最终 MP4 存在、可解码、验证器无阻断错误且七层终检通过时才宣称成片完成；不得保证必爆或成交结果。",
+  "displayName": "Viral Commerce Short Drama",
+  "shortDescription": "用剧情冲突和真实商品证据制作高留存带货短剧。",
+  "skillIds": [
+    "viral_commerce_short_drama",
+    "viral-commerce-short-drama"
+  ],
+  "role": "带货短剧 Showrunner、效果广告创意导演、商品连续性主管与成片制片人",
+  "agentType": "viral-commerce-drama-showrunner",
+  "workflowProfile": "staged",
+  "workflow": {
+    "mode": "staged",
+    "confirmationPolicy": "phase_gated",
+    "stages": [
+      "核验商品身份、事实、证据、权利和交付规格",
+      "提炼受众场景、真实痛点和主要购买异议",
+      "设计让商品改变剧情结果的冲突与反转",
+      "锁定首帧钩子、3 秒开环、逐秒剧本、证据与 CTA",
+      "完成剧作、留存、商品、成交和合规审校",
+      "建立演员、商品、服装、场景和道具资产圣经",
+      "通过智影 Platform Media 生成一致性资产",
+      "生成逐镜分镜及 start/peak/end 独立关键帧",
+      "根据批准资产、分镜和关键帧逐镜生成视频",
+      "生成对白、音乐、音效并制作字幕和 CTA",
+      "使用 Remotion 和 FFmpeg 合成渲染最终 MP4",
+      "执行事实、剧作、留存、商品、连续性、声音文字和技术七层终检",
+      "按真实投放数据制作单变量迭代版本"
+    ],
+    "requiredInputs": [
+      {
+        "key": "product_identity_assets",
+        "label": "商品多角度图、包装、Logo 和使用状态参考",
+        "required": true,
+        "blocking": true,
+        "accepts": ["image", "images", "video", "document"],
+        "prompt": "请上传能锁定商品身份的多角度图、包装、Logo 和必要使用状态。"
+      },
+      {
+        "key": "product_facts_and_evidence",
+        "label": "商品卖点、参数、价格优惠、资质和效果证据",
+        "required": true,
+        "blocking": true,
+        "accepts": ["text", "image", "images", "document"],
+        "prompt": "请提供允许使用的卖点、参数、价格优惠、资质和效果证据。"
+      },
+      {
+        "key": "audience_and_goal",
+        "label": "目标受众、使用场景、购买异议和转化目标",
+        "required": true,
+        "blocking": true,
+        "accepts": ["text", "choice"],
+        "prompt": "请说明主要受众、真实使用场景、最常见购买异议和希望用户采取的行动。"
+      },
+      {
+        "key": "delivery_spec",
+        "label": "平台、时长、画幅、语言和交付版本",
+        "required": false,
+        "blocking": false,
+        "accepts": ["text", "choice", "number"]
+      },
+      {
+        "key": "character_brand_references",
+        "label": "演员、品牌视觉、场景和声音参考",
+        "required": false,
+        "blocking": false,
+        "accepts": ["image", "images", "video", "audio", "document"]
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "web_research",
+      "commerce_fact_validation",
+      "screenplay_writing",
+      "storyboard_planning",
+      "image_generation",
+      "video_generation",
+      "audio_generation",
+      "3d_generation",
+      "multi_asset_planning",
+      "task_status",
+      "post_production_handoff",
+      "performance_iteration"
+    ]
+  },
+  "tools": [
+    "image_generate",
+    "web_search",
+    "web_extract",
+    "fetch_url_context"
+  ]
+}

@@ -285,3 +285,90 @@ func TestRegistryResolveUnknownTypeFailsClosed(t *testing.T) {
 		t.Fatal("unknown generation mode resolved")
 	}
 }
+
+// @opc-adapter: custom-agent-nodes [start]
+func TestBuiltinRegistryCustomTableCapabilities(t *testing.T) {
+	registry := BuiltinRegistry()
+	tables := []struct {
+		nodeType      string
+		label         string
+		expectedOp    string
+		expectedConc  float64
+		acceptedKinds []string
+		rejectedKinds []string
+	}{
+		{
+			nodeType:      "creative-asset-table:table",
+			label:         "创意资产表",
+			expectedOp:    "creative",
+			expectedConc:  6,
+			acceptedKinds: []string{"image", "text"},
+			rejectedKinds: []string{"video", "audio"},
+		},
+		{
+			nodeType:      "creative-voice-table:table",
+			label:         "创意配音",
+			expectedOp:    "creative",
+			expectedConc:  6,
+			acceptedKinds: []string{"audio", "text"},
+			rejectedKinds: []string{"video", "image"},
+		},
+		{
+			nodeType:      "creative-storyboard-table:table",
+			label:         "创意分镜表",
+			expectedOp:    "creative",
+			expectedConc:  10,
+			acceptedKinds: []string{"image", "video", "audio", "text"},
+			rejectedKinds: []string{"unknown_kind"},
+		},
+		{
+			nodeType:      "standard-batch-table:table",
+			label:         "批量创作表",
+			expectedOp:    "creative",
+			expectedConc:  10,
+			acceptedKinds: []string{"image"},
+			rejectedKinds: []string{"video", "audio"},
+		},
+	}
+
+	for _, tc := range tables {
+		t.Run(tc.nodeType, func(t *testing.T) {
+			desc, ok := registry.Resolve(tc.nodeType)
+			if !ok {
+				t.Fatalf("table capability %s is not registered", tc.nodeType)
+			}
+			if desc.Label != tc.label {
+				t.Errorf("label = %s, want %s", desc.Label, tc.label)
+			}
+			if !desc.CanUpdate {
+				t.Errorf("table %s must be updatable", tc.nodeType)
+			}
+			if desc.ProjectionKind != "batch_table" || desc.ProjectionField != "batchTable" {
+				t.Errorf("projection kind/field mismatch: %s / %s", desc.ProjectionKind, desc.ProjectionField)
+			}
+			metadata := desc.Metadata("")
+			batchTable, ok := metadata["batchTable"].(map[string]any)
+			if !ok {
+				t.Fatalf("metadata missing batchTable map: %#v", metadata)
+			}
+			if batchTable["operation"] != tc.expectedOp {
+				t.Errorf("operation = %v, want %s", batchTable["operation"], tc.expectedOp)
+			}
+			if batchTable["concurrency"] != tc.expectedConc {
+				t.Errorf("concurrency = %v, want %v", batchTable["concurrency"], tc.expectedConc)
+			}
+			for _, kind := range tc.acceptedKinds {
+				if err := desc.ValidateConnection(kind); err != nil {
+					t.Errorf("table %s should accept %s connection, got: %v", tc.nodeType, kind, err)
+				}
+			}
+			for _, kind := range tc.rejectedKinds {
+				if err := desc.ValidateConnection(kind); err == nil {
+					t.Errorf("table %s should reject %s connection", tc.nodeType, kind)
+				}
+			}
+		})
+	}
+}
+// @opc-adapter: custom-agent-nodes [end]
+

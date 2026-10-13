@@ -1,0 +1,7 @@
+interface:
+  display_name: "簪花女郎·珠光华服美学提示词"
+  short_description: "用情绪版协同与结构化提示词生成珠光簪花华服人物组图"
+  default_prompt: "Use $zanhua-lady-aesthetics-prompts to turn my scene idea into a Moodboard-assisted Midjourney V8.2 prompt and a clearly labeled ImageGen reconstruction prompt."
+
+policy:
+  allow_implicit_invocation: true

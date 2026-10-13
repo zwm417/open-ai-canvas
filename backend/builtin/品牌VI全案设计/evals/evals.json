@@ -1,0 +1,51 @@
+﻿{
+  "skill_name": "brand-specialist",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "给我的新茶饮品牌做一整套 VI，从 Logo、手册、社媒、包装到 IP 和 Logo 动效都要。",
+      "should_trigger": true,
+      "expected_output": "触发品牌 VI 全案，先确认品牌方向与 Logo，再让所有下游资产连接同一 Logo 节点并批量生成六项核心交付。",
+      "assertions": [
+        "触发品牌 VI 全案",
+        "确认品牌方向",
+        "确认 Logo",
+        "连接同一 Logo 节点",
+        "六项核心交付"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "我已经有 Logo，直接基于它制作 VI 手册、社媒模板、包装、IP 四视图和 3 秒 Logo 动效。",
+      "should_trigger": true,
+      "expected_output": "实际读取并复用现有 Logo，跳过 Logo 生成，查询智影动态模型后并行生产依赖该 Logo 的品牌资产。",
+      "assertions": [
+        "读取现有 Logo",
+        "跳过 Logo 生成",
+        "智影动态模型",
+        "并行生产",
+        "依赖该 Logo"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "只帮我画一个极简 Logo 草案，其他 VI 物料都不要。",
+      "should_trigger": false,
+      "expected_output": "不触发品牌 VI 全案，应路由到单 Logo 能力。",
+      "assertions": [
+        "不触发品牌 VI 全案",
+        "路由到单 Logo 能力"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "我们已经有完整品牌规范，只需要做一次双十一 Campaign 海报和投放素材。",
+      "should_trigger": false,
+      "expected_output": "不触发品牌 VI 全案，应使用既有品牌 Campaign 延展能力。",
+      "assertions": [
+        "不触发品牌 VI 全案",
+        "Campaign 延展"
+      ]
+    }
+  ]
+}

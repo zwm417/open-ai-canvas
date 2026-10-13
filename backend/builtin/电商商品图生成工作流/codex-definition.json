@@ -1,0 +1,70 @@
+﻿{
+  "id": "ecommerce_image_workflow",
+  "name": "商品主图与套图",
+  "description": "基于真实商品参考图生成高一致性的主图、卖点图和场景套图，并强制多图背景明显不同。",
+  "icon": "▣",
+  "color": "#2563EB",
+  "category": "E-Commerce",
+  "scenarios": [
+    "商品主图",
+    "商品套图",
+    "电商产品图",
+    "卖点图",
+    "商品场景图",
+    "Shopify 商品图",
+    "淘宝商品图",
+    "product main image",
+    "ecommerce image set"
+  ],
+  "promptTemplate": "使用 $ecommerce-image-workflow 基于真实商品参考图生成当前电商图片任务。锁定商品身份，每张图单独生成并验收；多图背景必须在环境、材质、光线、镜头或空间结构上明显不同。\n\n用户需求：{userInput}",
+  "negativePrompt": "changed product, wrong logo, wrong label, wrong packaging, invented feature, invented claim, repeated background, same scene, palette-only variation, extra accessory, distorted product, unreadable text, collage, contact sheet, watermark",
+  "preferredModel": "gemini-3-pro-image-preview",
+  "outputType": "image",
+  "aspectRatio": "auto",
+  "analysisPrompt": "从真实商品参考图提取身份锁，按主图、单一卖点图和场景图规划生成单元。保持商品形状、颜色、材质、Logo、标签、结构和比例一致；创意套图的每张背景至少改变三个有意义属性，平台强制白底 MAIN 图除外。",
+  "tools": [
+    "image_generate",
+    "web_search",
+    "web_extract",
+    "fetch_url_context",
+    "search_reference_images"
+  ],
+  "displayName": "商品主图与套图",
+  "shortDescription": "基于真实商品参考图生成高一致性的主图、卖点图和场景套图",
+  "skillIds": [
+    "ecommerce_image_workflow",
+    "ecommerce-image-workflow"
+  ],
+  "role": "商品影像导演",
+  "agentType": "ecommerce-image-director",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "guided",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "确认真实商品参考图",
+      "建立商品身份锁",
+      "规划独立图片槽位",
+      "逐图生成并检查背景差异",
+      "执行商品一致性和声明检查"
+    ],
+    "requiredInputs": [
+      {
+        "key": "product_reference",
+        "label": "真实商品参考图",
+        "required": true,
+        "blocking": true,
+        "accepts": ["image", "images"],
+        "prompt": "请至少提供一张能看清商品形状、颜色、材质、Logo 和结构的真实参考图。"
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "web_research",
+      "image_generation",
+      "task_status",
+      "multi_asset_planning",
+      "post_production_handoff"
+    ]
+  }
+}

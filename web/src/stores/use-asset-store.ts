@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, type PersistStorage, type StorageValue } from "zustand/middleware";
 
+import localforage from "localforage";
 import { nanoid } from "nanoid";
 import type { AssetCategory } from "@/lib/asset-category";
 import { parseAssetRecord } from "@/lib/asset-record";
@@ -17,6 +18,71 @@ import { readAllCanvasSyncDrafts } from "@/services/canvas-sync-drafts";
 // @opc-feature: asset-deduplication [start]
 import { findMatchingAsset, deduplicateAssetList } from "@/lib/asset-fingerprint";
 // @opc-feature: asset-deduplication [end]
+
+// @opc-feature: zero-overhead-local-cache [start]
+import { scopedStorageKey } from "@/lib/user-scope";
+import { IMAGE_WORKBENCH_STORE_KEY, useImageWorkbenchStore } from "@/stores/use-image-workbench-store";
+import { VIDEO_WORKBENCH_STORE_KEY, useVideoWorkbenchStore } from "@/stores/use-video-workbench-store";
+import { CREATION_ASSISTANT_STORE_KEY, useCreationAssistantStore } from "@/stores/use-creation-assistant-store";
+
+const imageLogStore = localforage.createInstance({ name: "infinite-canvas", storeName: "image_generation_logs" });
+const videoLogStore = localforage.createInstance({ name: "infinite-canvas", storeName: "video_generation_logs" });
+const appStateStore = localforage.createInstance({ name: "infinite-canvas", storeName: "app_state" });
+
+async function readAllActiveWorkbenchReferences(scope: string): Promise<unknown[]> {
+    const refs: unknown[] = [];
+    // 1. 收集当前内存中的活跃工作台草稿
+    try {
+        const imageDraft = useImageWorkbenchStore.getState?.().draft;
+        if (imageDraft) refs.push(imageDraft);
+    } catch {}
+    try {
+        const videoDraft = useVideoWorkbenchStore.getState?.().draft;
+        if (videoDraft) refs.push(videoDraft);
+    } catch {}
+    try {
+        const assistantDraft = useCreationAssistantStore.getState?.().draft;
+        if (assistantDraft) refs.push(assistantDraft);
+    } catch {}
+
+    // 2. 收集当前用户持久化在 app_state 中的各工作台草稿快照
+    try {
+        const [imageDraftStr, videoDraftStr, assistantDraftStr] = await Promise.all([
+            appStateStore.getItem<string>(scopedStorageKey(IMAGE_WORKBENCH_STORE_KEY, scope)),
+            appStateStore.getItem<string>(scopedStorageKey(VIDEO_WORKBENCH_STORE_KEY, scope)),
+            appStateStore.getItem<string>(scopedStorageKey(CREATION_ASSISTANT_STORE_KEY, scope)),
+        ]);
+        if (imageDraftStr) {
+            try { refs.push(JSON.parse(imageDraftStr)); } catch {}
+        }
+        if (videoDraftStr) {
+            try { refs.push(JSON.parse(videoDraftStr)); } catch {}
+        }
+        if (assistantDraftStr) {
+            try { refs.push(JSON.parse(assistantDraftStr)); } catch {}
+        }
+    } catch {}
+
+    // 3. 收集生图与生视频全部生成历史记录
+    try {
+        await imageLogStore.iterate((log: any) => {
+            if (!log || typeof log !== "object") return;
+            if (!log.userId || log.userId === scope) {
+                refs.push(log);
+            }
+        });
+    } catch {}
+    try {
+        await videoLogStore.iterate((log: any) => {
+            if (!log || typeof log !== "object") return;
+            if (!log.userId || log.userId === scope) {
+                refs.push(log);
+            }
+        });
+    } catch {}
+    return refs;
+}
+// @opc-feature: zero-overhead-local-cache [end]
 
 export type AssetKind = "text" | "image" | "video" | "audio" | "model" | "entity";
 export type { AssetCategory } from "@/lib/asset-category";
@@ -462,7 +528,10 @@ export const useAssetStore = create<AssetStore>()(
                 await new Promise<void>((resolve, reject) => {
                     window.setTimeout(() =>
                         withGenerationArtifactCommitLock(scope, async () => {
-                            const syncDrafts = await readAllCanvasSyncDrafts(scope);
+                            const [syncDrafts, workbenchRefs] = await Promise.all([
+                                readAllCanvasSyncDrafts(scope),
+                                readAllActiveWorkbenchReferences(scope),
+                            ]);
                             // 固定锁序：artifact -> Canvas（释放）-> Asset，避免跨 store 锁重入。
                             const canvasProjects = await withCanvasStorePersistenceLock(scope, async () => {
                                 await commitPendingCanvasStorePersistenceLocked(scope);
@@ -472,7 +541,7 @@ export const useAssetStore = create<AssetStore>()(
                             await withGenerationAssetStorageLock(scope, async () => {
                                 await commitPendingAssetStorePersistenceLocked(scope);
                                 const durableAssets = (await readPersistedAssetDocumentForScope(scope)).state.assets;
-                                const references = { projects: canvasProjects, assets: durableAssets, syncDrafts };
+                                const references = { projects: canvasProjects, assets: durableAssets, syncDrafts, workbenchRefs };
                                 const imageKeys = new Set([...frozenExtraImageKeys, ...collectImageStorageKeys(references)]);
                                 const mediaKeys = new Set([...frozenExtraMediaKeys, ...collectMediaStorageKeys(references)]);
                                 await cleanupUnusedImages(

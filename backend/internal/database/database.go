@@ -33,9 +33,22 @@ func Open(config Config) (*gorm.DB, error) {
 			if err := os.MkdirAll(config.DataDir, 0o755); err != nil {
 				return nil, err
 			}
-			dsn = config.DataDir + "/open_ai_canvas.db?_busy_timeout=5000&_journal_mode=WAL&_foreign_keys=on&_synchronous=NORMAL"
+			dsn = config.DataDir + "/open_ai_canvas.db"
 		}
-		return gorm.Open(sqlite.Open(dsn), &gorm.Config{Logger: logging.GormLogger()})
+		dsn = normalizeSqliteDSN(dsn)
+		db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{Logger: logging.GormLogger()})
+		if err != nil {
+			return nil, err
+		}
+		// @opc-adapter: sqlite-wal-concurrency [start]
+		if !strings.Contains(dsn, ":memory:") && !strings.Contains(dsn, "mode=memory") {
+			_ = db.Exec("PRAGMA journal_mode = WAL;").Error
+			_ = db.Exec("PRAGMA busy_timeout = 10000;").Error
+			_ = db.Exec("PRAGMA synchronous = NORMAL;").Error
+			_ = db.Exec("PRAGMA foreign_keys = ON;").Error
+		}
+		// @opc-adapter: sqlite-wal-concurrency [end]
+		return db, nil
 	case "postgres", "postgresql":
 		dsn := strings.TrimSpace(config.DSN)
 		if dsn == "" {
@@ -45,6 +58,44 @@ func Open(config Config) (*gorm.DB, error) {
 	default:
 		return nil, fmt.Errorf("不支持的数据库驱动：%s", driver)
 	}
+}
+
+func normalizeSqliteDSN(dsn string) string {
+	dsn = strings.TrimSpace(dsn)
+	if dsn == ":memory:" || strings.Contains(dsn, "mode=memory") {
+		if !strings.Contains(dsn, "busy_timeout") {
+			delimiter := "?"
+			if strings.Contains(dsn, "?") {
+				delimiter = "&"
+			}
+			dsn += delimiter + "_pragma=busy_timeout(10000)&_busy_timeout=10000"
+		}
+		return dsn
+	}
+	var params []string
+	if !strings.Contains(dsn, "busy_timeout") {
+		params = append(params, "_pragma=busy_timeout(10000)", "_busy_timeout=10000")
+	}
+	if !strings.Contains(dsn, "journal_mode") {
+		params = append(params, "_pragma=journal_mode(WAL)", "_journal_mode=WAL")
+	}
+	if !strings.Contains(dsn, "foreign_keys") {
+		params = append(params, "_pragma=foreign_keys(1)", "_foreign_keys=on")
+	}
+	if !strings.Contains(dsn, "synchronous") {
+		params = append(params, "_pragma=synchronous(NORMAL)", "_synchronous=NORMAL")
+	}
+	if !strings.Contains(dsn, "_txlock") {
+		params = append(params, "_txlock=immediate")
+	}
+	if len(params) > 0 {
+		delimiter := "?"
+		if strings.Contains(dsn, "?") {
+			delimiter = "&"
+		}
+		dsn += delimiter + strings.Join(params, "&")
+	}
+	return dsn
 }
 
 func ConfigurePool(db *gorm.DB) error {

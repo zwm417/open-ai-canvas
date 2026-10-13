@@ -1,0 +1,88 @@
+﻿{
+  "id": "ecommerce_product_system",
+  "name": "全渠道电商视觉系统",
+  "description": "规划和生成独立站 PDP、平台商品页、详情页、卖点图、商品主图、场景图和社交电商资产。",
+  "icon": "▦",
+  "color": "#0E7490",
+  "category": "E-Commerce",
+  "scenarios": [
+    "电商视觉",
+    "商品主图",
+    "商品详情页",
+    "产品卖点图",
+    "独立站 PDP",
+    "平台商品图",
+    "电商广告",
+    "SKU 视觉系统",
+    "ecommerce",
+    "product detail page",
+    "product listing"
+  ],
+  "promptTemplate": "使用 $ecommerce-product-system 完成当前任务。先执行领域工作流和必要确认，再为每个批准的生成单元输出独立、可执行的供应商提示词。\n\n用户需求：{userInput}",
+  "negativePrompt": "changed product, wrong packaging, wrong label, invented feature, fake certification, fake review, fake rating, misleading claim, unreadable copy, generic stock scene, inconsistent SKU, collage, contact sheet, watermark, low quality",
+  "preferredModel": "gemini-3-pro-image-preview",
+  "outputType": "image",
+  "aspectRatio": "auto",
+  "analysisPrompt": "围绕 SKU 真相、购买疑问和渠道任务建立商品视觉架构。你负责从吸引、理解、证明到购买的资产分工，不把所有卖点塞进一张海报。 按以下阶段执行：建立 SKU 与证据真相库 → 诊断渠道购买旅程 → 规划商品资产角色 → 确认信息与证据架构 → 逐资产生成商品视觉 → 跨渠道一致与转化检查。",
+  "tools": [
+    "image_generate",
+    "web_search",
+    "web_extract",
+    "fetch_url_context",
+    "search_reference_images"
+  ],
+  "displayName": "全渠道电商视觉系统",
+  "shortDescription": "根据渠道与转化任务自主规划商品主图、PDP、详情、广告和社媒视觉，不套固定张数模板。",
+  "skillIds": [
+    "ecommerce_product_system",
+    "ecommerce-product-system",
+    "product-commerce-system"
+  ],
+  "role": "电商转化视觉策略师",
+  "agentType": "commerce-visual-strategist",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "guided",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "建立 SKU 与证据真相库",
+      "诊断渠道购买旅程",
+      "规划商品资产角色",
+      "确认信息与证据架构",
+      "逐资产生成商品视觉",
+      "跨渠道一致与转化检查"
+    ],
+    "requiredInputs": [
+      {
+        "key": "sku_source",
+        "label": "准确商品与包装素材",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "image",
+          "images",
+          "text"
+        ],
+        "prompt": "请提供 SKU、包装、规格、配件和不可改变细节。"
+      },
+      {
+        "key": "commerce_task",
+        "label": "渠道、市场和转化任务",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "text"
+        ],
+        "prompt": "请说明目标渠道、市场、受众和当前转化问题。"
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "web_research",
+      "image_generation",
+      "task_status",
+      "multi_asset_planning",
+      "post_production_handoff"
+    ]
+  }
+}

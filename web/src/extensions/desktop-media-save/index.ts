@@ -45,6 +45,13 @@ export type DesktopLocalMediaResult = {
 export interface DesktopBridgeSaveAPI {
     isDesktop?: boolean;
     saveMedia?: (options: DesktopSaveMediaOptions) => Promise<DesktopSaveMediaResult>;
+    saveMediaAs?: (options: {
+        defaultName?: string;
+        url?: string;
+        buffer?: ArrayBuffer | Uint8Array;
+        base64?: string;
+        mediaType?: "image" | "video" | "audio";
+    }) => Promise<{ success: boolean; canceled?: boolean; filePath?: string; fileName?: string; error?: string }>;
     getMediaSaveDir?: () => Promise<string>;
     openMediaSaveDir?: (subFolder?: string) => Promise<string>;
     hasLocalMedia?: (query: DesktopLocalMediaQuery) => Promise<boolean>;
@@ -56,6 +63,46 @@ export function isDesktopShell(): boolean {
     if (typeof window === "undefined") return false;
     const bridge = (window as unknown as { desktopBridge?: DesktopBridgeSaveAPI }).desktopBridge;
     return Boolean(bridge?.isDesktop);
+}
+
+/**
+ * 调起操作系统的“另存为”文件选择框并保存媒体
+ */
+export async function saveMediaWithSaveDialog(options: {
+    defaultName?: string;
+    url?: string;
+    buffer?: ArrayBuffer | Uint8Array;
+    base64?: string;
+    mediaType?: "image" | "video" | "audio";
+}): Promise<{ success: boolean; canceled?: boolean; filePath?: string; fileName?: string; error?: string } | null> {
+    if (typeof window === "undefined") return null;
+    const bridge = (window as unknown as { desktopBridge?: DesktopBridgeSaveAPI }).desktopBridge;
+    if (!bridge?.isDesktop || !bridge.saveMediaAs) return null;
+
+    try {
+        const payload = { ...options };
+        if (payload.url && payload.url.startsWith("blob:") && !payload.buffer && !payload.base64) {
+            try {
+                const fetchFn = window.fetch;
+                if (typeof fetchFn === "function") {
+                    const blobRes = await fetchFn(payload.url);
+                    if (blobRes.ok) {
+                        payload.buffer = await blobRes.arrayBuffer();
+                        delete payload.url;
+                    }
+                }
+            } catch (blobErr) {
+                console.warn("[desktopMediaSave] 读取本地 Blob 失败:", blobErr);
+            }
+        }
+        return await bridge.saveMediaAs(payload);
+    } catch (error) {
+        console.warn("[desktopMediaSave] 另存为异常:", error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+        };
+    }
 }
 
 /**

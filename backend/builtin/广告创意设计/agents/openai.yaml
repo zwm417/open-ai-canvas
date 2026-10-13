@@ -1,0 +1,6 @@
+interface:
+  display_name: "广告创意"
+  short_description: "按漏斗目标、受众、版位与证据规划可测试的跨平台广告视觉。"
+  default_prompt: "使用 $ad-creative 按领域工作流完成当前任务；复用已确认输入，只在必要确认门暂停，并按真实任务状态交付。"
+policy:
+  allow_implicit_invocation: true

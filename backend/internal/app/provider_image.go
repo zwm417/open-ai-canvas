@@ -16,6 +16,10 @@ import (
 	"strings"
 
 	"infinite-canvas/backend/internal/model"
+
+	// @opc-adapter: prompt-vault-app-import [start]
+	opcvault "infinite-canvas/backend/internal/custom/opc-vault"
+	// @opc-adapter: prompt-vault-app-import [end]
 )
 
 func runImageTask(ctx context.Context, input canvasGenerationInput) (map[string]interface{}, error) {
@@ -173,7 +177,7 @@ func runGeminiImageTask(ctx context.Context, input canvasGenerationInput) (map[s
 	}
 	if systemPrompt := strings.TrimSpace(input.Config.SystemPrompt); systemPrompt != "" {
 		// @opc-adapter: prompt-vault-macro-injection [start]
-		systemPrompt = resolveVaultMacroInApp(systemPrompt)
+		systemPrompt = opcvault.ResolvePromptMacros(systemPrompt, false)
 		// @opc-adapter: prompt-vault-macro-injection [end]
 		body.SystemInstruction = &geminiImageContent{Parts: []geminiImageContentPart{{Text: systemPrompt}}}
 	}

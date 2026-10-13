@@ -7292,7 +7292,7 @@ html:not(.dark) .creation-studio-control[aria-expanded="true"] { background: #e7
     }
 
 /* @opc-feature: ant-popup-zindex-defense [start] */
-:where(.ant-dropdown, .ant-popover) {
+.ant-dropdown, .ant-popover, .ant-select-dropdown, .ant-picker-dropdown, .ant-cascader-dropdown, .ant-tooltip {
     z-index: 10050 !important;
 }
 /* @opc-feature: ant-popup-zindex-defense [end] */
@@ -12520,6 +12520,18 @@ html:not(.dark) .creation-history-drawer-root {
     background-image: none !important;
     box-shadow: var(--shadow-lg) !important;
     backdrop-filter: none !important;
+}
+
+/* Tooltip 必须使用同一套浮层背景/前景语义色。Ant Design 会让它继承
+   colorTextLightSolid（实心按钮文字色），深色主题下会形成深底深字。 */
+:where(.ant-tooltip) {
+    --ant-tooltip-arrow-background-color: var(--popover) !important;
+    --ant-tooltip-overlay-color: var(--popover-foreground) !important;
+}
+
+:where(.ant-tooltip-container, .ant-tooltip-inner) {
+    background: var(--popover) !important;
+    color: var(--popover-foreground) !important;
 }
 
 /* @opc-feature: ant-tooltip-commercial-governance [start] */
@@ -18834,6 +18846,17 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap { box-shadow: 0 
     outline: none !important;
 }
 
+/* @opc-feature: fix-unified-select-high-contrast [start] */
+.ant-select.app-unified-select,
+.ant-select.app-unified-select .ant-select-selection-item {
+    color: var(--foreground) !important;
+    font-weight: 500;
+}
+
+.ant-select.app-unified-select .ant-select-selection-placeholder {
+    color: color-mix(in srgb, var(--foreground) 55%, transparent) !important;
+}
+/* @opc-feature: fix-unified-select-high-contrast [end] */
 .ant-select.app-unified-select .ant-select-content,
 .ant-select.app-unified-select .ant-select-selector,
 .ant-select.app-unified-select .ant-select-selection-search-input {
@@ -18869,28 +18892,9 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap { box-shadow: 0 
     box-shadow: none !important;
 }
 
-.ant-select-dropdown {
-    border: 0 !important;
-    border-color: transparent !important;
-    border-radius: var(--r-2xl) !important;
-    background: var(--popover) !important;
-    background-image: none !important;
-    box-shadow: var(--elevation-overlay) !important;
-}
-
-.ant-select-dropdown .ant-select-item-option {
-    border: 0 !important;
-    border-radius: var(--r-md) !important;
-    background: transparent !important;
-    color: var(--popover-foreground) !important;
-}
-
-.ant-select-dropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled),
-.ant-select-dropdown .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-    border: 0 !important;
-    background: color-mix(in srgb, var(--popover-foreground) 10%, var(--popover)) !important;
-    color: var(--popover-foreground) !important;
-}
+/* @opc-feature: fix-ant-select-dropdown-solid-contrast [start] */
+/* Popup surfaces are owned by the scoped admin/workspace overlay contracts. */
+/* @opc-feature: fix-ant-select-dropdown-solid-contrast [end] */
 
 
 /* @opc-feature: brand-mark-surface [start] */
@@ -18913,3 +18917,23 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap { box-shadow: 0 
     vertical-align: middle !important;
 }
 /* @opc-feature: ant-tag-inline-align [end] */
+
+/* @opc-feature: detail_set_workflow [start] */
+/* 电商套图工作流卡片：生成中点阵呼吸 + 规划进度条 */
+.detail-set-pending-dot {
+    animation: detail-set-dot-pulse 1.2s infinite ease-in-out;
+}
+.detail-set-pending-dot:nth-child(2) { animation-delay: 0.15s; }
+.detail-set-pending-dot:nth-child(3) { animation-delay: 0.3s; }
+@keyframes detail-set-dot-pulse {
+    0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1); }
+}
+.detail-set-plan-progress-bar {
+    animation: detail-set-plan-progress 1.6s infinite ease-in-out;
+}
+@keyframes detail-set-plan-progress {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(320%); }
+}
+/* @opc-feature: detail_set_workflow [end] */

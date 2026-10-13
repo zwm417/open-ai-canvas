@@ -118,7 +118,11 @@ export function CanvasFreeformEmptyState({ commands }: { commands: CanvasCreateC
                     onOpenChange={setCreateOpen}
                     placement="bottom"
                     trigger="click"
-                    content={<div className="w-[420px] max-w-[calc(100vw-48px)] p-1" onWheel={(event) => event.stopPropagation()}><CanvasCreateMenu commands={createCommands} /></div>}
+                    content={
+                        /* @opc-feature: canvas-create-menu-redesign [start] */
+                        <div className="w-[360px] max-w-[calc(100vw-48px)] p-1" onWheel={(event) => event.stopPropagation()}><CanvasCreateMenu commands={createCommands} /></div>
+                        /* @opc-feature: canvas-create-menu-redesign [end] */
+                    }
                 >
                     <button
                         type="button"

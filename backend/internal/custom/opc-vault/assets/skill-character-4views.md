@@ -1,0 +1,1 @@
+以@图片1为角色原型，标准生成4格角色设定表：正面全身（Front Full-body）、正侧面全身（Side Full-body）、背面全身（Back Full-body）、面部高清大特写（Face Close-up）。各全身视角肩高、腰线、脚跟水平基准完全锁定，服装细节前后呼应。

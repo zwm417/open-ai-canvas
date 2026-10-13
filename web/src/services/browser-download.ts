@@ -58,3 +58,4 @@ export async function downloadBrowserMedia({ fileName, storageKey, url, variant 
     anchor.click();
     anchor.remove();
 }
+

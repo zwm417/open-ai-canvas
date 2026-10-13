@@ -1,11 +1,19 @@
 import http from "node:http";
 
+const BACKEND_BASE_URL = process.env.BACKEND_URL || "http://127.0.0.1:8080";
+const rawCookie = process.env.ADMIN_SESSION_COOKIE || "";
+const ADMIN_SESSION_COOKIE = rawCookie && !rawCookie.startsWith("open_ai_canvas_session=")
+  ? `open_ai_canvas_session=${rawCookie}`
+  : rawCookie;
+
 function api(path) {
   return new Promise((resolve, reject) => {
-    const req = http.request("http://127.0.0.1:8080" + path, {
-      headers: {
-        Cookie: "open_ai_canvas_session=test_admin_session.testtoken123456789012345678901234",
-      },
+    const headers = {};
+    if (ADMIN_SESSION_COOKIE) {
+      headers["Cookie"] = ADMIN_SESSION_COOKIE;
+    }
+    const req = http.request(BACKEND_BASE_URL + path, {
+      headers,
     }, (res) => {
       let b = "";
       res.on("data", (c) => (b += c));

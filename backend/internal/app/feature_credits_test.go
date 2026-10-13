@@ -155,4 +155,118 @@ func TestFeatureCreditSettingsModelSceneMultipliers(t *testing.T) {
 		t.Fatalf("expected billing order multiplier to be 20000, got %d", order.MultiplierBasisPoints)
 	}
 }
+
+func TestFeatureCreditFallbackAndAliases(t *testing.T) {
+	svc, db := newChannelModelTestService(t)
+	if err := db.AutoMigrate(&model.SystemSetting{}, &model.User{}, &model.CreditAccount{}, &model.CreditLedgerEntry{}, &model.AdminAuditEvent{}, &model.ModelPricing{}); err != nil {
+		t.Fatal(err)
+	}
+
+	admin := &model.User{ID: "admin_user", Role: model.UserRoleAdmin}
+	user := &model.User{ID: "test_user_fallback", Role: model.UserRoleUser}
+	if err := db.Create(user).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. 测试未在【功能积分扣减配置】中配置的场景，必须走系统保底扣费 (Fail-closed)
+	// 1.1 余额不足时：严格阻断执行，报错提示余额不足
+	_, err := svc.DeductFeatureCredits(user, DeductFeatureCreditsRequest{
+		Scene: "some_unconfigured_novel_node",
+		Model: "gemini-2.5-flash",
+	})
+	if err == nil || err.Error() != "积分余额不足，请先充值或签到领取积分" {
+		t.Fatalf("expected insufficient credits error for unconfigured scene, got %v", err)
+	}
+
+	// 1.2 给用户充值 5 积分 (5,000,000 微积分)
+	if _, err := svc.AdminAdjustCredits(admin, user.ID, AdminCreditAdjustmentRequest{
+		AmountMicrocredits: 5_000_000,
+		Note:               "测试充值",
+	}); err != nil {
+		t.Fatalf("AdminAdjustCredits error: %v", err)
+	}
+
+	// 1.3 再次调用未配置的场景，必须保底扣除 1 积分 (1,000,000 微积分)
+	deductRes, err := svc.DeductFeatureCredits(user, DeductFeatureCreditsRequest{
+		Scene: "some_unconfigured_novel_node",
+		Model: "gemini-2.5-flash",
+	})
+	if err != nil {
+		t.Fatalf("DeductFeatureCredits error: %v", err)
+	}
+	if !deductRes.Charged || deductRes.DeductedMicrocredits != 1_000_000 {
+		t.Fatalf("expected fallback charge of 1_000_000 microcredits (1 credit), got charged=%v deducted=%d", deductRes.Charged, deductRes.DeductedMicrocredits)
+	}
+
+	// 2. 测试场景别名双向互认
+	settings := FeatureCreditSettings{
+		Features: map[string]FeatureCreditItem{
+			"canvas_video_reverse": {
+				Scene:                 "canvas_video_reverse",
+				Enabled:               true,
+				Mode:                  "token_multiplier",
+				MultiplierBasisPoints: 18_000, // 1.8x
+			},
+			"canvas_material_analysis": {
+				Scene:             "canvas_material_analysis",
+				Enabled:           true,
+				Mode:              "fixed",
+				FixedMicrocredits: 3_000_000, // 3 积分
+			},
+		},
+		ModelSceneMultipliers: map[string]map[string]int64{
+			"gemini-2.5-flash": {
+				"canvas_video_reverse": 22_000, // 2.2x
+			},
+		},
+	}
+	if _, err := svc.UpdateFeatureCreditSettings(admin, settings); err != nil {
+		t.Fatalf("UpdateFeatureCreditSettings error: %v", err)
+	}
+
+	// 2.1 通过旧别名 video_reverse 解析，应能互通匹配到 canvas_video_reverse 的专属倍率 (22_000)
+	bps, ok := svc.ResolveModelSceneMultiplier("gemini-2.5-flash", "video_reverse")
+	if !ok || bps != 22_000 {
+		t.Fatalf("expected 22000 bps for video_reverse alias, got %d (ok=%v)", bps, ok)
+	}
+
+	// 2.2 通过 assistant_video_reverse 解析，亦应能互通匹配
+	bpsAss, okAss := svc.ResolveModelSceneMultiplier("gemini-2.5-flash", "assistant_video_reverse")
+	if !okAss || bpsAss != 22_000 {
+		t.Fatalf("expected 22000 bps for assistant_video_reverse alias, got %d (ok=%v)", bpsAss, okAss)
+	}
+
+	// 2.3 测试固定点数通过别名 material_analysis 扣减 canvas_material_analysis 的 3 积分
+	matDeduct, err := svc.DeductFeatureCredits(user, DeductFeatureCreditsRequest{
+		Scene: "material_analysis",
+		Model: "gemini-2.5-flash",
+	})
+	if err != nil {
+		t.Fatalf("material_analysis deduct error: %v", err)
+	}
+	if !matDeduct.Charged || matDeduct.DeductedMicrocredits != 3_000_000 {
+		t.Fatalf("expected 3_000_000 microcredits deducted for material_analysis alias, got charged=%v deducted=%d", matDeduct.Charged, matDeduct.DeductedMicrocredits)
+	}
+
+	// 3. 测试显式禁用的场景放行免费 (Enabled: false)
+	settings.Features["canvas_material_analysis"] = FeatureCreditItem{
+		Scene:             "canvas_material_analysis",
+		Enabled:           false, // 管理员主动免费
+		Mode:              "fixed",
+		FixedMicrocredits: 3_000_000,
+	}
+	if _, err := svc.UpdateFeatureCreditSettings(admin, settings); err != nil {
+		t.Fatal(err)
+	}
+	freeDeduct, err := svc.DeductFeatureCredits(user, DeductFeatureCreditsRequest{
+		Scene: "canvas_material_analysis",
+		Model: "gemini-2.5-flash",
+	})
+	if err != nil {
+		t.Fatalf("free deduct error: %v", err)
+	}
+	if freeDeduct.Charged || freeDeduct.DeductedMicrocredits != 0 {
+		t.Fatalf("expected charged=false for explicitly disabled scene, got charged=%v deducted=%d", freeDeduct.Charged, freeDeduct.DeductedMicrocredits)
+	}
+}
 // @opc-adapter: feature-credits [end]

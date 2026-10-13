@@ -862,7 +862,7 @@ export function CanvasCloudAgentPanel({ canvasId, domainProjectId, nodeCount, se
 
     return (
         <>
-            <AgentLauncher theme={theme} statusColor={statusColor} approvalPending={Boolean(approval)} reducedMotion={Boolean(reducedMotion)} hidden={open} onOpen={onOpen} />
+            <AgentLauncher theme={theme} statusColor={statusColor} approvalPending={Boolean(approval)} mood={approval || status === "waiting_approval" ? "attention" : status === "running" || status === "queued" ? "working" : "idle"} reducedMotion={Boolean(reducedMotion)} hidden={open} onOpen={onOpen} />
             <AnimatePresence>
                 {open ? (
                     <motion.aside

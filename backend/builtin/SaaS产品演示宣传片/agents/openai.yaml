@@ -1,0 +1,4 @@
+interface:
+  display_name: "商用 SaaS 产品宣传片"
+  short_description: "用真实产品页面、品牌素材和节拍卡点制作商用产品宣传片"
+  default_prompt: "使用 $saas-product-demo-video，把我的产品制作成可发布的商用宣传片。"

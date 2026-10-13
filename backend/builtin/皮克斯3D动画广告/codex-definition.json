@@ -1,0 +1,107 @@
+﻿{
+  "id": "pixar_animation_ad",
+  "name": "皮克斯动画广告",
+  "description": "从原创 3D 卡通角色立绘、分镜和广告歌词开始，通过智影媒体链路制作 15–90 秒品牌或产品动画广告完整成片。",
+  "icon": "🎞️",
+  "color": "#E4572E",
+  "category": "Video",
+  "scenarios": [
+    "皮克斯动画广告",
+    "3D 卡通品牌广告",
+    "卡通产品宣传片",
+    "动画广告歌",
+    "品牌吉祥物广告",
+    "角色立绘到一键成片",
+    "3D cartoon commercial",
+    "animated brand jingle"
+  ],
+  "promptTemplate": "使用 $pixar-animation-ad 全自动完成当前任务，并把 SKILL.md 的编号阶段视为不可改写的执行合同。先在画布创建并连接 delivery-spec、brand-style-bible、character-bible 三个阶段节点；角色圣经先保持 draft，按依赖波次批量生成并审核全部角色身份主图、脸部转面、全身转面和表情表，全部通过后才标记 completed。只有阶段 1–3 完成后才能创建唯一 creative-script-lyrics 的 script-v2，再按 confirm-shots → prepare-assets 运行，批量生成并审核场景、产品和道具资产。之后一次 script-import-assets、一次 storyboard-create-images 提交全部 rowIndexes，只重试失败或空白镜头，再进入 storyboard-create-videos、声音校验、Logo 片尾、合成、七层终检和最终 MP4。工作流中的关键帧就是原生分镜图，禁止普通剧情图片或视频生成器。根据用户目标、发布场景、现有素材、模型能力和成本自主选择画幅、分辨率、15–90 秒内的具体时长、声音、字幕、模型及参数。所有 AI 图片、视频、音频和 3D 生成只允许通过智影 Platform Media，禁止直连外部供应商。\n\n用户需求：{userInput}",
+  "negativePrompt": "copied animation character, copyrighted character, studio logo imitation, wrong brand, wrong product, invented claim, character identity drift, costume change, product deformation, wrong logo, extra limbs, broken hands, lip sync mismatch, axis break, random camera, unreadable text, flicker, watermark, low quality",
+  "preferredModel": "auto",
+  "outputType": "video",
+  "aspectRatio": "auto",
+  "stylePreset": "original-cinematic-3d-cartoon",
+  "analysisPrompt": "核验品牌产品事实、主角职业和表演内容、产品与 Logo 素材及用户明确要求；其余创意方向、视频比例、分辨率、平台、15–90 秒内的具体时长、语言和广告歌方案由 Agent 根据发布场景、模型能力与成本自动选择。把皮克斯式诉求转换为原创电影级 3D 卡通属性，禁止复制已有角色或制造官方关联。严格依次完成 delivery-spec → brand-style-bible → character-bible：角色圣经声明全部稳定 persona ID，批量生成、查看并批准每个角色的身份主图、脸部转面、全身转面和表情表，完成后才允许创建 creative-script-lyrics 的唯一 script-v2。随后按 confirm-shots → prepare-assets 生成完整脚本、歌词、声音字幕规划和稳定场景/产品/道具键；按依赖波次批量生成后续资产，场景必须是干净空场。全部资产通过后一次导入完整 rows 与资产集合，再一次 storyboard-create-images 提交全部 rowIndexes；仅失败或空白镜头用 storyboard-regenerate-images 重试。每镜只连接实际使用的角色、干净场景和产品资产，所有原生分镜图逐张批准后才进入原生有声视频、Logo、合成和终检。多个失败项批量重试，恰好一个失败项才单独 force=true 重试；中间阶段全自动连续执行，但机器阶段门禁不可跳过。只有最终 MP4 渲染并通过七层终检后才宣称成片完成。",
+  "displayName": "皮克斯动画广告",
+  "shortDescription": "从原创角色立绘、分镜和广告歌制作完整3D卡通品牌广告成片。",
+  "skillIds": [
+    "pixar_animation_ad",
+    "pixar-animation-ad"
+  ],
+  "role": "3D 卡通商业广告导演、原创角色设计师、广告歌创作人与成片制片人",
+  "agentType": "pixar-style-animation-commercial-director",
+  "workflowProfile": "staged",
+  "workflow": {
+    "mode": "direct",
+    "confirmationPolicy": "none",
+    "stages": [
+      "锁定输入与交付规格并完成 delivery-spec",
+      "建立品牌真相、原创风格和连续性圣经并完成 brand-style-bible",
+      "建立 character-bible，批量生成并批准全部角色身份主图、转面和表情资产",
+      "创建唯一 creative-script-lyrics script-v2，创作广告概念、脚本、歌词、声音与字幕并按 confirm-shots、prepare-assets 运行",
+      "批量生成并批准全部场景、产品与道具主图及其灯光版本和转面",
+      "通过 script-import-assets 导入已批准资产",
+      "一次 storyboard-create-images 并发生成全部分镜并逐张批准，只重试失败项",
+      "通过 storyboard-create-videos 逐镜生成视频",
+      "生成广告歌、对白、旁白和音效",
+      "制作 Logo 片尾与品牌文字",
+      "使用 Remotion 和 FFmpeg 合成渲染",
+      "执行七层终检并交付最终 MP4"
+    ],
+    "requiredInputs": [
+      {
+        "key": "brand_product_brief",
+        "label": "品牌名、产品、受众、真实卖点、广告目标和 CTA",
+        "required": true,
+        "blocking": true,
+        "accepts": ["text", "image", "images", "document"],
+        "prompt": "请提供品牌名、产品、目标受众、希望突出的一项真实卖点和最终 CTA。"
+      },
+      {
+        "key": "character_performance",
+        "label": "主角职业、性格、外形偏好和表演内容",
+        "required": false,
+        "blocking": false,
+        "accepts": ["text", "image", "images"],
+        "prompt": "可选：描述主角职业、性格、外形和主要表演；未提供时由 Agent 根据品牌目标自动设计。"
+      },
+      {
+        "key": "delivery_spec",
+        "label": "视频比例、时长、平台、语言和交付版本",
+        "required": false,
+        "blocking": false,
+        "accepts": ["text", "choice", "number"],
+        "prompt": "可选：指定视频比例、分辨率、15–90 秒内的时长、发布平台、声音和字幕语言；未提供时由 Agent 自动选择。"
+      },
+      {
+        "key": "brand_product_assets",
+        "label": "产品多角度图、包装、Logo、色板和字体",
+        "required": false,
+        "blocking": false,
+        "accepts": ["image", "images", "video", "document", "text"]
+      },
+      {
+        "key": "jingle_direction",
+        "label": "广告歌风格、品牌读音、歌词必含信息和声音授权",
+        "required": false,
+        "blocking": false,
+        "accepts": ["text", "audio", "video"]
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "image_generation",
+      "video_generation",
+      "audio_generation",
+      "multi_asset_planning",
+      "task_status",
+      "post_production_handoff"
+    ]
+  },
+  "tools": [
+    "image_generate",
+    "web_search",
+    "web_extract",
+    "fetch_url_context"
+  ]
+}

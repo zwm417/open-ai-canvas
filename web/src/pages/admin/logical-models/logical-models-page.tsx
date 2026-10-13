@@ -543,7 +543,8 @@ export default function LogicalModelsPage() {
                 {simulatingModel && simulationIntent ? (
                     <div className="space-y-5">
                         {simulatingModel.capabilitySpec.operations?.length ? (
-                            <label className="block">
+                            /* @opc-feature: fix-label-select-conflict [start] */
+                            <div className="block">
                                 <span className="mb-1 block text-xs text-foreground/55">生成方式</span>
                                 <Select
                                     className="w-full"
@@ -551,7 +552,8 @@ export default function LogicalModelsPage() {
                                     options={simulatingModel.capabilitySpec.operations.map((value) => ({ value, label: operationLabel(value) }))}
                                     onChange={(operation) => setSimulationIntent({ ...simulationIntent, operation })}
                                 />
-                            </label>
+                            </div>
+                            /* @opc-feature: fix-label-select-conflict [end] */
                         ) : null}
                         <CapabilityRequestEditor
                             spec={simulatingModel.capabilitySpec}

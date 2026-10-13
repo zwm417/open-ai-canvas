@@ -207,7 +207,7 @@ export type CanvasAssetRebindResult = {
     updatedProjects: number;
 };
 
-const LOCAL_MEDIA_KEY_PATTERN = /^(image|video|audio|file|video-reference|audio-reference):/;
+const LOCAL_MEDIA_KEY_PATTERN = /^(image|video|audio|file|video-reference|audio-reference|generation-image|generation-video|generation-audio):/;
 const RESOURCE_URL_PATTERN = /\/resources\/([A-Za-z0-9_-]{1,80})\/file/;
 const RESOURCE_ID_PATTERN = /^[A-Za-z0-9_-]{1,80}$/;
 
@@ -309,7 +309,7 @@ function mediaNodeIdentity(storageKey: string | undefined, content: string | und
     return urlMatch ? urlMatch[1] : undefined;
 }
 
-function mediaIdentityFromValue(value: string | undefined) {
+export function mediaIdentityFromValue(value: string | undefined) {
     const key = value?.trim();
     if (!key || key.startsWith("data:") || key.startsWith("blob:")) return undefined;
     const resourceId = resourceIdFromStorageKey(key);

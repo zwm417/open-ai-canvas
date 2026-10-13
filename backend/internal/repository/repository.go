@@ -174,7 +174,7 @@ func (r *Repository) GenerationLogs(userID string, kind string) ([]model.Generat
 	if kind != "" && kind != "all" {
 		query = query.Where("kind = ?", kind)
 	}
-	err := query.Order("created_at desc").Find(&logs).Error
+	err := query.Order("created_at desc").Limit(100).Find(&logs).Error
 	return logs, err
 }
 
@@ -187,9 +187,14 @@ func (r *Repository) GenerationLogForUser(userID string, id string) (*model.Gene
 }
 
 func (r *Repository) UpsertGenerationLog(log *model.GenerationLog) error {
-	result := r.db.Model(&model.GenerationLog{}).
-		Where("id = ? AND user_id = ?", log.ID, log.UserID).
-		Updates(map[string]any{
+	var existing model.GenerationLog
+	err := r.db.Where("id = ? AND user_id = ?", log.ID, log.UserID).First(&existing).Error
+	if err == nil {
+		// 状态机终态保护：已处于终态 (success/failed/partial) 的记录，严禁被延迟到达的 pending 请求逆向覆盖
+		if (existing.Status == "success" || existing.Status == "failed" || existing.Status == "partial") && log.Status == "pending" {
+			return nil
+		}
+		return r.db.Model(&existing).Updates(map[string]any{
 			"kind":          log.Kind,
 			"title":         log.Title,
 			"prompt":        log.Prompt,
@@ -202,11 +207,12 @@ func (r *Repository) UpsertGenerationLog(log *model.GenerationLog) error {
 			"config_json":   log.ConfigJSON,
 			"payload_json":  log.PayloadJSON,
 			"updated_at":    log.UpdatedAt,
-		})
-	if result.Error != nil || result.RowsAffected > 0 {
-		return result.Error
+		}).Error
 	}
-	return r.db.Create(log).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return r.db.Create(log).Error
+	}
+	return err
 }
 
 func (r *Repository) DeleteGenerationLog(userID string, id string) error {
@@ -238,3 +244,8 @@ func (r *Repository) DeleteCreativePromptTemplate(userID string, id string) erro
 
 // @opc-adapter: creative-prompt-templates [end]
 
+// @opc-adapter: custom-license [start]
+func (r *Repository) DB() *gorm.DB {
+	return r.db
+}
+// @opc-adapter: custom-license [end]

@@ -17,8 +17,6 @@ import (
 	"infinite-canvas/backend/internal/service"
 
 	// @opc-adapter: prompt-vault-endpoints [start]
-	opcinfinite "infinite-canvas/backend/internal/custom/opc-infinite"
-	opcvault "infinite-canvas/backend/internal/custom/opc-vault"
 	// @opc-adapter: prompt-vault-endpoints [end]
 
 	"github.com/gin-gonic/gin"
@@ -84,27 +82,14 @@ func RegisterUserDataRoutes(r *gin.RouterGroup, svc *service.Service) {
 		ok(c, gin.H{"assets": assets})
 	})
 	// @opc-adapter: prompt-vault-endpoints [start]
-	r.GET("/prompts/creative-reverse-deconstruct", func(c *gin.Context) {
-		ok(c, gin.H{
-			"prompt": opcinfinite.GetCreativeReverseDeconstructSystemPrompt(),
-		})
-	})
-	r.GET("/prompts/:id", func(c *gin.Context) {
-		id := c.Param("id")
-		if !opcvault.HasPrompt(id) {
-			fail(c, http.StatusNotFound, fmt.Errorf("未找到指定的提示词资产: %s", id))
-			return
-		}
-		prompt, err := opcvault.GetPrompt(id)
-		if err != nil {
-			fail(c, http.StatusInternalServerError, err)
-			return
-		}
-		ok(c, gin.H{
-			"id":     id,
-			"prompt": prompt,
-		})
-	})
+	// 商业安全防御（正向收敛）：核心商业提示词属于系统机密资产，全面关停 HTTP 只读端点。
+	// 杜绝任何客户端（含已登录用户）通过 API 拖库；所有提示词资产统一由服务端代理网关与异步任务队列在发送前隐形注入。
+	denyPromptVaultEndpoint := func(c *gin.Context) {
+		fail(c, http.StatusForbidden, fmt.Errorf("核心提示词资产属于系统受保护资产，外部读取端点已永久关停；请使用 __VAULT_PROMPT__ 宏由服务端安全注入"))
+	}
+
+	r.GET("/prompts/creative-reverse-deconstruct", denyPromptVaultEndpoint)
+	r.GET("/prompts/:id", denyPromptVaultEndpoint)
 	// @opc-adapter: prompt-vault-endpoints [end]
 	// @opc-adapter: resource-precheck-deduplication [start]
 	r.POST("/resources/pre-check", func(c *gin.Context) {
@@ -368,7 +353,9 @@ func RegisterUserDataRoutes(r *gin.RouterGroup, svc *service.Service) {
 			failService(c, err)
 			return
 		}
-		serveResourceDelivery(c, delivery, "private, no-cache", "")
+		// @opc-adapter: fast-media-redirect-cache [start]
+		serveResourceDelivery(c, delivery, "private, max-age=300", "")
+		// @opc-adapter: fast-media-redirect-cache [end]
 	})
 	publicResourceHandler := func(c *gin.Context) {
 		options := resourceAccessOptions(c)
@@ -377,7 +364,9 @@ func RegisterUserDataRoutes(r *gin.RouterGroup, svc *service.Service) {
 			failService(c, err)
 			return
 		}
-		serveResourceDelivery(c, delivery, "public, max-age=0, must-revalidate", "")
+		// @opc-adapter: fast-media-redirect-cache [start]
+		serveResourceDelivery(c, delivery, "public, max-age=3600, must-revalidate", "")
+		// @opc-adapter: fast-media-redirect-cache [end]
 	}
 	r.GET("/public/resources/:id/file", publicResourceHandler)
 	r.GET("/public/resources/:id/file/:filename", publicResourceHandler)

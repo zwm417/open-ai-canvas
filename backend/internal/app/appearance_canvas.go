@@ -48,7 +48,7 @@ func normalizeCanvasAppearance(value CanvasAppearance) (CanvasAppearance, error)
 			return value, BadAuthRequest("助手名称不能包含控制字符")
 		}
 	}
-	if value.AvatarType != "orb" && value.AvatarType != "live2d" {
+	if value.AvatarType != "orb" && value.AvatarType != "live2d" && value.AvatarType != "pixiu" {
 		return value, BadAuthRequest("请选择有效的 Agent 形象类型")
 	}
 	if value.AvatarHeight < 120 || value.AvatarHeight > 360 {

@@ -1,0 +1,35 @@
+{
+  "skill_name": "ecommerce-product-system",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "为一款便携榨汁杯规划独立站 PDP 的 8 张商品视觉。",
+      "should_trigger": true,
+      "expected_output": "建立购买旅程；八张职责独立；锁定 SKU",
+      "assertions": [
+        "建立购买旅程",
+        "八张职责独立",
+        "锁定 SKU"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "只做 Amazon 美国站主图。",
+      "should_trigger": false,
+      "expected_output": "应路由到 amazon-product-set",
+      "assertions": [
+        "应路由到 amazon-product-set"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "参考图看不到杯底，但想展示底部电机结构。",
+      "should_trigger": true,
+      "expected_output": "标记未知结构；要求补充参考或避免补画",
+      "assertions": [
+        "标记未知结构",
+        "要求补充参考或避免补画"
+      ]
+    }
+  ]
+}

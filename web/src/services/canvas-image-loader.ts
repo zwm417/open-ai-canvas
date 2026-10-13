@@ -1,5 +1,11 @@
-const MAX_ACTIVE_IMAGE_PREPARATIONS = 4;
+// @opc-feature: canvas-image-loader-optimization [start]
+const MAX_ACTIVE_IMAGE_PREPARATIONS = 16;
 const IMAGE_PREPARATION_TIMEOUT_MS = 60_000;
+const MAX_PREPARED_CACHE_ENTRIES = 160;
+
+const preparedCache = new Map<string, HTMLImageElement>();
+const inFlightRequests = new Map<string, Promise<HTMLImageElement>>();
+// @opc-feature: canvas-image-loader-optimization [end]
 
 type ImagePreparationJob = {
     src: string;
@@ -19,7 +25,34 @@ let activePreparations = 0;
 /** Load and decode one image under a shared concurrency budget. Queued work is cancellable. */
 export function prepareCanvasImage(src: string, signal: AbortSignal, timeoutMs = IMAGE_PREPARATION_TIMEOUT_MS): Promise<HTMLImageElement> {
     if (signal.aborted) return Promise.reject(abortError());
-    return new Promise((resolve, reject) => {
+
+    // @opc-feature: canvas-image-loader-optimization [start]
+    const cached = preparedCache.get(src);
+    if (cached && cached.naturalWidth > 0) {
+        return Promise.resolve(cached);
+    }
+
+    const inFlight = inFlightRequests.get(src);
+    if (inFlight) {
+        return new Promise<HTMLImageElement>((resolve, reject) => {
+            if (signal.aborted) return reject(abortError());
+            const onAbort = () => reject(abortError());
+            signal.addEventListener("abort", onAbort, { once: true });
+            inFlight.then(
+                (img) => {
+                    signal.removeEventListener("abort", onAbort);
+                    resolve(img);
+                },
+                (err) => {
+                    signal.removeEventListener("abort", onAbort);
+                    reject(err);
+                },
+            );
+        });
+    }
+    // @opc-feature: canvas-image-loader-optimization [end]
+
+    const promise = new Promise<HTMLImageElement>((resolve, reject) => {
         const job: ImagePreparationJob = { src, signal, resolve, reject, started: false, settled: false, onAbort: () => {} };
         job.onAbort = () => {
             if (job.settled) return;
@@ -36,6 +69,25 @@ export function prepareCanvasImage(src: string, signal: AbortSignal, timeoutMs =
         queue.push(job);
         pump(timeoutMs);
     });
+
+    // @opc-feature: canvas-image-loader-optimization [start]
+    inFlightRequests.set(src, promise);
+    promise.then(
+        (img) => {
+            inFlightRequests.delete(src);
+            if (preparedCache.size >= MAX_PREPARED_CACHE_ENTRIES) {
+                const oldestKey = preparedCache.keys().next().value;
+                if (oldestKey) preparedCache.delete(oldestKey);
+            }
+            preparedCache.set(src, img);
+        },
+        () => {
+            inFlightRequests.delete(src);
+        },
+    );
+    // @opc-feature: canvas-image-loader-optimization [end]
+
+    return promise;
 }
 
 export function canvasImagePreparationStats() {

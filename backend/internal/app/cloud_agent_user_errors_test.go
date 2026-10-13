@@ -23,6 +23,9 @@ func TestUserFacingTaskErrorMatchesCanvasNodeClassification(t *testing.T) {
 		{"provider json", `接口请求失败：{"error":{"message":"图片尺寸不支持"}}`, "图片尺寸不支持"},
 		{"moderation", "sensitive_words_detected", taskErrorModerationMessage},
 		{"storage", "参考图片上传失败：bucket denied", "参考素材上传到对象存储失败，请检查对象存储配置后重试。"},
+		{"windows forcibly closed", `Post "https://example.com": wsarecv: An existing connection was forcibly closed by the remote host.`, "网络异常。"},
+		{"windows connection aborted", `Post "https://example.com": wsasend: An established connection was aborted by the software in your host machine. (connection abort)`, "网络异常。"},
+		{"windows wsaeconnreset", `read tcp 127.0.0.1:8080: wsaeconnreset`, "网络异常。"},
 		{"readable chinese", "模型服务拒绝了请求，请检查模型和参数", "模型服务拒绝了请求，请检查模型和参数"},
 		{"empty", "", taskErrorDefaultMessage},
 	} {
@@ -76,5 +79,18 @@ func TestRepositorySentinelErrorsAreChinese(t *testing.T) {
 		if !cloudAgentReadableMessage(err.Error()) {
 			t.Errorf("sentinel error is not user-readable Chinese: %q", err.Error())
 		}
+	}
+}
+
+func TestWindowsNetworkDisconnectionErrorClassification(t *testing.T) {
+	windowsErr := errors.New("wsarecv: An existing connection was forcibly closed by the remote host.")
+	if !retryableProtocolMediaDownload(windowsErr) {
+		t.Fatalf("expected retryableProtocolMediaDownload to be true for Windows forcibly closed socket")
+	}
+	if !billingFailureUncertain(windowsErr) {
+		t.Fatalf("expected billingFailureUncertain to be true for Windows forcibly closed socket")
+	}
+	if !retryableMediaRecovery(windowsErr) {
+		t.Fatalf("expected retryableMediaRecovery to be true for Windows forcibly closed socket")
 	}
 }

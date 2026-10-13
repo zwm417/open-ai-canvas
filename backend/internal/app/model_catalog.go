@@ -214,7 +214,9 @@ func (s *Service) sanitizeChannelModel(cm *model.ChannelModel) (PublicChannelMod
 		Description:      cm.Description,
 		DisplayName:      cm.DisplayName,
 		SortOrder:        cm.SortOrder,
-		Icon:             cm.Icon,
+		// @opc-adapter: seedance-jimeng-icon-governance [start]
+		Icon:             normalizeChannelModelIcon(cm.Icon, cm.ModelKey, cm.ProviderModelKey, cm.DisplayName, cm.Protocol),
+		// @opc-adapter: seedance-jimeng-icon-governance [end]
 		Capability:       cm.Capability,
 		Protocol:         cm.Protocol,
 		CapabilityConfig: capabilityConfig,

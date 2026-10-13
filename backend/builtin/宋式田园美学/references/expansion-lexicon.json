@@ -1,0 +1,2311 @@
+{
+  "name": "Song pastoral controlled extensions",
+  "selection_rule": "Use only entries relevant to the requested action, season, setting, and shot.",
+  "entries": [
+    {
+      "id": "extension.season_weather.01",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "早春薄雾中的湿润新绿",
+      "en": "damp new growth inside pale early-spring mist",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.02",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "细密春雨落在白墙与竹叶上",
+      "en": "fine spring rain falling across white walls and bamboo leaves",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.03",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "春雨初歇后残留的檐滴",
+      "en": "lingering eave droplets after spring rain",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.04",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "暮春柔风吹动花枝与衣袖",
+      "en": "a late-spring breeze moving flowering branches and sleeves",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.05",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "初夏清晨通透而微凉的空气",
+      "en": "clear slightly cool air on an early-summer morning",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.06",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "盛夏正午竹棚下的浓荫",
+      "en": "dense shade beneath a bamboo canopy at summer noon",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.07",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "夏日晚霞前温暖缓慢的风",
+      "en": "a warm slow breeze before summer sunset",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.08",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "梅雨时节低反差的灰白天光",
+      "en": "low-contrast gray-white daylight during plum rain",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.09",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "雷雨过后从屋檐滴落的明亮水珠",
+      "en": "bright droplets falling from eaves after a storm",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.10",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "初秋清晨略带凉意的田野薄雾",
+      "en": "cool field mist on an early-autumn morning",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.11",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "深秋傍晚低而柔的暖色斜光",
+      "en": "low soft warm side light at a late-autumn dusk",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.12",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "初霜覆盖菜叶边缘",
+      "en": "first frost tracing the edges of vegetable leaves",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.13",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "晴朗冬日上午清瘦的阳光",
+      "en": "lean clear sunlight on a winter morning",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.14",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "冬日阴天均匀柔软的天空光",
+      "en": "even soft skylight on an overcast winter day",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.15",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "融雪后石路上的冷亮湿痕",
+      "en": "cool bright wet marks on stone after snowmelt",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.16",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "黎明蓝灰空气逐渐被暖光打开",
+      "en": "blue-gray dawn air slowly opening into warmth",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.17",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "午间短影贴近器物脚下",
+      "en": "short midday shadows held close beneath tools",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.18",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "午后斜光穿过庭院树冠",
+      "en": "late-afternoon side light passing through the courtyard canopy",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.19",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "日落后仍保留余温的白墙",
+      "en": "whitewashed walls retaining warmth after sunset",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.20",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "月光轻落在安静院地与水缸上",
+      "en": "moonlight resting lightly on a quiet courtyard and water jar",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.21",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "夜间灶火与油灯形成局部暖光",
+      "en": "localized warm light from stove fire and an oil lamp at night",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.22",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "山谷晨雾沿茶垄缓慢退去",
+      "en": "valley mist withdrawing slowly along tea rows",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.23",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "雨前湿风压低田边草叶",
+      "en": "humid pre-rain wind bending grasses along the field",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.season_weather.24",
+      "category": "season_weather",
+      "tier": "extension",
+      "zh": "雨后露珠在桑叶与豆叶上闪动",
+      "en": "post-rain dew glinting on mulberry and bean leaves",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.01",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "面向菜园的低矮木廊",
+      "en": "a low wooden veranda facing the vegetable garden",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.02",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "白墙与柴门围合的侧院",
+      "en": "a side courtyard enclosed by a white wall and firewood gate",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.03",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "靠近厨房的小片香草圃",
+      "en": "a small herb patch beside the kitchen",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.04",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "竹篱围起的乡居菜园",
+      "en": "a rural vegetable garden enclosed by a bamboo fence",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.05",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "青石井台与旧木辘轳",
+      "en": "a bluestone well platform with an aged wooden windlass",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.06",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "溪边平整石块组成的洗涤台",
+      "en": "a washing ledge of flat stones beside the stream",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.07",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "穿过柴门的狭窄村巷",
+      "en": "a narrow village lane passing through a firewood gate",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.08",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "横跨浅溪的简朴石板桥",
+      "en": "a simple slab bridge crossing a shallow stream",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.09",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "临水石阶与低矮木埠头",
+      "en": "waterside stone steps and a low wooden landing",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.10",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "通风干燥的木构谷仓",
+      "en": "an airy dry timber granary",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.11",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "白墙围合的开阔晒场",
+      "en": "an open threshing yard enclosed by whitewashed walls",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.12",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "带泥砖灶与开放窗的乡居厨房",
+      "en": "a rural kitchen with a clay-brick stove and open window",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.13",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "靠窗摆放矮桌的朴素茶室",
+      "en": "a plain tea room with a low table beside the window",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.14",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "梁柱裸露的日常起居间",
+      "en": "an everyday living room with exposed timber beams",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.15",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "放置木机与线轴的织布间",
+      "en": "a weaving room holding a wooden loom and spindles",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.16",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "竹匾层叠摆放的养蚕房",
+      "en": "a silkworm room lined with stacked bamboo trays",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.17",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "屋后堆放稻草与柴薪的小棚",
+      "en": "a small rear shed stacked with straw and firewood",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.18",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "竹林边缘的简朴歇脚亭棚",
+      "en": "a modest resting shelter at the edge of a bamboo grove",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.19",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "梯田旁遮雨用的低矮田棚",
+      "en": "a low field shelter beside terraced paddies",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.20",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "沿山坡转折的狭窄茶园小径",
+      "en": "a narrow tea-garden path turning along the hillside",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.21",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "被桑叶覆盖的林间采摘小路",
+      "en": "a picking path enclosed by mulberry leaves",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.22",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "荷塘边长满青草的泥岸",
+      "en": "a grassy earthen bank beside a lotus pond",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.23",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "由踏石连接的浅溪过水处",
+      "en": "a shallow stream crossing linked by stepping stones",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.24",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "停靠小木舟的安静渡口",
+      "en": "a quiet landing where small wooden skiffs are moored",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.25",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "木水车旁缓慢流动的灌溉渠",
+      "en": "a slow irrigation channel beside a wooden waterwheel",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.26",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "果树枝影覆盖的白墙院角",
+      "en": "a white-walled courtyard corner covered by orchard shadows",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.27",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "青石与泥土相接的村落巷口",
+      "en": "a village entrance where bluestone meets packed earth",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.spaces_architecture.28",
+      "category": "spaces_architecture",
+      "tier": "extension",
+      "zh": "屋檐下用于避雨和晾物的狭长空间",
+      "en": "a narrow eave-side space used for shelter and drying",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.01",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "牵引木犁翻开湿润田土",
+      "en": "guiding a wooden plow through damp field soil",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.02",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "用木耙整平灌水后的田面",
+      "en": "leveling a flooded field with a wooden harrow",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.03",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "从布袋中均匀撒播谷种",
+      "en": "broadcasting grain seed evenly from a cloth bag",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.04",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "在浅水苗床中整理秧苗",
+      "en": "sorting seedlings in a shallow flooded nursery",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.05",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "双手分开整齐秧束",
+      "en": "dividing neat bundles of rice seedlings with both hands",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.06",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "弯腰将秧苗插入浅水田",
+      "en": "bending to set rice seedlings into a shallow paddy",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.07",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "沿菜畦拔除细小杂草",
+      "en": "pulling small weeds along a vegetable bed",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.08",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "打开竹渠让清水流入田块",
+      "en": "opening a bamboo channel to let water enter the field",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.09",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "用泥土修补被水冲开的田埂",
+      "en": "repairing a washed-out field ridge with wet earth",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.10",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "用镰刀割取成熟稻穗",
+      "en": "cutting mature rice stalks with a sickle",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.11",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "贴近地面收割金黄麦秆",
+      "en": "harvesting golden wheat close to the ground",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.12",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "用稻草绳捆紧收获的禾束",
+      "en": "binding harvested stalks with straw cord",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.13",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "将禾束摔打在木板上脱粒",
+      "en": "threshing tied stalks against a wooden board",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.14",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "用竹簸箕扬去谷壳",
+      "en": "winnowing chaff with a bamboo tray",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.15",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "在晒场翻动摊开的谷物",
+      "en": "turning spread grain across a drying yard",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.16",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "把干燥稻草整齐堆成草垛",
+      "en": "stacking dried straw into a tidy hayrick",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.17",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "收取成熟芝麻荚并放入竹篮",
+      "en": "gathering ripe sesame pods into a bamboo basket",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.18",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "剪下成熟的黍穗与粟穗",
+      "en": "cutting mature broomcorn and millet heads",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.19",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "从矮架上摘取鼓胀豆荚",
+      "en": "picking full bean pods from a low trellis",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.20",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "托住葫芦并剪断粗藤",
+      "en": "supporting a gourd while cutting its thick stem",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.21",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "从浅泥中挖取莲藕",
+      "en": "lifting lotus roots from shallow mud",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.22",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "在水面下摸取菱角",
+      "en": "gathering water chestnuts just below the surface",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.23",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "掘开松土收取芋头",
+      "en": "loosening soil to harvest taro roots",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.24",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "在竹林湿土中挖出春笋",
+      "en": "digging spring bamboo shoots from damp grove soil",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.25",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "雨后林边寻找新生菌菇",
+      "en": "gathering fresh mushrooms at the forest edge after rain",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.26",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "剪取菜园中的香草与药草",
+      "en": "cutting herbs from a small garden patch",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.27",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "用指腹轻摘茶树嫩芽",
+      "en": "pinching tender tea buds with the fingertips",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.28",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "从桑枝上挑选完整嫩叶",
+      "en": "selecting intact young leaves from mulberry branches",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.29",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "从矮树上托取成熟柿子",
+      "en": "cupping ripe persimmons from a low tree",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.30",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "在落叶间捡拾带壳栗子",
+      "en": "gathering chestnuts among fallen leaves",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.31",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "用竹篮接取摘下的秋梨",
+      "en": "catching picked autumn pears in a bamboo basket",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.fields_crops.32",
+      "category": "fields_crops",
+      "tier": "extension",
+      "zh": "把新收蔬菜按大小分放竹筐",
+      "en": "sorting freshly harvested vegetables into bamboo baskets by size",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.01",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "在陶盆中轻轻淘洗稻米",
+      "en": "gently rinsing rice in a clay basin",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.02",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "将细柴送入泥砖灶膛",
+      "en": "feeding thin firewood into a clay-brick stove",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.03",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "用竹扇稳住灶火",
+      "en": "steadying the stove fire with a bamboo fan",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.04",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "用长柄木铲翻炒时蔬",
+      "en": "turning seasonal greens with a long wooden spatula",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.05",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "揭开竹蒸笼查看蒸糕",
+      "en": "lifting a bamboo steamer lid to check rice cakes",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.06",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "在陶锅中慢煮白粥",
+      "en": "slowly cooking white congee in a clay pot",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.07",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "守着小火煨煮菜汤",
+      "en": "tending vegetable soup over a low fire",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.08",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "温壶、投茶并缓慢注水",
+      "en": "warming the pot, adding tea, and pouring water slowly",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.09",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "把浸泡黄豆送入石磨",
+      "en": "feeding soaked soybeans into a stone mill",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.10",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "用素布过滤新磨豆浆",
+      "en": "filtering fresh soy milk through plain cloth",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.11",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "用木板与石块压制豆腐",
+      "en": "pressing tofu beneath a wooden board and stone weight",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.12",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "在石臼中有节奏地舂米",
+      "en": "pounding rice rhythmically in a stone mortar",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.13",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "转动小石磨研磨谷粉",
+      "en": "turning a small stone mill to grind grain flour",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.14",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "在木案上揉合面团",
+      "en": "kneading dough on a wooden worktable",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.15",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "将面团擀成细长面片",
+      "en": "rolling dough into long thin sheets",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.16",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "把时蔬压入粗陶腌菜坛",
+      "en": "packing vegetables into a rough clay pickling jar",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.17",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "在竹匾上摊晒切开的蔬菜",
+      "en": "spreading sliced vegetables across bamboo trays to dry",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.18",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "用小刀削去春笋外壳",
+      "en": "paring the outer layers from spring bamboo shoots",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.19",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "围坐剥取成熟豆粒",
+      "en": "sitting together to shell mature beans",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.20",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "从莲蓬中剥出新鲜莲子",
+      "en": "removing fresh lotus seeds from their pods",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.21",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "在井水边清洗新摘果实",
+      "en": "washing newly picked fruit beside the well",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.22",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "把柿子系成长串挂在屋檐下",
+      "en": "tying persimmons into long strings beneath the eaves",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.23",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "反复捶打糯米制成柔软米糕",
+      "en": "pounding glutinous rice into soft cakes",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.24",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "将米浆倒入铺布竹屉",
+      "en": "pouring rice batter into a cloth-lined bamboo tray",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.25",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "往陶坛中加入谷物酿制米醋",
+      "en": "adding grain to a clay jar for rice vinegar",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.26",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "用热水冲洗粗陶碗碟",
+      "en": "rinsing rough-clay bowls with hot water",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.27",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "擦拭低矮木桌并重新摆好茶具",
+      "en": "wiping a low wooden table and resetting the tea ware",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.28",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "从井台提回装满清水的木桶",
+      "en": "carrying a wooden bucket filled at the well",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.29",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "把清水缓慢注入储水陶缸",
+      "en": "pouring fresh water slowly into a storage jar",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.30",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "整理灶旁干柴并留出通风空隙",
+      "en": "stacking dry firewood beside the stove with air gaps",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.31",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "提着竹篮与陶壶给田间送饭",
+      "en": "carrying a meal basket and clay flask toward the fields",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.food_domestic.32",
+      "category": "food_domestic",
+      "tier": "extension",
+      "zh": "把刚煮好的粥分入几只粗陶碗",
+      "en": "ladling fresh congee into several rough-clay bowls",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.01",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "把新鲜桑叶铺入养蚕竹匾",
+      "en": "spreading fresh mulberry leaves across silkworm trays",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.02",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "从竹匾中轻取成熟蚕茧",
+      "en": "lifting mature cocoons gently from a bamboo tray",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.03",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "在温水陶盆上缓慢缫丝",
+      "en": "reeling silk slowly above a warm clay basin",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.04",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "用木纺锤把纤维捻成细线",
+      "en": "twisting fiber into thread with a wooden spindle",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.05",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "将经线整齐排上木织机",
+      "en": "arranging warp threads evenly on a wooden loom",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.06",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "推动木梭穿过绷紧经线",
+      "en": "passing a wooden shuttle through taut warp threads",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.07",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "在窗边缝补磨损衣袖",
+      "en": "mending a worn sleeve beside the window",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.08",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "用素线缝制简洁衣边",
+      "en": "sewing a plain garment edge with muted thread",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.09",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "把草木染料搅入陶制染缸",
+      "en": "stirring plant dye inside a clay vat",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.10",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "在浅溪中漂洗新染布匹",
+      "en": "rinsing newly dyed cloth in a shallow stream",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.11",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "两人反向拧出长布中的水分",
+      "en": "two women twisting a long cloth in opposite directions",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.12",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "将染布展开搭上竹竿",
+      "en": "opening dyed cloth across a bamboo drying pole",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.13",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "沿折痕把晒干布匹叠齐",
+      "en": "folding dry cloth along its natural creases",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.14",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "用细竹篾编织圆形提篮",
+      "en": "weaving a round carrying basket from thin bamboo strips",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.15",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "用小刀把竹片劈成均匀细篾",
+      "en": "splitting bamboo into even narrow strips with a small knife",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.16",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "在旧篮破口处补回交错竹篾",
+      "en": "repairing a torn basket with interlaced bamboo strips",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.17",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "将植物纤维搓成结实绳索",
+      "en": "twisting plant fiber into sturdy rope",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.18",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "在门廊下修补磨损渔网",
+      "en": "mending a worn fishing net beneath the veranda",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.19",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "把干燥蒲草编成朴素席面",
+      "en": "weaving dried rushes into a plain mat",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.20",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "沿圆形帽架编结草帽",
+      "en": "braiding a straw hat around a round frame",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.21",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "缝制装香草的小布袋",
+      "en": "sewing a small cloth pouch for dried herbs",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.22",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "用麻绳修补磨损草鞋",
+      "en": "repairing worn straw sandals with hemp cord",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.23",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "削制表面不规则的木勺",
+      "en": "carving a wooden spoon with an irregular handmade surface",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.textile_craft.24",
+      "category": "textile_craft",
+      "tier": "extension",
+      "zh": "用旧布补片加固劳动衣装",
+      "en": "reinforcing work clothes with a patch of worn cloth",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.01",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "在浅溪中抖洗带泥蔬菜",
+      "en": "swishing muddy greens through a shallow stream",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.02",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "在石台上轻敲并漂洗衣物",
+      "en": "lightly beating and rinsing cloth on a stone ledge",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.03",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "清洗装过茶叶的竹篓",
+      "en": "rinsing tea baskets at the water's edge",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.04",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "从溪水中冲去莲藕表面的泥",
+      "en": "washing mud from lotus roots in clear water",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.05",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "从小舟侧面折取成熟莲蓬",
+      "en": "gathering ripe lotus pods over the side of a skiff",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.06",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "在密集荷叶间摸取菱角",
+      "en": "collecting water chestnuts among dense lotus leaves",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.07",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "用长篙推动小舟离开泥岸",
+      "en": "poling a small skiff away from the muddy bank",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.08",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "把装满蔬果的竹篮递上岸",
+      "en": "passing a basket of produce onto the bank",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.09",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "提篮穿过低矮石板桥",
+      "en": "crossing a low stone bridge with a basket",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.10",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "在浅水中修补竹制鱼笼",
+      "en": "repairing a bamboo fish trap in shallow water",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.11",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "从岸边撒开一张小渔网",
+      "en": "casting a small fishing net from the bank",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.12",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "蹲在水边捡拾河螺",
+      "en": "crouching at the water's edge to gather river snails",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.13",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "在稻田水沟中摸取泥鳅",
+      "en": "catching loaches in a paddy channel",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.14",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "沿溪岸缓慢赶回鸭群",
+      "en": "guiding ducks slowly home along the stream",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.15",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "坐在埠头边喝茶短歇",
+      "en": "taking a tea break while seated at the landing",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.16",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "提裙踏过浅溪中的湿石",
+      "en": "lifting the skirt slightly to cross wet stepping stones",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.17",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "用扁担把两桶水挑离河埠",
+      "en": "carrying two water buckets away from the landing on a shoulder pole",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.18",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "把陶罐浸入清水缓慢灌满",
+      "en": "lowering a clay jar into clear water to fill it",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.19",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "将洗净渔网展开挂在岸边竹架",
+      "en": "hanging a cleaned fishing net across a bamboo rack",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.waterside_boat.20",
+      "category": "waterside_boat",
+      "tier": "extension",
+      "zh": "清晨小舟载着菜篮经过村桥",
+      "en": "a morning skiff carrying vegetable baskets beneath a village bridge",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.01",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "白色藤花从竹架边缘垂落",
+      "en": "small white vine blossoms hanging from a bamboo trellis",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.02",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "细长豆荚藏在深绿叶片之间",
+      "en": "slender bean pods hidden among deep green leaves",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.03",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "浅绿葫芦悬挂在粗藤下",
+      "en": "pale green gourds hanging beneath thick vines",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.04",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "新竹叶在侧光中呈现透明边缘",
+      "en": "young bamboo leaves turning translucent in side light",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.05",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "层叠桑叶在近景形成深浅变化",
+      "en": "layered mulberry leaves creating tonal depth in the foreground",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.06",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "湿润茶芽沿山坡整齐生长",
+      "en": "moist tea buds growing in orderly hillside rows",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.07",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "宽大荷叶覆盖暗绿水面",
+      "en": "broad lotus leaves covering dark green water",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.08",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "芦苇在水边沿同一风向倾斜",
+      "en": "reeds leaning in one shared breeze along the water",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.09",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "细长柳枝从画框上缘垂入",
+      "en": "slender willow branches entering from the upper frame",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.10",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "桂花树在白墙投下细碎影子",
+      "en": "an osmanthus tree scattering small shadows across a white wall",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.11",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "淡黄菊花沿菜圃边缘开放",
+      "en": "pale yellow chrysanthemums blooming along a garden edge",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.12",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "石榴枝上保留少量成熟果实",
+      "en": "a few ripe pomegranates remaining on a branch",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.13",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "橙红柿子在低饱和环境中成为克制暖点",
+      "en": "orange-red persimmons becoming restrained warm accents in a muted field",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.14",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "早春梅枝带着稀疏花朵与雨珠",
+      "en": "early-spring plum branches carrying sparse blossoms and raindrops",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.15",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "远处油菜花压低为柔和黄绿色",
+      "en": "distant rapeseed flowers subdued into soft yellow green",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.16",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "稻叶与浅水倒影形成细密纹理",
+      "en": "rice leaves and shallow reflections forming fine texture",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.17",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "成熟麦穗在前景化为暖色虚影",
+      "en": "mature wheat heads dissolving into warm foreground blur",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.18",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "鸭群在浅溪中留下连续水纹",
+      "en": "ducks leaving continuous ripples across the shallow stream",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.19",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "白鹅沿石墙缓慢经过",
+      "en": "white geese moving slowly beside a stone wall",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.20",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "母鸡带小鸡在晒场边缘觅食",
+      "en": "a hen and chicks foraging at the edge of the drying yard",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.21",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "黄牛在田埂远处成为安静尺度参照",
+      "en": "an ox becoming a quiet scale reference beyond the field ridge",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.22",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "水牛踏入浅田留下浑浊足迹",
+      "en": "a water buffalo leaving cloudy prints in a shallow paddy",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.23",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "灰猫蜷在窗台阴影里",
+      "en": "a gray cat curled in the shadow of a windowsill",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.flora_animals.24",
+      "category": "flora_animals",
+      "tier": "extension",
+      "zh": "土狗安静卧在柴门旁",
+      "en": "a village dog resting quietly beside the firewood gate",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.01",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "两端悬挂木桶的竹扁担",
+      "en": "a bamboo shoulder pole carrying wooden buckets at both ends",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.02",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "木箍加固的旧木水桶",
+      "en": "an aged wooden water bucket reinforced with wood hoops",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.03",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "带手捏痕迹的大口粗陶缸",
+      "en": "a wide rough-clay jar retaining handmade finger marks",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.04",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "烟火磨黑的浅口铁锅",
+      "en": "a shallow iron wok darkened by wood smoke",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.05",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "由泥砖和石块砌成的低灶",
+      "en": "a low stove built from clay bricks and stone",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.06",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "边缘磨圆的长柄木铲",
+      "en": "a long wooden spatula with edges rounded by use",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.07",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "表面留下环形磨痕的石磨",
+      "en": "a stone mill marked by circular wear",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.08",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "厚重石臼与旧木杵",
+      "en": "a heavy stone mortar and worn wooden pestle",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.09",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "细密编织的竹筛",
+      "en": "a tightly woven bamboo sieve",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.10",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "铺在地面的宽大竹晒席",
+      "en": "a broad bamboo drying mat spread on the ground",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.11",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "长齿竹木耙",
+      "en": "a long-toothed bamboo-and-wood rake",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.12",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "短柄旧铁镰刀",
+      "en": "a short-handled aged iron sickle",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.13",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "木柄窄刃锄头",
+      "en": "a narrow hoe with a wooden handle",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.14",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "装满秧苗的浅口竹筐",
+      "en": "a shallow bamboo basket filled with seedlings",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.15",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "半浸水中的细编鱼篮",
+      "en": "a finely woven fish basket half submerged in water",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.16",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "带修补结点的麻线渔网",
+      "en": "a hemp fishing net with visible repair knots",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.17",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "梁架简洁的木织机",
+      "en": "a wooden loom with a plain structural frame",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.18",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "表面被手指磨亮的木纺锤",
+      "en": "a wooden spindle polished by fingers",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.19",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "穿过经线的扁平木梭",
+      "en": "a flat wooden shuttle passing through warp threads",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.20",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "内壁染有草木颜色的陶染缸",
+      "en": "a clay dye vat stained inside by plant color",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.21",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "带微弱烟痕的陶制油灯",
+      "en": "a clay oil lamp with faint smoke marks",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.22",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "装满短柴的背负竹筐",
+      "en": "a back basket filled with short firewood",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.23",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "雨水压深颜色的旧蓑衣",
+      "en": "an aged straw rain cape darkened by water",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.24",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "边缘不完全规整的竹斗笠",
+      "en": "a bamboo rain hat with slightly irregular edges",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.25",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "口沿加固的采茶竹篓",
+      "en": "a tea basket with a reinforced rim",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.26",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "用于分拣果实的浅口藤编盘",
+      "en": "a shallow wicker tray used to sort fruit",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.27",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "由植物纤维搓成的粗绳",
+      "en": "a coarse rope twisted from plant fiber",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.tools_materials.28",
+      "category": "tools_materials",
+      "tier": "extension",
+      "zh": "承接清水的小口陶壶",
+      "en": "a narrow-neck clay flask used to carry water",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.01",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "85毫米正面胸像特写，人物眼睛与手中动作同层清晰",
+      "en": "an 85mm frontal chest-up close view with eyes and hand action on the same focus plane",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.02",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "85毫米侧面近景，以低头视线连接双手",
+      "en": "an 85mm profile close shot linking a lowered gaze to the hands",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.03",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "50毫米平视中景，完整展示人物与灶台关系",
+      "en": "a 50mm eye-level medium shot showing the full figure-to-stove relationship",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.04",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "50毫米桌面高度中景，把器物与双手放在视觉中心",
+      "en": "a 50mm table-height medium shot centering tools and working hands",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.05",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "50毫米庭院群像，每人占据不同景深层",
+      "en": "a 50mm courtyard group with each figure occupying a distinct depth plane",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.06",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "35毫米环境人物镜头，人物位于三分区",
+      "en": "a 35mm environmental portrait with the figure on a third",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.07",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "35毫米田野宽景，让田埂作为引导线",
+      "en": "a 35mm field wide shot using the ridge as a leading line",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.08",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "35毫米水乡宽景，以水面反射形成下方留白",
+      "en": "a 35mm waterside wide shot using reflections as lower negative space",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.09",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "40毫米水面低机位，前景荷叶遮挡画框边缘",
+      "en": "a 40mm water-level view with lotus leaves masking the frame edges",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.10",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "40毫米灶台高度视角，蒸汽连接前后景",
+      "en": "a 40mm stove-height view with steam linking foreground and background",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.11",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "轻微仰拍穿过藤架观察人物与悬挂果实",
+      "en": "a gently low view through a trellis toward the figure and hanging fruit",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.12",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "轻微俯拍展示晒场工具、谷物轨迹与人物位置",
+      "en": "a gently elevated view showing tools, grain paths, and figure placement",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.13",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "侧后方全身镜头强调行走方向与衣摆滞后",
+      "en": "a three-quarter rear full-body view emphasizing travel direction and trailing hems",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.14",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "门洞框景把明亮院落包在深色木构之间",
+      "en": "a doorway frame enclosing the bright courtyard between dark timbers",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.15",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "窗格与绿叶组成双层前景遮挡",
+      "en": "lattice and foliage forming two layers of foreground occlusion",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.16",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "远处村屋保持柔化，人物与作物位于中景清晰层",
+      "en": "distant cottages softened while figure and crop share a clear middle plane",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.17",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "对角线小舟从画面近侧驶向远处",
+      "en": "a diagonal skiff traveling from the near frame toward the distance",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.18",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "弯曲茶垄形成重复节奏并带人物向远处递进",
+      "en": "curving tea rows creating rhythm as figures recede into depth",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.19",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "左右人物通过器物或动作轨迹连接而不对称排队",
+      "en": "left and right figures connected by an action path rather than a symmetric lineup",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.20",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "中央劳动动作由两侧白墙和树影形成自然聚焦",
+      "en": "a central work gesture naturally focused by pale walls and leaf shadows",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.21",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "大面积白墙负空间平衡一侧的人物全身",
+      "en": "broad white-wall negative space balancing a full figure on one side",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.22",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "柔焦作物占据下方三分之一并引向人物",
+      "en": "soft crops filling the lower third and leading toward the figure",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.23",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "肩后观察同伴动作，保留明确空间距离",
+      "en": "an over-shoulder view observing a companion with clear spatial distance",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.composition_camera.24",
+      "category": "composition_camera",
+      "tier": "extension",
+      "zh": "人物只占环境较小部分，用田野或庭院建立尺度",
+      "en": "the figure occupying a modest frame share while field or courtyard establishes scale",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.01",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "清晨侧光穿透薄雾但不形成奇幻光束",
+      "en": "morning side light passing through mist without fantasy beams",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.02",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "雨天灰白天空提供均匀柔光",
+      "en": "gray-white rainy sky providing even soft illumination",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.03",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "雨后白墙反射出干净冷亮补光",
+      "en": "post-rain white walls returning clean cool fill",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.04",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "竹帘筛出细长而规则的光影",
+      "en": "a bamboo blind filtering narrow orderly bands of light",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.05",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "树冠筛光在衣料上形成大小不同的影斑",
+      "en": "canopy light forming varied patches across linen",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.06",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "灶火从下方轻微温暖手部与锅沿",
+      "en": "stove fire faintly warming hands and the wok rim from below",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.07",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "油灯照亮纺线手势，背景保持深蓝灰",
+      "en": "an oil lamp lighting spinning hands against a deep blue-gray background",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.08",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "水面反光在袖口与下颌产生跳动亮点",
+      "en": "water reflections placing moving highlights on cuffs and jaw",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.09",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "逆光只勾亮湿布边缘和坠落水滴",
+      "en": "backlight tracing only damp cloth edges and falling droplets",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.10",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "低角度夕光穿过稻穗形成暖色透光",
+      "en": "low evening light making rice heads glow warm and translucent",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.11",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "冬日斜光清晰描出白色呼吸水汽",
+      "en": "winter side light revealing faint breath vapor",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.12",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "屋檐阴影与院中亮区形成柔和明暗界面",
+      "en": "eave shadow meeting the bright courtyard in a soft tonal boundary",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.13",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "蒸汽柔化窗口高光但不遮住人物",
+      "en": "steam softening window highlights without hiding the figure",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.14",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "细雨让木头、石板和叶片呈现湿润暗光",
+      "en": "fine rain giving wood, stone, and leaves a damp subdued sheen",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.15",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "谷尘在短暂逆光中出现后迅速落下",
+      "en": "grain dust appearing briefly in backlight before settling",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.16",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "晨露在茶叶边缘形成微小高光",
+      "en": "morning dew creating tiny highlights along tea leaves",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.17",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "冷色山影压低远景，人物仍保留暖肤色",
+      "en": "cool mountain shadow subduing the distance while skin remains gently warm",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.18",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "米白衣装反射环境光而不失去棉麻纹理",
+      "en": "rice-white cloth reflecting ambient light without losing linen texture",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.19",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "暖木室内与冷绿室外保持色温分离",
+      "en": "warm timber interior and cool green exterior retaining color-temperature separation",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.light_air.20",
+      "category": "light_air",
+      "tier": "extension",
+      "zh": "轻微空气透视让远处村落自然褪淡",
+      "en": "subtle aerial perspective softly fading the distant village",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.01",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "倾斜陶壶时水流从壶口连续落向目标",
+      "en": "water falling continuously from a tilted clay spout to its target",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.02",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "拿起锅盖后蒸汽沿开口方向涌出",
+      "en": "steam escaping along the opening created by a lifted lid",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.03",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "翻炒时菜叶沿木铲方向短暂抬起",
+      "en": "greens lifting briefly along the wooden spatula's path",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.04",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "提篮行走时篮筐轻微向后摆动",
+      "en": "a carried basket swinging slightly behind the walking rhythm",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.05",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "采摘时枝条在手指松开后缓慢回弹",
+      "en": "a picked branch returning slowly after the fingers release it",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.06",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "洗菜时水滴从叶尖落下并形成同心涟漪",
+      "en": "droplets falling from leaf tips into concentric ripples",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.07",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "拧布时水沿最低褶皱成股滴落",
+      "en": "water streaming from the lowest folds of twisted cloth",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.08",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "扬谷时轻壳飞远，较重谷粒近处落下",
+      "en": "light chaff drifting farther while heavier grain falls nearby",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.09",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "推磨时上盘旋转、磨杆受力、豆浆从槽口流出",
+      "en": "the upper millstone turning under handle force as soy milk exits the channel",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.10",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "舂米时木杵沿垂直方向起落，粉尘贴近石臼",
+      "en": "a wooden pestle moving vertically while fine dust stays near the mortar",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.11",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "织布时木梭穿行，绷紧经线产生细微震动",
+      "en": "the shuttle crossing while taut warp threads vibrate faintly",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.12",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "撑船时人物重心前移，船篙后推，水纹向外扩散",
+      "en": "the body leaning forward as the pole pushes back and ripples spread outward",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.13",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "卷袖动作让外层布料在肘部堆叠",
+      "en": "rolling sleeves gathering the outer fabric at the elbows",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.14",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "坐下时长裙先落地再向膝侧铺开",
+      "en": "the long skirt touching ground before spreading beside the knees",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.15",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "侧风先吹动碎发，再带起更重的袖缘",
+      "en": "a side breeze moving fine hair before lifting the heavier sleeve edge",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.motion_physics.16",
+      "category": "motion_physics",
+      "tier": "extension",
+      "zh": "落雨沿屋檐、竹叶和衣袖形成不同速度的水线",
+      "en": "rain forming different flow speeds along eaves, bamboo leaves, and sleeves",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.01",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "春耕开始前安静而充满期待",
+      "en": "quiet anticipation before spring planting begins",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.02",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "雨天家务带来被屋檐保护的安心感",
+      "en": "rainy-day chores carrying the comfort of shelter beneath the eaves",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.03",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "盛夏树荫中的劳动显得清凉缓慢",
+      "en": "summer work beneath deep shade feeling cool and unhurried",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.04",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "傍晚归家包含一天劳作结束后的松弛",
+      "en": "evening homecoming carrying release after a day of work",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.05",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "邻里交换收成时自然流露的亲近",
+      "en": "natural closeness while neighbors exchange their harvest",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.06",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "年长者教年轻女子完成一项手艺",
+      "en": "an older woman quietly teaching a younger one a household craft",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.07",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "姐妹在重复劳动中形成无需言语的默契",
+      "en": "sisters sharing wordless rhythm through repeated work",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.08",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "独处人物在细小动作中获得内在安定",
+      "en": "a solitary figure finding inner calm through a small repeated task",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.09",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "田野宽景让人物显得微小但不孤独",
+      "en": "a field wide shot making the figure small without making her lonely",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.10",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "收获后的院落带有温暖而克制的满足",
+      "en": "a post-harvest courtyard carrying warm restrained fulfillment",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.11",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "水边短暂休息让动作和时间都慢下来",
+      "en": "a brief waterside rest slowing both movement and time",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.12",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "冬日灶火连接室内劳动与家庭温度",
+      "en": "winter stove light connecting household work with domestic warmth",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.13",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "清晨第一项劳作带有未经打扰的宁静",
+      "en": "the first morning task carrying undisturbed quiet",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.14",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "共同整理工具体现自然可靠的邻里互助",
+      "en": "neighbors quietly organizing tools in dependable cooperation",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.15",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "孩子或动物只作为生活痕迹，不抢夺人物主体",
+      "en": "a child or animal acting only as a trace of life without stealing focus",
+      "source": "controlled house-style extension"
+    },
+    {
+      "id": "extension.mood_narrative.16",
+      "category": "mood_narrative",
+      "tier": "extension",
+      "zh": "画面停留在动作将完成未完成的瞬间",
+      "en": "the frame resting in the moment just before an action completes",
+      "source": "controlled house-style extension"
+    }
+  ],
+  "entry_count": 288
+}

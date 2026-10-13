@@ -39,6 +39,91 @@ type FeatureCreditSettings struct {
 }
 
 var SystemFeatureSceneCatalog = []FeatureSceneMeta{
+	// 1. 画布智能算子（4 个二开专用节点 + 3 个多维表格节点）
+	{
+		Scene:                  "canvas_video_reverse",
+		Title:                  "画布节点 · 视频反推 (经典/创意)",
+		Description:            "画布二开算子：视频逐秒抽帧、镜头拆解与提示词反推（支持经典反推与创意反推双模式）",
+		Category:               "canvas",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "canvas_material_analysis",
+		Title:                  "画布节点 · 素材多模态分析",
+		Description:            "画布二开算子：多模态图像/视频/音频特征拆解与核心洞察分析",
+		Category:               "canvas",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "config_script",
+		Title:                  "画布节点 · 配置生成脚本",
+		Description:            "画布二开算子：按平台规格、风格与时长规则自动分段生成脚本",
+		Category:               "canvas",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "ref_script",
+		Title:                  "画布节点 · 参考生脚本",
+		Description:            "画布二开算子：结合参考反推与自定义配置生成时间线分镜脚本",
+		Category:               "canvas",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "voice_script_rewrite",
+		Title:                  "画布表格 · 台词配音多维表格",
+		Description:            "画布多维表格：分镜原文台词口语化节奏改写与 ±2 字严格字数约束",
+		Category:               "canvas_table",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "creative_storyboard_table",
+		Title:                  "画布表格 · 创意分镜多维表格",
+		Description:            "画布多维表格：基于多镜头脚本与资产插槽的批量分镜推演生成",
+		Category:               "canvas_table",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "creative_asset_table",
+		Title:                  "画布表格 · 创意资产多维表格",
+		Description:            "画布多维表格：角色四视图/道具资产批量锚定与提示词生成",
+		Category:               "canvas_table",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+
+	// 2. 生视频工作台 · 创作助手（功能入口）
+	{
+		Scene:                  "assistant_material_analysis",
+		Title:                  "生视频工作台 · 创作助手 · 素材分析",
+		Description:            "创作助手功能入口：多模态图像/视频/音频特征拆解与核心洞察分析",
+		Category:               "creation_assistant",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "assistant_video_reverse",
+		Title:                  "生视频工作台 · 创作助手 · 视频反推 (经典/创意)",
+		Description:            "创作助手功能入口：参考视频经典反推与创意反推抽帧拆解",
+		Category:               "creation_assistant",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+	{
+		Scene:                  "directing_assistant",
+		Title:                  "生视频工作台 · 创作助手 · 生成脚本",
+		Description:            "创作助手功能入口：结合素材洞察与参考反推生成全案短剧分镜脚本",
+		Category:               "creation_assistant",
+		Capability:             "text",
+		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+	},
+
+	// 3. 生视频工作台 · 原生功能
 	{
 		Scene:                  "video_director",
 		Title:                  "生视频工作台 · 编导分镜生成",
@@ -56,29 +141,14 @@ var SystemFeatureSceneCatalog = []FeatureSceneMeta{
 		RecommendedMultipliers: []float64{1.0, 1.5, 2.0, 2.5},
 	},
 	{
-		Scene:                  "directing_assistant",
-		Title:                  "创造助手 · 全案原创分镜脚本",
-		Description:            "编导中枢多模态素材批次分析与原创短剧分镜脚本生成",
-		Category:               "creation_assistant",
-		Capability:             "text",
-		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
+		Scene:       "video_workbench",
+		Title:       "生视频工作台 · 视频生成",
+		Description: "独立生视频工作台的分段生成与成片导出",
+		Category:    "video_workbench",
+		Capability:  "video",
 	},
-	{
-		Scene:                  "material_analysis",
-		Title:                  "创造助手 · 素材多模态洞察分析",
-		Description:            "多模态图像/视频/音频特征拆解与核心洞察分析",
-		Category:               "creation_assistant",
-		Capability:             "text",
-		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
-	},
-	{
-		Scene:                  "video_reverse",
-		Title:                  "参考视频抽帧反推算子",
-		Description:            "逐秒密集抽帧与多模态反推镜头结构与提示词",
-		Category:               "creation_assistant",
-		Capability:             "text",
-		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
-	},
+
+	// 4. 生图工作台
 	{
 		Scene:                  "image_prompt_optimize",
 		Title:                  "生图工作台 · 技能提示词优化",
@@ -87,27 +157,12 @@ var SystemFeatureSceneCatalog = []FeatureSceneMeta{
 		Capability:             "text",
 		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
 	},
+	// sub-feature: detail_set_workflow
 	{
-		Scene:                  "voice_script_rewrite",
-		Title:                  "台词配音表 · 分镜台词口语化改写",
-		Description:            "分镜原文台词口语化节奏改写与 ±2 字严格字数约束",
-		Category:               "voice",
-		Capability:             "text",
-		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
-	},
-	{
-		Scene:                  "config_script",
-		Title:                  "画布节点 · 配置生成脚本",
-		Description:            "按平台规格、风格与时长规则自动分段生成脚本",
-		Category:               "canvas",
-		Capability:             "text",
-		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
-	},
-	{
-		Scene:                  "ref_script",
-		Title:                  "画布节点 · 参考生脚本",
-		Description:            "结合参考反推与自定义配置生成时间线分镜脚本",
-		Category:               "canvas",
+		Scene:                  "detail_set_plan",
+		Title:                  "生图工作台 · 电商套图 AI 规划",
+		Description:            "电商套图工作流卡片：商品图卖点分析与 12 模块逐行提示词规划（token 计量）",
+		Category:               "image_workbench",
 		Capability:             "text",
 		RecommendedMultipliers: []float64{1.0, 1.2, 1.5, 2.0},
 	},
@@ -118,27 +173,26 @@ var SystemFeatureSceneCatalog = []FeatureSceneMeta{
 		Category:    "image_workbench",
 		Capability:  "image",
 	},
-	{
-		Scene:       "video_workbench",
-		Title:       "生视频工作台 · 视频生成",
-		Description: "独立生视频工作台的分段生成与成片导出",
-		Category:    "video_workbench",
-		Capability:  "video",
-	},
 }
 
 var DefaultFeatureScenes = []string{
-	"video_director",
-	"video_replication",
-	"directing_assistant",
-	"material_analysis",
-	"video_reverse",
-	"image_prompt_optimize",
-	"voice_script_rewrite",
+	"canvas_video_reverse",
+	"canvas_material_analysis",
 	"config_script",
 	"ref_script",
-	"image_workbench",
+	"voice_script_rewrite",
+	"creative_storyboard_table",
+	"creative_asset_table",
+	"assistant_material_analysis",
+	"assistant_video_reverse",
+	"directing_assistant",
+	"video_director",
+	"video_replication",
 	"video_workbench",
+	"image_prompt_optimize",
+	// sub-feature: detail_set_workflow
+	"detail_set_plan",
+	"image_workbench",
 }
 
 func defaultFeatureCreditSettings() FeatureCreditSettings {
@@ -184,6 +238,51 @@ func (s *Service) featureCreditSettings() (FeatureCreditSettings, error) {
 	if settings.ModelSceneMultipliers == nil {
 		settings.ModelSceneMultipliers = make(map[string]map[string]int64)
 	}
+
+	// 针对历史旧版 scene 键进行平滑自动迁移
+	if oldReverse, exists := settings.Features["video_reverse"]; exists {
+		if _, hasCanvas := settings.Features["canvas_video_reverse"]; !hasCanvas {
+			item := oldReverse
+			item.Scene = "canvas_video_reverse"
+			settings.Features["canvas_video_reverse"] = item
+		}
+		if _, hasAssistant := settings.Features["assistant_video_reverse"]; !hasAssistant {
+			item := oldReverse
+			item.Scene = "assistant_video_reverse"
+			settings.Features["assistant_video_reverse"] = item
+		}
+	}
+	if oldMat, exists := settings.Features["material_analysis"]; exists {
+		if _, hasCanvas := settings.Features["canvas_material_analysis"]; !hasCanvas {
+			item := oldMat
+			item.Scene = "canvas_material_analysis"
+			settings.Features["canvas_material_analysis"] = item
+		}
+		if _, hasAssistant := settings.Features["assistant_material_analysis"]; !hasAssistant {
+			item := oldMat
+			item.Scene = "assistant_material_analysis"
+			settings.Features["assistant_material_analysis"] = item
+		}
+	}
+	for _, sceneMap := range settings.ModelSceneMultipliers {
+		if revBps, ok := sceneMap["video_reverse"]; ok && revBps > 0 {
+			if _, has := sceneMap["canvas_video_reverse"]; !has {
+				sceneMap["canvas_video_reverse"] = revBps
+			}
+			if _, has := sceneMap["assistant_video_reverse"]; !has {
+				sceneMap["assistant_video_reverse"] = revBps
+			}
+		}
+		if matBps, ok := sceneMap["material_analysis"]; ok && matBps > 0 {
+			if _, has := sceneMap["canvas_material_analysis"]; !has {
+				sceneMap["canvas_material_analysis"] = matBps
+			}
+			if _, has := sceneMap["assistant_material_analysis"]; !has {
+				sceneMap["assistant_material_analysis"] = matBps
+			}
+		}
+	}
+
 	defaults := defaultFeatureCreditSettings()
 	for k, v := range defaults.Features {
 		if currentItem, exists := settings.Features[k]; !exists {
@@ -306,6 +405,64 @@ type DeductFeatureCreditsResponse struct {
 	Charged              bool                 `json:"charged"`
 }
 
+func getSceneAliases(scene string) []string {
+	s := strings.TrimSpace(scene)
+	switch s {
+	case "video_reverse":
+		return []string{"canvas_video_reverse", "assistant_video_reverse", "video_reverse"}
+	case "canvas_video_reverse":
+		return []string{"canvas_video_reverse", "video_reverse", "assistant_video_reverse"}
+	case "assistant_video_reverse":
+		return []string{"assistant_video_reverse", "video_reverse", "canvas_video_reverse"}
+	case "material_analysis":
+		return []string{"canvas_material_analysis", "assistant_material_analysis", "material_analysis"}
+	case "canvas_material_analysis":
+		return []string{"canvas_material_analysis", "material_analysis", "assistant_material_analysis"}
+	case "assistant_material_analysis":
+		return []string{"assistant_material_analysis", "material_analysis", "canvas_material_analysis"}
+	case "config_script", "canvas_script_generator", "canvas_config_script":
+		return []string{"config_script", "canvas_script_generator", "canvas_config_script"}
+	case "ref_script", "canvas_reference_script", "canvas_ref_script":
+		return []string{"ref_script", "canvas_reference_script", "canvas_ref_script"}
+	case "voice_script_rewrite", "creative_voice_table", "canvas_table_voice":
+		return []string{"voice_script_rewrite", "creative_voice_table", "canvas_table_voice"}
+	case "creative_storyboard_table", "canvas_table_storyboard", "storyboard_table":
+		return []string{"creative_storyboard_table", "canvas_table_storyboard", "storyboard_table"}
+	case "creative_asset_table", "canvas_table_asset", "asset_table":
+		return []string{"creative_asset_table", "canvas_table_asset", "asset_table"}
+	case "directing_assistant", "assistant_generate_script", "assistant_script":
+		return []string{"directing_assistant", "assistant_generate_script", "assistant_script"}
+	case "video_director", "workflow_storyboard":
+		return []string{"video_director", "workflow_storyboard"}
+	case "video_replication", "deep_replication":
+		return []string{"video_replication", "deep_replication"}
+	case "image_prompt_optimize", "prompt_optimizer":
+		return []string{"image_prompt_optimize", "prompt_optimizer"}
+	default:
+		return []string{s}
+	}
+}
+
+func findFeatureItem(features map[string]FeatureCreditItem, scene string) (FeatureCreditItem, bool) {
+	cleanScene := strings.TrimSpace(scene)
+	if cleanScene == "" {
+		return FeatureCreditItem{}, false
+	}
+	aliases := getSceneAliases(cleanScene)
+	for _, alias := range aliases {
+		if item, ok := features[alias]; ok {
+			return item, true
+		}
+	}
+	lower := strings.ToLower(cleanScene)
+	for k, item := range features {
+		if strings.ToLower(strings.TrimSpace(k)) == lower {
+			return item, true
+		}
+	}
+	return FeatureCreditItem{}, false
+}
+
 func (s *Service) DeductFeatureCredits(user *model.User, req DeductFeatureCreditsRequest) (*DeductFeatureCreditsResponse, error) {
 	if user == nil {
 		return nil, Unauthorized("请先登录")
@@ -319,29 +476,25 @@ func (s *Service) DeductFeatureCredits(user *model.User, req DeductFeatureCredit
 		return nil, err
 	}
 	cleanScene := strings.TrimSpace(req.Scene)
-	var item FeatureCreditItem
-	var ok bool
-	if item, ok = settings.Features[cleanScene]; !ok {
-		for sKey, fItem := range settings.Features {
-			if strings.EqualFold(strings.TrimSpace(sKey), cleanScene) {
-				item = fItem
-				ok = true
-				break
-			}
-		}
-	}
-	if !ok || !item.Enabled {
+	item, ok := findFeatureItem(settings.Features, cleanScene)
+
+	// 若后台显式配置了该场景，且管理员明确将其停用（Enabled: false），则视为管理员主动免费放行
+	if ok && !item.Enabled {
 		return &DeductFeatureCreditsResponse{Charged: false, DeductedMicrocredits: 0}, nil
 	}
 
-	// 若计费模式为 token_multiplier，实际扣费交由系统代理按真实 Token 消耗与场景倍率结算，免去前置扣费
-	if item.Mode == "token_multiplier" {
+	// 若计费模式为 token_multiplier，实际扣费交由系统反向代理网关按真实 Token 消耗与场景倍率结算，免去前置扣费
+	if ok && item.Mode == "token_multiplier" {
 		return &DeductFeatureCreditsResponse{Charged: false, DeductedMicrocredits: 0}, nil
 	}
 
-	amount := item.FixedMicrocredits
-	if item.Mode == "model_price" {
-		// 服务端权威定价：优先查阅服务端模型定价策略，拒绝客户端随意篡改传入的低额或 0 元
+	amount := int64(0)
+	if ok && item.Mode == "fixed" {
+		amount = item.FixedMicrocredits
+	}
+
+	// 若设置为 model_price，或者该场景未在功能列表单独配置（未配置保底扣费机制），按系统权威模型定价或保底点数扣除
+	if !ok || item.Mode == "model_price" {
 		if pricing, err := s.repo.ModelPricing("", req.Model, ""); err == nil && pricing != nil {
 			if pricing.PerMediaMicros > 0 {
 				amount = pricing.PerMediaMicros
@@ -349,13 +502,18 @@ func (s *Service) DeductFeatureCredits(user *model.User, req DeductFeatureCredit
 				amount = pricing.PerRequestMicros
 			}
 		}
-		if amount <= 0 && item.FixedMicrocredits > 0 {
+		if amount <= 0 && ok && item.FixedMicrocredits > 0 {
 			amount = item.FixedMicrocredits
 		}
-		// 若后台未配置且固定为 0，保底 1 积分，杜绝免授权白嫖
+		// 原系统保底机制：若未单独配置功能且模型未定价，强制保底 1 积分 (1,000,000 微积分)，杜绝因未配置而产生免扣白嫖漏洞
 		if amount <= 0 {
 			amount = 1_000_000
 		}
+	}
+
+	// 若管理员显式设置固定积分为 0，放行免费
+	if ok && item.Mode == "fixed" && item.FixedMicrocredits == 0 {
+		return &DeductFeatureCreditsResponse{Charged: false, DeductedMicrocredits: 0}, nil
 	}
 
 	if amount <= 0 {
@@ -441,32 +599,27 @@ func (s *Service) ResolveModelSceneMultiplier(modelKey string, scene string) (in
 		return 0, false
 	}
 
-	var sceneItem *FeatureCreditItem
-	if item, ok := settings.Features[cleanScene]; ok {
-		sceneItem = &item
-	} else {
-		for sKey, item := range settings.Features {
-			if strings.EqualFold(strings.TrimSpace(sKey), cleanScene) {
-				sceneItem = &item
-				break
-			}
+	item, ok := findFeatureItem(settings.Features, cleanScene)
+
+	// 核心防护：若显式配置且禁用，或者计费模式非 token_multiplier，绝不附加场景倍率
+	if ok {
+		if !item.Enabled || item.Mode != "token_multiplier" {
+			return 0, false
 		}
 	}
 
-	// 核心防护：若该功能场景未启用计费，或其计费模式不是 token_multiplier，则绝不应用场景倍率附加费
-	if sceneItem == nil || !sceneItem.Enabled || sceneItem.Mode != "token_multiplier" {
-		return 0, false
-	}
-
 	targetModel := cleanModelKey(modelKey)
+	aliases := getSceneAliases(cleanScene)
 
-	// 1. 优先在 ModelSceneMultipliers 查找 (精确匹配或 cleanModelKey 匹配)
+	// 1. 优先在 ModelSceneMultipliers 查找 (支持模型键与场景别名匹配)
 	if len(settings.ModelSceneMultipliers) > 0 {
 		for mKey, sceneMap := range settings.ModelSceneMultipliers {
 			if cleanModelKey(mKey) == targetModel || mKey == modelKey {
-				for sKey, bps := range sceneMap {
-					if strings.EqualFold(strings.TrimSpace(sKey), cleanScene) && bps > 0 {
-						return bps, true
+				for _, alias := range aliases {
+					for sKey, bps := range sceneMap {
+						if strings.EqualFold(strings.TrimSpace(sKey), alias) && bps > 0 {
+							return bps, true
+						}
 					}
 				}
 			}
@@ -474,8 +627,8 @@ func (s *Service) ResolveModelSceneMultiplier(modelKey string, scene string) (in
 	}
 
 	// 2. 回退到该功能场景自身配置的基准倍率
-	if sceneItem.MultiplierBasisPoints > 0 {
-		return sceneItem.MultiplierBasisPoints, true
+	if ok && item.MultiplierBasisPoints > 0 {
+		return item.MultiplierBasisPoints, true
 	}
 
 	return 0, false

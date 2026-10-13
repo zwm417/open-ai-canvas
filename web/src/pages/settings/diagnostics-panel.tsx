@@ -99,7 +99,8 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
                             <span className="rounded-full bg-foreground/[.045] px-2.5 py-1 text-[var(--fs-tiny)] font-medium text-foreground/48">最长 24 小时</span>
                         </div>
                         <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,230px)_minmax(0,1fr)] md:items-end">
-                            <label className="block">
+                            {/* @opc-feature: fix-field-label-select-conflict [start] */}
+                            <div className="block">
                                 <span className="mb-2 block text-xs font-semibold text-foreground/65">时间范围</span>
                                 <Select
                                     ariaLabel="时间范围"
@@ -111,7 +112,8 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
                                         if (next) setRange(next);
                                     }}
                                 />
-                            </label>
+                            </div>
+                            {/* @opc-feature: fix-field-label-select-conflict [end] */}
                             <div className="rounded-lg border border-border/55 bg-foreground/[.025] px-3.5 py-3" aria-live="polite">
                                 <div className="flex items-center gap-2 text-sm font-medium text-foreground/78">
                                     <Activity className="size-4 text-emerald-500" strokeWidth={1.8} aria-hidden="true" />

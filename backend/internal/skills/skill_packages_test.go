@@ -280,3 +280,74 @@ func skillZip(t *testing.T, files map[string]string) []byte {
 	}
 	return buffer.Bytes()
 }
+
+// @opc-adapter: skill-bundle-protection [start]
+func TestSkillPackageExportProtection(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+kernel.NewID()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	if err := db.AutoMigrate(&model.Skill{}, &model.SkillVersion{}, &model.SkillFile{}); err != nil {
+		t.Fatal(err)
+	}
+	repo := repository.New(db)
+	svc := New(repo, t.TempDir(), nil)
+
+	// 1. 创建官方内置技能
+	builtinSkill := model.Skill{
+		ID: "builtin-1", Name: "官方内置技能", Description: "官方内置技能描述", Instruction: "# 官方核心资产\n\n这是官方技能详细描述正文。\n",
+		SourceType: "builtin", Status: skillStatusEnabled, IsPrivate: false, OwnerID: "system",
+	}
+	if err := db.Create(&builtinSkill).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.EnsureSkillPackages(); err != nil {
+		t.Fatal(err)
+	}
+
+	// 验证官方内置技能禁止整包导出
+	_, err = svc.SkillPackageBundle("user-1", "builtin-1")
+	if err == nil || !strings.Contains(err.Error(), "不支持整包导出") {
+		t.Fatalf("builtin skill bundle export should be forbidden, got: %v", err)
+	}
+
+	// 验证官方内置技能禁止 raw 下载 markdown 文本源码
+	_, _, _, err = svc.SkillPackageRawFile("user-1", "builtin-1", "SKILL.md")
+	if err == nil || !strings.Contains(err.Error(), "不开放原始文件直接下载") {
+		t.Fatalf("builtin skill raw markdown download should be forbidden, got: %v", err)
+	}
+
+	// 2. 创建用户自己的技能
+	userSkill := model.Skill{
+		ID: "user-skill-1", Name: "用户自建技能", Description: "用户自建技能描述", Instruction: "# 我的个人技能\n\n这是用户技能详细描述正文。\n",
+		SourceType: "user", Status: skillStatusEnabled, IsPrivate: false, OwnerID: "user-1",
+	}
+	if err := db.Create(&userSkill).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.EnsureSkillPackages(); err != nil {
+		t.Fatal(err)
+	}
+
+	// 验证用户本人可以导出自己的技能包
+	bundle, err := svc.SkillPackageBundle("user-1", "user-skill-1")
+	if err != nil {
+		t.Fatalf("owner should be allowed to export skill bundle: %v", err)
+	}
+	if bundle.SkillID != "user-skill-1" || len(bundle.Files) == 0 {
+		t.Fatalf("unexpected bundle content: %#v", bundle)
+	}
+
+	// 验证非作者用户禁止整包导出他人技能
+	_, err = svc.SkillPackageBundle("user-2", "user-skill-1")
+	if err == nil || !strings.Contains(err.Error(), "不支持整包导出") {
+		t.Fatalf("other user skill bundle export should be forbidden, got: %v", err)
+	}
+}
+// @opc-adapter: skill-bundle-protection [end]
+

@@ -1,0 +1,4 @@
+interface:
+  display_name: "爆款带货短剧"
+  short_description: "用剧情冲突、商品证据与高留存节奏制作可成交短剧成片"
+  default_prompt: "使用 $viral-commerce-short-drama，把我的商品资料制作成有剧情冲突、软植入和成交力的爆款带货短剧成片。"

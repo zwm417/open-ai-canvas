@@ -190,6 +190,12 @@ class MediaLRUCache {
 const lruCache = new MediaLRUCache();
 const inFlightResolutions = new Map<string, Promise<ResolvedLocalMedia>>();
 
+let currentSessionEpoch = 0;
+
+export function getLocalFirstMediaEpoch(): number {
+    return currentSessionEpoch;
+}
+
 /**
  * 基础规范化唯一键生成器 (脱敏 OSS 签名临时 Query 参数，保证永久稳定)
  */
@@ -261,6 +267,7 @@ export async function resolveLocalFirstMedia(
 ): Promise<ResolvedLocalMedia> {
     const mediaType = options.mediaType || "image";
     const canonicalKey = getCanonicalMediaKey(storageKey, options.fallbackUrl);
+    const startEpoch = currentSessionEpoch;
 
     // 0. 防并发雪崩 (In-Flight Task Reuse)
     const existing = inFlightResolutions.get(canonicalKey);
@@ -440,7 +447,7 @@ export async function resolveLocalFirstMedia(
             });
 
             // 顺便回填至 CacheStorage 与桌面专属目录
-            if (isCacheStorageSupported()) {
+            if (isCacheStorageSupported() && currentSessionEpoch === startEpoch) {
                 try {
                     const cache = await window.caches.open(WEB_CACHE_NAME);
                     const pseudoRequest = new Request(`https://zhiying.local/media/${encodeURIComponent(canonicalKey)}`);
@@ -518,6 +525,20 @@ export async function resolveLocalFirstMedia(
                         blob,
                         mediaType,
                     });
+
+                    // 代次守卫：若在异步下载期间发生切号/登出，放弃写入新账号的缓存与持久层并及时释放 objectUrl
+                    if (currentSessionEpoch !== startEpoch) {
+                        try {
+                            URL.revokeObjectURL(objectUrl);
+                        } catch {}
+                        return {
+                            url: options.fallbackUrl || "",
+                            isLocal: false,
+                            hitSource: "remote-fallback",
+                            storageKey,
+                            canonicalKey,
+                        };
+                    }
 
                     // 1. 沉淀至浏览器持久化 CacheStorage
                     if (isCacheStorageSupported()) {
@@ -601,6 +622,7 @@ export async function persistMediaLocally(
     source: Blob | string,
     meta: { fileName?: string; mediaType?: "image" | "video" | "audio"; subFolder?: string } = {},
 ): Promise<boolean> {
+    const startEpoch = currentSessionEpoch;
     const canonicalKey = getCanonicalMediaKey(storageKey);
     const mediaType = meta.mediaType || "image";
     let blob: Blob | null = null;
@@ -615,6 +637,8 @@ export async function persistMediaLocally(
         } catch {}
     }
 
+    if (currentSessionEpoch !== startEpoch) return false;
+
     if (blob) {
         const objUrl = URL.createObjectURL(blob);
         lruCache.set(canonicalKey, {
@@ -626,7 +650,7 @@ export async function persistMediaLocally(
     }
 
     // 1. 桌面端落盘
-    if (isDesktopShell()) {
+    if (isDesktopShell() && currentSessionEpoch === startEpoch) {
         try {
             const buf = blob ? await blob.arrayBuffer() : undefined;
             const res = await saveMediaToDedicatedFolder({
@@ -646,7 +670,7 @@ export async function persistMediaLocally(
 
     // 2. Web 端持久化 (CacheStorage) - 仅限图片与小体积资源
     let webSuccess = false;
-    if (blob && isCacheStorageSupported() && mediaType !== "video") {
+    if (blob && isCacheStorageSupported() && mediaType !== "video" && currentSessionEpoch === startEpoch) {
         try {
             const cache = await window.caches.open(WEB_CACHE_NAME);
             const pseudoRequest = new Request(`https://zhiying.local/media/${encodeURIComponent(canonicalKey)}`);
@@ -661,7 +685,7 @@ export async function persistMediaLocally(
     }
 
     // 3. Web 端持久化 (IndexedDB)
-    if (blob && storageKey) {
+    if (blob && storageKey && currentSessionEpoch === startEpoch) {
         if (storageKey.startsWith("image:") || storageKey.startsWith("generation-image:")) {
             await imageStore.setItem(storageKey, blob).catch(() => null);
             webSuccess = true;
@@ -715,6 +739,7 @@ export async function getLocalFirstMediaStats(): Promise<{
  * 清除所有本地缓存 (包括会话内存与 CacheStorage，登出/清理时调用)
  */
 export async function clearLocalFirstMediaCache(): Promise<void> {
+    currentSessionEpoch++;
     clearMemoryCacheOnly();
     if (isCacheStorageSupported()) {
         try {
@@ -726,6 +751,7 @@ export async function clearLocalFirstMediaCache(): Promise<void> {
 // 监听账户变更事件（Session Epoch 切换时自动清空内存 LRU，彻底杜绝跨租户媒体缓存泄漏）
 if (typeof window !== "undefined") {
     window.addEventListener(USER_SCOPE_CHANGED_EVENT, () => {
+        currentSessionEpoch++;
         clearMemoryCacheOnly();
     });
 }

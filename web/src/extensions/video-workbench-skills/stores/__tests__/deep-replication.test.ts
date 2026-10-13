@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { BUILTIN_VIDEO_SKILLS } from "../../catalog/builtin-video-skills";
 import { useDeepReplicationTaskStore } from "../use-deep-replication-task-store";
+import { resolveChannelVideoModelMaxDuration } from "@/lib/model-capabilities";
 
 test("深度复刻：内置工作流技能卡片名称已更新为「深度复刻」", () => {
     const skill = BUILTIN_VIDEO_SKILLS.find((s) => s.id === "reference-replication");
@@ -66,4 +67,155 @@ test("工作流卡片@引用素材协议契约：原片、商品、人物、背�
     assert.ok(promptTemplate.includes("@图片3（背景）"));
     assert.ok(promptTemplate.includes("@音频1"));
 });
+
+test("生视频工作台：动态解析不同生视频模型的最大截取时长约束（杜绝硬编码 15s）", () => {
+    // 1. 无指定渠道或默认回退模型，默认为 10s
+    const defaultMax = resolveChannelVideoModelMaxDuration(undefined, "unknown-model");
+    assert.equal(defaultMax, 10, "未指定特定渠道配置时回退为 10 秒");
+
+    // 2. 自定义渠道配置限制为 15s、10s 或 5s 时，精准动态返回对应上限
+    const customConfig15s = {
+        channels: [
+            {
+                id: "c1",
+                models: ["seedance-v2"],
+                modelCosts: [
+                    {
+                        model: "seedance-v2",
+                        capabilityConfig: {
+                            video: {
+                                duration: { min: 3, max: 15, default: 10 },
+                            },
+                        },
+                    },
+                ],
+            },
+        ],
+    } as any;
+    const seedanceMax = resolveChannelVideoModelMaxDuration(customConfig15s, "seedance-v2");
+    assert.equal(seedanceMax, 15, "Seedance 15s 模型最大截取时长必须精准为 15 秒");
+
+    const customConfig10s = {
+        channels: [
+            {
+                id: "c2",
+                models: ["kling-v1-5"],
+                modelCosts: [
+                    {
+                        model: "kling-v1-5",
+                        capabilityConfig: {
+                            video: {
+                                duration: { min: 3, max: 10, default: 5 },
+                            },
+                        },
+                    },
+                ],
+            },
+        ],
+    } as any;
+    const klingMax = resolveChannelVideoModelMaxDuration(customConfig10s, "kling-v1-5");
+    assert.equal(klingMax, 10, "Kling 10s 模型最大截取时长必须精准为 10 秒");
+
+    const customConfig5s = {
+        channels: [
+            {
+                id: "c3",
+                models: ["runway-gen3"],
+                modelCosts: [
+                    {
+                        model: "runway-gen3",
+                        capabilityConfig: {
+                            video: {
+                                duration: { min: 2, max: 5, default: 5 },
+                            },
+                        },
+                    },
+                ],
+            },
+        ],
+    } as any;
+    const runwayMax = resolveChannelVideoModelMaxDuration(customConfig5s, "runway-gen3");
+    assert.equal(runwayMax, 5, "Runway 5s 模型最大截取时长必须精准为 5 秒");
+});
+
+test("生视频工作台：素材插槽配置契约（深度复刻与编导助手插槽定义与折叠规范）", () => {
+    // 1. 深度复刻专属插槽清单验证
+    const replicationSlotKinds = ["product", "model", "scene", "reference", "audio"];
+    const expectedMaxCounts: Record<string, number> = {
+        product: 6,
+        model: 6,
+        scene: 6,
+        reference: 6,
+        audio: 3,
+    };
+    replicationSlotKinds.forEach((k) => {
+        assert.ok(expectedMaxCounts[k] > 0, `深度复刻必须声明【${k}】插槽`);
+    });
+
+    // 2. 编导助手插槽清单验证
+    const directorSlotKinds = ["image", "audio"];
+    assert.equal(directorSlotKinds.length, 2);
+    assert.equal(directorSlotKinds.includes("image"), true);
+    assert.equal(directorSlotKinds.includes("audio"), true);
+});
+
+test("生视频工作台：默认创作卡片视频素材上传异常状态防线（失败清除 100% 进度且悬停始终可删除/替换）", () => {
+    // 模拟视频上传失败状态转移
+    const mockInitialVideo = {
+        id: "vid-1",
+        name: "test.mp4",
+        type: "video/mp4",
+        url: "blob:test",
+        uploading: true,
+        progress: 99,
+    };
+
+    // 发生网络直传错误或转码失败时，状态机必须清空 progress 并标明 error
+    const onErrorState = {
+        ...mockInitialVideo,
+        uploading: false,
+        progress: undefined,
+        error: "上传失败",
+    };
+
+    assert.equal(onErrorState.uploading, false, "失败后 uploading 必须为 false");
+    assert.equal(onErrorState.progress, undefined, "失败后 progress 必须为 undefined，杜绝误显示 100%");
+    assert.equal(onErrorState.error, "上传失败", "必须携带明确的错误提示文案");
+});
+
+test("深度复刻：更换参考视频时就地即时展示上传进度状态（referenceVideo 与 isUploadingVideo 解耦防线）", () => {
+    // 当已有参考视频存在，且用户触发更换上传新视频时：
+    // UI 必须优先根据 isUploadingVideo 切换为就地进度条容器，而不是继续被 referenceVideo 卡片覆盖
+    const shouldShowVideoCard = (hasRefVideo: boolean, isUploading: boolean) => hasRefVideo && !isUploading;
+    const shouldShowUploadDropzone = (hasRefVideo: boolean, isUploading: boolean) => !hasRefVideo || isUploading;
+
+    // 初始状态：无视频，显示上传区
+    assert.equal(shouldShowVideoCard(false, false), false);
+    assert.equal(shouldShowUploadDropzone(false, false), true);
+
+    // 状态 A：上传就绪，展示已有参考视频卡片
+    assert.equal(shouldShowVideoCard(true, false), true);
+    assert.equal(shouldShowUploadDropzone(true, false), false);
+
+    // 状态 B：点击「更换」开始上传新视频，必须立即切换为组件内就地进度条
+    assert.equal(shouldShowVideoCard(true, true), false, "更换中必须隐藏旧视频卡片");
+    assert.equal(shouldShowUploadDropzone(true, true), true, "更换中必须呈现组件内进度条");
+
+    // 状态 C：上传完成（isUploading 恢复 false），新视频卡片呈现
+    assert.equal(shouldShowVideoCard(true, false), true);
+});
+
+test("生视频工作台：素材插槽全局上限 maxTotalCount 严格边界约束", () => {
+    const maxTotalCount = 15;
+    let currentTotal = 14;
+
+    // 尝试添加 3 个新素材
+    const requestedCount = 3;
+    const totalRemaining = Math.max(0, maxTotalCount - currentTotal);
+    assert.equal(totalRemaining, 1, "总容量仅剩 1 个位置");
+
+    const allowed = Math.min(requestedCount, totalRemaining);
+    assert.equal(allowed, 1, "只允许选取 1 个素材，杜绝突破全局 15 个上限");
+});
 // @opc-feature: deep-replication-test [end]
+

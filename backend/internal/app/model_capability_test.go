@@ -186,6 +186,37 @@ func TestNormalizeAgnesVideo25CapabilityRepairsLegacyStoredLimits(t *testing.T) 
 	}
 }
 
+// @opc-adapter: model-pricing-and-capability-governance [start]
+func TestNormalizeAgnesVideo25CapabilityPreservesExplicitAdminCustomization(t *testing.T) {
+	custom := &ModelCapabilityConfig{
+		Version: 1,
+		Video: &VideoCapabilityConfig{
+			Duration:          VideoDurationConfig{Selection: "range", Min: 5, Max: 10, Step: 1, Default: 8},
+			Resolutions:       []string{"720P", "1080P"},
+			DefaultResolution: "1080P",
+			Ratios:            []string{"16:9", "9:16"},
+			DefaultRatio:      "9:16",
+			References:        VideoReferenceConfig{PromptMaxChars: 8000, MaxImages: 6, MaxVideos: 2, MaxAudios: 1},
+			Operations:        []string{"text_to_video", "image_to_video"},
+			DefaultOperation:  "image_to_video",
+		},
+	}
+	normalized, err := NormalizeModelCapabilityConfigForModel("video", "agnes-video", "agnes-video-2.5", custom)
+	if err != nil {
+		t.Fatalf("NormalizeModelCapabilityConfigForModel() error = %v", err)
+	}
+	if normalized.Video.Duration.Min != 5 || normalized.Video.Duration.Max != 10 || normalized.Video.Duration.Default != 8 {
+		t.Fatalf("custom duration should be preserved, got %#v", normalized.Video.Duration)
+	}
+	if fmt.Sprint(normalized.Video.Resolutions) != fmt.Sprint([]string{"720P", "1080P"}) {
+		t.Fatalf("custom resolutions should be preserved, got %v", normalized.Video.Resolutions)
+	}
+	if normalized.Video.References.MaxImages != 6 {
+		t.Fatalf("custom MaxImages should be preserved, got %d", normalized.Video.References.MaxImages)
+	}
+}
+// @opc-adapter: model-pricing-and-capability-governance [end]
+
 func TestDefaultVolcengineArkVideoCapabilitySupportsFullModalReference(t *testing.T) {
 	profile := DefaultModelCapabilityConfigForModel("volcengine-ark-video", "doubao-seedance-2-0-260128")
 	if profile == nil || profile.Video == nil {

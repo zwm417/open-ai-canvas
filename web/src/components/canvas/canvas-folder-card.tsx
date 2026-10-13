@@ -1,6 +1,9 @@
-import { App, Dropdown, Input } from "antd";
+import { App, Input } from "antd";
 import { Download, LoaderCircle, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import type { KeyboardEvent } from "react";
+// @opc-feature: canvas-folder-card-dropdown [start]
+import { DropdownMenu } from "@/components/ui/base/dropdown-menu";
+// @opc-feature: canvas-folder-card-dropdown [end]
 
 import { ProjectPreview } from "@/components/canvas/canvas-project-card";
 import { exportCanvasProjects } from "@/lib/canvas/canvas-export";
@@ -118,22 +121,19 @@ export function CanvasFolderCard({ project, projectName, onClick, onPrefetch, op
                     </button>
                 ) : null}
 
-                <Dropdown
-                    trigger={["click"]}
-                    placement="bottomRight"
-                    menu={{
-                        onClick: ({ domEvent }) => domEvent.stopPropagation(),
-                        items: [
-                            { key: "export", icon: <Download className="size-3.5" />, label: "导出画布", onClick: () => void exportProject() },
-                            { type: "divider" },
-                            { key: "delete", danger: true, icon: <Trash2 className="size-3.5" />, label: "删除", onClick: () => setDeleteIds([project.id]) },
-                        ],
-                    }}
-                >
-                    <button type="button" className="product-icon-button canvas-collection-more" aria-label={`${project.title} 画布操作`} title="更多操作" onClick={(event) => event.stopPropagation()}>
-                        <MoreHorizontal />
-                    </button>
-                </Dropdown>
+                {/* @opc-feature: canvas-folder-card-dropdown [start] */}
+                <DropdownMenu
+                    placement="bottom end"
+                    triggerClassName="product-icon-button canvas-collection-more"
+                    trigger={<MoreHorizontal className="size-4" />}
+                    items={[
+                        { key: "export", icon: <Download className="size-3.5" />, label: "导出画布", onClick: () => void exportProject() },
+                        { key: "divider-1", divider: true },
+                        { key: "delete", danger: true, icon: <Trash2 className="size-3.5" />, label: "删除", onClick: () => setDeleteIds([project.id]) },
+                    ]}
+                    ariaLabel={`${project.title} 画布操作`}
+                />
+                {/* @opc-feature: canvas-folder-card-dropdown [end] */}
             </div>
         </article>
     );

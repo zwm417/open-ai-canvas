@@ -79,6 +79,14 @@
 `POST /v1/videos/generations`，字段：`model`、`prompt`、`seconds`、`resolution`、`aspect_ratio`、
 `input_reference[]`、`first_frame`、`last_frame`、`audio`。
 
+### `lxmone-seedance-hc`（`seedance-2-0-fast-hc`、`seedance-2-0-hc`、`seedance-2-0-mini-hc`、`seedance-2-5-hc`）
+
+`POST /v1/videos/generations`，字段：`model`、`prompt`、`duration_seconds`（支持 5/10/30）、`resolution`（480p/720p/1080p）、`aspect_ratio`、`reference_images[]`，默认开启 `generate_audio: true`。
+
+### `lxmone-official-h3`（`官方h3-720p`、`官方h3-1080p`、`官方h3-2k`）
+
+`POST /v1/videos`，字段：`model`、`prompt`、`duration`（5-15 秒）、`resolution`（720p/1080p/2k）、`aspect_ratio`、`reference_images[]`、`reference_audios[]`。
+
 ## 响应与错误
 
 创建成功后，插件从上游响应里按顺序取 `id`、`task_id`、`taskId`、`data.id` 得到统一 `taskId`，
@@ -307,7 +315,48 @@ HTTP 失败、业务错误码或状态进入 `failed` 时，任务以失败结�
                 }
               }
             },
-            "prompt_extend": false
+            "prompt_extend": false,
+            "reference_image_urls": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$sortByOrder": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            },
+            "reference_video_urls": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$ref": "request.videos"
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            },
+            "reference_audio_urls": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$ref": "request.audios"
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            }
           }
         },
         "poll": {
@@ -1996,6 +2045,22 @@ HTTP 失败、业务错误码或状态进入 `failed` 时，任务以失败结�
             },
             "generate_audio": {
               "$ref": "request.generateAudio"
+            },
+            "seconds": {
+              "$if": {
+                "condition": {
+                  "$gt": [
+                    {
+                      "$ref": "request.duration"
+                    },
+                    0
+                  ]
+                },
+                "then": {
+                  "$ref": "request.duration"
+                },
+                "else": 6
+              }
             }
           }
         },
@@ -2342,6 +2407,570 @@ HTTP 失败、业务错误码或状态进入 `failed` 时，任务以失败结�
         "poll": {
           "method": "GET",
           "path": "/v1/videos/generations/{{taskId}}",
+          "contentType": "application/json"
+        },
+        "response": {
+          "taskId": {
+            "$coalesce": [
+              {
+                "$ref": "response.id"
+              },
+              {
+                "$ref": "response.task_id"
+              },
+              {
+                "$ref": "response.taskId"
+              },
+              {
+                "$ref": "response.request_id"
+              },
+              {
+                "$ref": "response.data.id"
+              },
+              "taskId"
+            ]
+          },
+          "status": {
+            "$coalesce": [
+              {
+                "$ref": "response.status"
+              },
+              {
+                "$ref": "response.state"
+              },
+              {
+                "$ref": "response.data.status"
+              },
+              "pending"
+            ]
+          },
+          "message": {
+            "$coalesce": [
+              {
+                "$ref": "response.error.message"
+              },
+              {
+                "$ref": "response.message"
+              },
+              {
+                "$ref": "response.fail_reason"
+              }
+            ]
+          },
+          "videos": {
+            "$coalesce": [
+              {
+                "$ref": "response.metadata.direct_url"
+              },
+              {
+                "$ref": "response.data.metadata.direct_url"
+              },
+              {
+                "$ref": "response.metadata.url"
+              },
+              {
+                "$ref": "response.metadata.video_url"
+              },
+              {
+                "$ref": "response.video_url"
+              },
+              {
+                "$ref": "response.videoUrl"
+              },
+              {
+                "$ref": "response.result_url"
+              },
+              {
+                "$ref": "response.url"
+              },
+              {
+                "$ref": "response.data.metadata.url"
+              },
+              {
+                "$ref": "response.data.video_url"
+              },
+              {
+                "$ref": "response.output.url"
+              }
+            ]
+          },
+          "errorPaths": [
+            "error.message",
+            "error.code"
+          ],
+          "resultEphemeral": true
+        }
+      },
+      {
+        "id": "lxmone-seedance-hc",
+        "label": "万有引力 Seedance HC 视频（协议B）",
+        "description": "seedance-2-0-fast-hc、seedance-2-0-hc、seedance-2-0-mini-hc、seedance-2-5-hc：POST /v1/videos/generations，包含 duration_seconds、resolution、reference_images 与 generate_audio。",
+        "capabilities": [
+          "video"
+        ],
+        "scopes": [
+          "admin.system-channel",
+          "user.custom-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "https://lxmone.xyz/v1",
+        "requiresPublicMediaUrls": true,
+        "auth": {
+          "type": "bearer",
+          "field": "apiKey"
+        },
+        "parameters": [
+          {
+            "name": "model",
+            "type": "string",
+            "required": true,
+            "mapping": "model",
+            "description": "上游模型 ID。"
+          },
+          {
+            "name": "prompt",
+            "type": "string",
+            "required": true,
+            "mapping": "prompt",
+            "description": "视频提示词。"
+          },
+          {
+            "name": "images",
+            "type": "media[]",
+            "required": false,
+            "mapping": "reference_images",
+            "description": "参考图片，宿主发布为公开 URL 后提交。"
+          },
+          {
+            "name": "videos",
+            "type": "media[]",
+            "required": false,
+            "mapping": "reference_videos",
+            "description": "参考视频。"
+          },
+          {
+            "name": "audios",
+            "type": "media[]",
+            "required": false,
+            "mapping": "reference_audios",
+            "description": "参考音频。"
+          },
+          {
+            "name": "duration",
+            "type": "integer",
+            "required": false,
+            "mapping": "seconds/duration/duration_seconds",
+            "description": "输出时长，单位秒。"
+          },
+          {
+            "name": "aspectRatio",
+            "type": "string",
+            "required": false,
+            "mapping": "aspect_ratio",
+            "description": "画幅比例。"
+          },
+          {
+            "name": "resolution",
+            "type": "string",
+            "required": false,
+            "mapping": "resolution/size",
+            "description": "输出分辨率档位。"
+          },
+          {
+            "name": "generateAudio",
+            "type": "boolean",
+            "required": false,
+            "mapping": "audio/generate_audio",
+            "description": "是否生成或保留音频。"
+          }
+        ],
+        "create": {
+          "method": "POST",
+          "path": "/v1/videos/generations",
+          "contentType": "application/json",
+          "body": {
+            "model": {
+              "$ref": "request.model"
+            },
+            "prompt": {
+              "$ref": "request.prompt"
+            },
+            "duration_seconds": {
+              "$if": {
+                "condition": {
+                  "$gt": [
+                    {
+                      "$ref": "request.duration"
+                    },
+                    0
+                  ]
+                },
+                "then": {
+                  "$ref": "request.duration"
+                },
+                "else": 5
+              }
+            },
+            "resolution": {
+              "$lower": {
+                "$coalesce": [
+                  {
+                    "$ref": "request.resolution"
+                  },
+                  "720p"
+                ]
+              }
+            },
+            "aspect_ratio": {
+              "$coalesce": [
+                {
+                  "$ref": "request.aspectRatio"
+                },
+                "16:9"
+              ]
+            },
+            "reference_images": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$sortByOrder": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            },
+            "reference_videos": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$ref": "request.videos"
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            },
+            "reference_audios": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$ref": "request.audios"
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            },
+            "generate_audio": {
+              "$coalesce": [
+                {
+                  "$ref": "request.generateAudio"
+                },
+                true
+              ]
+            }
+          }
+        },
+        "poll": {
+          "method": "GET",
+          "path": "/v1/videos/generations/{{taskId}}",
+          "contentType": "application/json"
+        },
+        "response": {
+          "taskId": {
+            "$coalesce": [
+              {
+                "$ref": "response.id"
+              },
+              {
+                "$ref": "response.task_id"
+              },
+              {
+                "$ref": "response.taskId"
+              },
+              {
+                "$ref": "response.request_id"
+              },
+              {
+                "$ref": "response.data.id"
+              },
+              "taskId"
+            ]
+          },
+          "status": {
+            "$coalesce": [
+              {
+                "$ref": "response.status"
+              },
+              {
+                "$ref": "response.state"
+              },
+              {
+                "$ref": "response.data.status"
+              },
+              "pending"
+            ]
+          },
+          "message": {
+            "$coalesce": [
+              {
+                "$ref": "response.error.message"
+              },
+              {
+                "$ref": "response.message"
+              },
+              {
+                "$ref": "response.fail_reason"
+              }
+            ]
+          },
+          "videos": {
+            "$coalesce": [
+              {
+                "$ref": "response.metadata.direct_url"
+              },
+              {
+                "$ref": "response.data.metadata.direct_url"
+              },
+              {
+                "$ref": "response.metadata.url"
+              },
+              {
+                "$ref": "response.metadata.video_url"
+              },
+              {
+                "$ref": "response.video_url"
+              },
+              {
+                "$ref": "response.videoUrl"
+              },
+              {
+                "$ref": "response.result_url"
+              },
+              {
+                "$ref": "response.url"
+              },
+              {
+                "$ref": "response.data.metadata.url"
+              },
+              {
+                "$ref": "response.data.video_url"
+              },
+              {
+                "$ref": "response.output.url"
+              }
+            ]
+          },
+          "errorPaths": [
+            "error.message",
+            "error.code"
+          ],
+          "resultEphemeral": true
+        }
+      },
+      {
+        "id": "lxmone-official-h3",
+        "label": "万有引力 官方 H3 视频（协议A）",
+        "description": "官方h3-720p、官方h3-1080p、官方h3-2k：POST /v1/videos，海螺官方 H3 系列，支持 720p/1080p/2k、多图与多音频。",
+        "capabilities": [
+          "video"
+        ],
+        "scopes": [
+          "admin.system-channel",
+          "user.custom-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "https://lxmone.xyz/v1",
+        "requiresPublicMediaUrls": true,
+        "auth": {
+          "type": "bearer",
+          "field": "apiKey"
+        },
+        "parameters": [
+          {
+            "name": "model",
+            "type": "string",
+            "required": true,
+            "mapping": "model",
+            "description": "上游模型 ID。"
+          },
+          {
+            "name": "prompt",
+            "type": "string",
+            "required": true,
+            "mapping": "prompt",
+            "description": "视频提示词。"
+          },
+          {
+            "name": "images",
+            "type": "media[]",
+            "required": false,
+            "mapping": "reference_images",
+            "description": "参考图片，宿主发布为公开 URL 后提交。"
+          },
+          {
+            "name": "videos",
+            "type": "media[]",
+            "required": false,
+            "mapping": "reference_videos",
+            "description": "参考视频。"
+          },
+          {
+            "name": "audios",
+            "type": "media[]",
+            "required": false,
+            "mapping": "reference_audios",
+            "description": "参考音频。"
+          },
+          {
+            "name": "duration",
+            "type": "integer",
+            "required": false,
+            "mapping": "seconds/duration/duration_seconds",
+            "description": "输出时长，单位秒。"
+          },
+          {
+            "name": "aspectRatio",
+            "type": "string",
+            "required": false,
+            "mapping": "aspect_ratio",
+            "description": "画幅比例。"
+          },
+          {
+            "name": "resolution",
+            "type": "string",
+            "required": false,
+            "mapping": "resolution/size",
+            "description": "输出分辨率档位。"
+          },
+          {
+            "name": "generateAudio",
+            "type": "boolean",
+            "required": false,
+            "mapping": "audio/generate_audio",
+            "description": "是否生成或保留音频。"
+          }
+        ],
+        "create": {
+          "method": "POST",
+          "path": "/v1/videos",
+          "contentType": "application/json",
+          "body": {
+            "model": {
+              "$ref": "request.model"
+            },
+            "prompt": {
+              "$ref": "request.prompt"
+            },
+            "duration_seconds": {
+              "$if": {
+                "condition": {
+                  "$gt": [
+                    {
+                      "$ref": "request.duration"
+                    },
+                    0
+                  ]
+                },
+                "then": {
+                  "$ref": "request.duration"
+                },
+                "else": 5
+              }
+            },
+            "resolution": {
+              "$lower": {
+                "$coalesce": [
+                  {
+                    "$ref": "request.resolution"
+                  },
+                  "720p"
+                ]
+              }
+            },
+            "aspect_ratio": {
+              "$coalesce": [
+                {
+                  "$ref": "request.aspectRatio"
+                },
+                "16:9"
+              ]
+            },
+            "reference_images": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$sortByOrder": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            },
+            "reference_videos": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$ref": "request.videos"
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            },
+            "reference_audios": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$ref": "request.audios"
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            },
+            "duration": {
+              "$if": {
+                "condition": {
+                  "$gt": [
+                    {
+                      "$ref": "request.duration"
+                    },
+                    0
+                  ]
+                },
+                "then": {
+                  "$ref": "request.duration"
+                },
+                "else": 5
+              }
+            }
+          }
+        },
+        "poll": {
+          "method": "GET",
+          "path": "/v1/videos/{{taskId}}",
           "contentType": "application/json"
         },
         "response": {

@@ -25,6 +25,7 @@ export type UploadSlotDefinition = {
     maxCount?: number;
     description?: string;
     semanticTag: string; // e.g. "模特", "上身/全身装", "下装", "产品", "人脸", "背景", "面料", "印花"
+    hideOptionalBadge?: boolean;
 };
 
 export type SkillCategory = {
@@ -47,6 +48,7 @@ export type WorkbenchSkill = {
     isRecommended?: boolean;
     order?: number;
     defaultCount?: number; // 工作流约定默认生成张数（未指定默认为 1）
+    defaultAspectRatio?: string; // 工作流约定默认画幅比例（如 "3:4" | "16:9" | "1:1"）
     maxFiles?: number; // total references limit, e.g. 3, 6, 9
     uploadSlots: UploadSlotDefinition[];
     placeholder: string;
@@ -59,6 +61,9 @@ export type WorkbenchSkill = {
     showcaseImageUrl: string; // High-res Before/After comparison image
     showcaseBeforeLabel?: string;
     showcaseAfterLabel?: string;
+    // @opc-feature: detail_set_workflow [start]
+    workflow?: { kind: "detail-set" }; // 工作流卡片扩展：声明后中栏渲染专用创作卡（电商套图等），不走通用提示词面板
+    // @opc-feature: detail_set_workflow [end]
 };
 
 export type ActiveSlotFile = {

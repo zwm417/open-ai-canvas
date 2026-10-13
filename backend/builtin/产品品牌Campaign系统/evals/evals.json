@@ -1,0 +1,36 @@
+{
+  "skill_name": "brand-extension",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "为一款新耳机做发布 Campaign，包含主视觉、官网横幅、户外和社媒。",
+      "should_trigger": true,
+      "expected_output": "先锁定传播命题；建立触点地图；先确认主视觉",
+      "assertions": [
+        "先锁定传播命题",
+        "建立触点地图",
+        "先确认主视觉"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "为新公司设计 Logo 和基础 VI。",
+      "should_trigger": false,
+      "expected_output": "应路由到 logo-brand",
+      "assertions": [
+        "应路由到 logo-brand"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "已有主视觉，只需适配 TikTok、Instagram 和门店屏。",
+      "should_trigger": true,
+      "expected_output": "复用母题；针对版位重构；不重新发明 Campaign",
+      "assertions": [
+        "复用母题",
+        "针对版位重构",
+        "不重新发明 Campaign"
+      ]
+    }
+  ]
+}

@@ -14,6 +14,10 @@ import (
 
 	"infinite-canvas/backend/internal/kernel"
 	"infinite-canvas/backend/internal/model"
+
+	// @opc-adapter: prompt-vault-app-import [start]
+	opcvault "infinite-canvas/backend/internal/custom/opc-vault"
+	// @opc-adapter: prompt-vault-app-import [end]
 )
 
 var sseFrameBoundaryPattern = regexp.MustCompile(`\r?\n\r?\n`)
@@ -162,6 +166,26 @@ func (s *Service) processCanvasGenerationTask(ctx context.Context, userID string
 		return nil, err
 	}
 	input.Config = config
+	// @opc-adapter: prompt-vault-macro-governance [start]
+	// 商业安全防御与正向宏治理：任务引擎统一处理金库宏展开与非法宏中和
+	if input.Config.SystemPrompt != "" {
+		input.Config.SystemPrompt = opcvault.ResolvePromptMacros(input.Config.SystemPrompt, true)
+	}
+	if input.Mode == "text" {
+		// 文本任务输入框严禁展开宏，中和任何用户反射注入
+		input.Prompt = opcvault.NeutralizeRestrictedMacros(input.Prompt)
+		for i := range input.TextHistory {
+			if strings.EqualFold(strings.TrimSpace(input.TextHistory[i].Role), "system") {
+				input.TextHistory[i].Content = opcvault.ResolvePromptMacros(input.TextHistory[i].Content, true)
+			} else {
+				input.TextHistory[i].Content = opcvault.NeutralizeRestrictedMacros(input.TextHistory[i].Content)
+			}
+		}
+	} else if input.Mode == "image" || input.Mode == "video" {
+		// 生图/生视频支持提示词技能宏展开（不带拒答指令，模型仅做图像扩散）
+		input.Prompt = opcvault.ResolvePromptMacros(input.Prompt, false)
+	}
+	// @opc-adapter: prompt-vault-macro-governance [end]
 	if input.Mode == "text" && input.Config.CapabilityConfig != nil && input.Config.CapabilityConfig.Text != nil {
 		// The same capability contract drives provider output limits, billing
 		// estimates and Agent context budgeting. Never silently fall back to a
@@ -516,8 +540,7 @@ func stringField(payload map[string]interface{}, key string) string {
 func withSystemPrompt(config providerConfig, prompt string) string {
 	systemPrompt := strings.TrimSpace(config.SystemPrompt)
 	// @opc-adapter: prompt-vault-macro-injection [start]
-	systemPrompt = resolveVaultMacroInApp(systemPrompt)
-	prompt = resolveVaultMacroInApp(prompt)
+	systemPrompt = opcvault.ResolvePromptMacros(systemPrompt, true)
 	// @opc-adapter: prompt-vault-macro-injection [end]
 	if systemPrompt == "" {
 		return prompt

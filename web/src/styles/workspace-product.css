@@ -443,6 +443,199 @@
 .app-product-workspace .skills-tab.is-active { background: transparent; color: var(--user-ink); box-shadow: none; }
 .app-product-workspace .skills-tab-count { background: var(--user-surface-hover); color: var(--user-ink-muted); }
 
+/* 技能库两栏布局与侧边栏分类筛选 */
+.skills-library-layout {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    align-items: start;
+    gap: 28px;
+    margin-top: 8px;
+}
+
+@media (max-width: 900px) {
+    .skills-library-layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
+.skills-library-sidebar {
+    position: sticky;
+    top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-height: calc(100dvh - 120px);
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.skills-category-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.skills-library-sidebar-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 4px 6px;
+    border-bottom: 1px solid color-mix(in srgb, var(--user-ink) 8%, transparent);
+}
+
+.skills-library-sidebar-heading strong {
+    display: block;
+    font-size: 13px;
+    font-weight: 650;
+    color: var(--user-ink);
+    line-height: 1.4;
+}
+
+.skills-library-sidebar-heading span {
+    display: block;
+    font-size: 11px;
+    color: var(--user-ink-soft);
+    line-height: 1.3;
+    margin-top: 1px;
+}
+
+.skills-library-category-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.skills-library-category-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    min-height: 36px;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--user-ink-muted);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--product-state) var(--product-ease), color var(--product-state) var(--product-ease);
+}
+
+.skills-library-category-item:hover {
+    background: var(--user-surface-hover);
+    color: var(--user-ink);
+}
+
+.skills-library-category-item.is-active {
+    background: var(--control-selected-bg, var(--user-surface-hover));
+    color: var(--control-selected-fg, var(--user-ink));
+    font-weight: 600;
+}
+
+.skills-library-category-item.is-active:hover {
+    background: var(--control-selected-hover-bg, var(--user-surface-hover));
+    color: var(--control-selected-fg, var(--user-ink));
+}
+
+.skills-library-category-item > span:first-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.skills-library-category-item > span:first-child svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+.skills-library-category-item > span:last-child {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding-inline: 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--user-ink) 5%, transparent);
+    color: var(--user-ink-soft);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+
+.skills-library-category-item.is-active > span:last-child {
+    background: color-mix(in srgb, var(--control-selected-fg, var(--user-ink)) 18%, transparent);
+    color: var(--control-selected-fg, var(--user-ink));
+    font-weight: 600;
+}
+
+.skills-library-category-row.is-active .skills-library-category-delete {
+    color: var(--control-selected-fg, var(--user-ink));
+}
+
+.skills-library-category-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.skills-library-category-row .skills-library-category-item {
+    padding-right: 32px;
+}
+
+.skills-library-category-delete {
+    position: absolute;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--user-ink-soft);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--product-state) var(--product-ease), color var(--product-state) var(--product-ease), background var(--product-state) var(--product-ease);
+}
+
+.skills-library-category-row:hover .skills-library-category-delete,
+.skills-library-category-row:focus-within .skills-library-category-delete {
+    opacity: 1;
+}
+
+.skills-library-category-delete:hover {
+    background: color-mix(in srgb, var(--status-error) 12%, transparent);
+    color: var(--status-error);
+}
+
+.skills-library-category-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--status-error) 10%, transparent);
+    color: var(--status-error);
+    font-size: 12px;
+}
+
+.skills-library-results {
+    min-width: 0;
+    flex: 1;
+}
+
 .app-product-workspace .task-record-list,
 .app-product-workspace .task-group-list {
     gap: 8px !important;

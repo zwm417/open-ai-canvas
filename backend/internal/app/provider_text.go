@@ -11,10 +11,6 @@ import (
 
 	"infinite-canvas/backend/internal/model"
 	"infinite-canvas/backend/internal/protocol"
-
-	// @opc-adapter: prompt-vault-macro-injection [start]
-	opcvault "infinite-canvas/backend/internal/custom/opc-vault"
-	// @opc-adapter: prompt-vault-macro-injection [end]
 )
 
 func runTextTask(ctx context.Context, input canvasGenerationInput) (map[string]interface{}, error) {
@@ -326,21 +322,4 @@ func shouldFallbackTextToChat(err error) bool {
 		return false
 	}
 }
-
-// @opc-adapter: prompt-vault-macro-injection [start]
-func resolveVaultMacroInApp(text string) string {
-	if !strings.Contains(text, "__VAULT_PROMPT__:") {
-		return text
-	}
-	for _, id := range opcvault.ListPromptIDs() {
-		macro := "__VAULT_PROMPT__:" + id
-		if strings.Contains(text, macro) {
-			if prompt, err := opcvault.GetPrompt(id); err == nil {
-				text = strings.ReplaceAll(text, macro, prompt)
-			}
-		}
-	}
-	return text
-}
-// @opc-adapter: prompt-vault-macro-injection [end]
 

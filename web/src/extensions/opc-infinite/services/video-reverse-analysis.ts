@@ -19,7 +19,7 @@ import {
     type ReverseModelCandidate,
     type ReversePromptResponse,
 } from "./video-reverse-contracts";
-import { getVaultPromptSync, VAULT_PROMPT_IDS } from "@/services/api/prompt-vault";
+import { getVaultPromptSync, HEADER_CANVAS_SYSTEM_PROMPT_ID, VAULT_PROMPT_IDS } from "@/services/api/prompt-vault";
 
 const MAX_MODEL_IMAGES = 12;
 
@@ -282,8 +282,10 @@ export async function analyzePreparedReverseVideo({
     userRequirement = "保留参考视频的爆点、动作、镜头、节奏和声音结构，生成可直接用于二创的反推作战手册。",
     promptRules,
     replaceBuiltInPrompt = false,
+    vaultPromptId,
     localAsrEnabled = false,
     wordLevelAudio,
+    scene,
     onDelta,
     onProgress,
     signal,
@@ -295,8 +297,10 @@ export async function analyzePreparedReverseVideo({
     userRequirement?: string;
     promptRules?: string;
     replaceBuiltInPrompt?: boolean;
+    vaultPromptId?: string;
     localAsrEnabled?: boolean;
     wordLevelAudio?: boolean;
+    scene?: string;
     onDelta?: (text: string) => void;
     onProgress?: (progress: ReverseAnalysisProgress) => void;
     signal?: AbortSignal;
@@ -408,7 +412,12 @@ export async function analyzePreparedReverseVideo({
                 signal,
                 maxTokens: 16384,
                 max_tokens: 16384,
-                scene: "video_reverse",
+                scene: scene || "video_reverse",
+                headers: !replaceBuiltInPrompt
+                    ? {
+                          [HEADER_CANVAS_SYSTEM_PROMPT_ID]: vaultPromptId || VAULT_PROMPT_IDS.VIDEO_REVERSE_CLASSIC,
+                      }
+                    : undefined,
             } as any);
             lastError = undefined;
             break;

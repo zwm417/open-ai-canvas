@@ -1,0 +1,7 @@
+interface:
+  display_name: "鎏金水墨幻想提示词"
+  short_description: "任意主体生成含发饰服装细节的鎏金双模型提示词"
+  default_prompt: "使用 $gilded-ink-fantasy-prompts，把“月下女子在水中轻舞”扩写为含具体发饰连接和分层服装的鎏金 ImageGen 与 Midjourney 8.2 提示词。"
+
+policy:
+  allow_implicit_invocation: true

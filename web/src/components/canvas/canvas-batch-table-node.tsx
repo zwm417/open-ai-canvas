@@ -1420,7 +1420,7 @@ function ReferenceThumbnail({
                             {posterUrl ? (
                                 <CachedResourceImage eager draggable={false} src={posterUrl} storageKey={node?.metadata?.storageKey} alt="视频封面" className="block size-full object-cover opacity-80" fallback={<div className="size-full bg-slate-900" />} />
                             ) : mediaUrl ? (
-                                <video src={mediaUrl} muted preload="metadata" className="block size-full object-cover opacity-80" />
+                                <video src={mediaUrl} muted preload="none" className="block size-full object-cover opacity-80" />
                             ) : null}
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <span className="grid size-8 place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm">
@@ -1790,7 +1790,7 @@ function ResultThumbnail({ output, status, theme, onFocus, badgeText, isVideo = 
                             {output.metadata?.previewContent ? (
                                 <CachedResourceImage eager src={output.metadata.previewContent} storageKey={output.metadata?.storageKey} alt="视频生成结果" className="block size-full object-cover" fallback={<div className="size-full bg-slate-900" />} />
                             ) : mediaUrl ? (
-                                <video src={mediaUrl} muted preload="metadata" className="block size-full object-cover" />
+                                <video src={mediaUrl} muted preload="none" className="block size-full object-cover" />
                             ) : null}
                             <span className="absolute inset-0 grid place-items-center bg-black/30">
                                 <Play className="size-5 fill-white text-white ml-0.5" />

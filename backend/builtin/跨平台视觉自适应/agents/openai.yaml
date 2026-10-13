@@ -1,0 +1,6 @@
+interface:
+  display_name: "跨平台视觉适配"
+  short_description: "将单张图片适配为多个平台原生视觉变体，支持智能重构排版。"
+  default_prompt: "使用 $cross-platform-adapter 按领域工作流完成当前任务；复用已确认输入，只在必要确认门暂停，并按真实任务状态交付。"
+policy:
+  allow_implicit_invocation: true

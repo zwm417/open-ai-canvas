@@ -155,3 +155,7 @@ export function normalizeVolcengineArkImageSize(size: string | undefined) {
     }
     return `${width}x${height}`;
 }
+
+// @opc-feature: upstream-image-adaptation [start]
+export { isPublicMediaUrl } from "@/services/image-storage";
+// @opc-feature: upstream-image-adaptation [end]

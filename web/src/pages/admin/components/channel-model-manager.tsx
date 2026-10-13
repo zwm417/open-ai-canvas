@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { App, Button, Checkbox, Input, Modal, Popconfirm, Select, Space } from "antd";
+import { App, Button, Checkbox, Input, Modal, Select, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 
@@ -157,12 +157,26 @@ export function ChannelModelManager({ channel, onChanged }: { channel: ModelChan
     const remove = async (item: ChannelModel) => {
         try {
             await deleteAdminChannelModel(channel.id, item.id);
+            setSelectedModelIds((current) => current.filter((id) => id !== item.id));
             await reload();
             await onChanged();
             message.success("模型已删除");
         } catch (error) {
             message.error(error instanceof Error ? error.message : "删除模型失败");
         }
+    };
+
+    const confirmRemove = (item: ChannelModel) => {
+        modal.confirm({
+            title: `删除模型「${item.displayName || item.modelKey}」？`,
+            content: "已被前台供应线路或进行中任务使用的模型不能删除；删除后模型不再显示，且不能在页面恢复。",
+            okText: "删除",
+            cancelText: "取消",
+            okButtonProps: { danger: true },
+            onOk: async () => {
+                await remove(item);
+            },
+        });
     };
 
     const confirmBatchRemove = () => {
@@ -238,9 +252,15 @@ export function ChannelModelManager({ channel, onChanged }: { channel: ModelChan
                     <Button size="small" icon={<Pencil className="size-3.5" />} disabled={deletingSelected} onClick={() => startEdit(item)}>
                         编辑
                     </Button>
-                    <Popconfirm title="删除模型" description="已被前台供应线路或进行中任务使用的模型不能删除；删除后模型不再显示，且不能在页面恢复。" okText="删除" cancelText="取消" onConfirm={() => void remove(item)}>
-                        <Button size="small" danger disabled={deletingSelected} title="删除模型" aria-label="删除模型" icon={<Trash2 className="size-3.5" />} />
-                    </Popconfirm>
+                    <Button
+                        size="small"
+                        danger
+                        disabled={deletingSelected}
+                        title="删除模型"
+                        aria-label="删除模型"
+                        icon={<Trash2 className="size-3.5" />}
+                        onClick={() => confirmRemove(item)}
+                    />
                 </Space>
             ),
         },

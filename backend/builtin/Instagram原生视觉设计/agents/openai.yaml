@@ -1,0 +1,6 @@
+interface:
+  display_name: "Instagram 原生帖子"
+  short_description: "设计具有特定行业视觉基因的 Instagram 原生视觉内容。"
+  default_prompt: "使用 $instagram-post-new 按领域工作流完成当前任务；复用已确认输入，只在必要确认门暂停，并按真实任务状态交付。"
+policy:
+  allow_implicit_invocation: true

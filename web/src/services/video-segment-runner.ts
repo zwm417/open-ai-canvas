@@ -4,7 +4,7 @@ import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo
 import type { AiConfig } from "@/stores/use-config-store";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
-import { extractProportionalScriptSlice, extractSharedScriptHeader, formatSegmentTimeRange, type VideoCreationPlan, type VideoCreationSegment, type VideoSegmentHandoff, type VideoSegmentOutput } from "@/lib/video-segment-contract";
+import { extractSharedScriptHeader, formatSegmentTimeRange, type VideoCreationPlan, type VideoCreationSegment, type VideoSegmentHandoff, type VideoSegmentOutput } from "@/lib/video-segment-contract";
 
 export type VideoSegmentRunnerProgress = {
     batchId: string;
@@ -183,11 +183,17 @@ export async function runVideoSegmentBatch(input: VideoSegmentRunnerInput): Prom
 export function buildVideoSegmentPrompt(plan: VideoCreationPlan, segment: VideoCreationSegment) {
     const shotText = segment.shotBlockIds
         .map((blockId) => plan.shotBlocks.find((block) => block.blockId === blockId)?.text)
-        .filter((text): text is string => Boolean(text))
-        .join("\n");
+        .filter((text): text is string => Boolean(text && text.trim()))
+        .join("\n\n");
 
     const sharedHeader = extractSharedScriptHeader(plan.scriptSnapshot);
-    const segmentContent = shotText || extractProportionalScriptSlice(plan.scriptSnapshot, segment.index, plan.segments.length);
+
+    // 多段任务必须具备明确的分段提示词内容，绝对禁止静默盲切
+    if (!shotText && plan.segments.length > 1) {
+        throw new Error(`第 ${segment.index} 段提示词内容为空，未匹配到有效的分段剧本内容，严禁盲切执行`);
+    }
+
+    const segmentContent = shotText || plan.scriptSnapshot.trim();
 
     const parts: string[] = [];
     if (sharedHeader) {
@@ -230,7 +236,15 @@ async function runVideoSegment(input: VideoSegmentRunnerInput & { batchId: strin
     const prompt = buildVideoSegmentPrompt(input.plan, input.segment);
     let task = existingTask;
     try {
-        task = task || await createVideoGenerationTask(requestConfig, prompt, input.references, input.videoReferences, input.audioReferences, { signal: input.signal });
+        task = task || await createVideoGenerationTask(requestConfig, prompt, input.references, input.videoReferences, input.audioReferences, {
+            signal: input.signal,
+            metadata: {
+                source: "video-workbench",
+                batchId: input.batchId,
+                segmentId: input.segment.segmentId,
+                segmentIndex: input.segment.index,
+            },
+        });
         await input.onTask?.({ batchId: input.batchId, segment: input.segment, task, status: "running" });
         const result = await pollSegmentTask(requestConfig, task, input.signal, Boolean(existingTask));
         const stored = await storeGeneratedVideo(result);

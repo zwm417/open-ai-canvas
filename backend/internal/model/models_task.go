@@ -52,6 +52,11 @@ type Task struct {
 	CanRecoverMedia   bool       `json:"canRecoverMedia,omitempty" gorm:"-"`
 	TextDraft         string     `json:"textDraft,omitempty" gorm:"type:text"`
 	Error             string     `json:"error"`
+	// @opc-adapter: media-dual-track [start]
+	UpstreamURL   string        `json:"-" gorm:"type:text"`
+	LocalStatus   LocalStatus   `json:"localStatus,omitempty" gorm:"index;size:24"`
+	OSSSyncStatus OSSSyncStatus `json:"ossSyncStatus,omitempty" gorm:"index;size:24"`
+	// @opc-adapter: media-dual-track [end]
 	Attempts          int        `json:"attempts"`
 	StartedAt         *time.Time `json:"startedAt"`
 	CompletedAt       *time.Time `json:"completedAt"`

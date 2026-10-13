@@ -78,10 +78,40 @@ export function isSeedanceVideoConfig(config: AiConfig | Pick<AiConfig, "model" 
     return isSeedanceVideoModel(modelOptionName(requestConfig.model || requestConfig.videoModel)) || isArkPlanBaseUrl(requestConfig.baseUrl || "");
 }
 
+// @opc-feature: seedance-jimeng-icon-governance [start]
+import { isSeedanceCompatibleVideoProtocol } from "@/lib/model-protocols";
+// @opc-feature: seedance-jimeng-icon-governance [end]
+
 export function isSeedanceVideoModel(model: string) {
-    const value = model.toLowerCase();
-    return value.includes("seedance") || value.includes("doubao-seedance");
+    const value = model.toLowerCase().trim();
+    if (value.includes("seedance") || value.includes("doubao-seedance")) return true;
+    return value.startsWith("sd-") || value.startsWith("sd2") || value.includes("-sd-") || value.includes("-sd2") || value.includes("video-ultra") || value.includes("dola-720p");
 }
+
+// @opc-feature: seedance-jimeng-icon-governance [start]
+export function isSeedanceModel(model?: string, protocol?: string, displayName?: string, icon?: string): boolean {
+    if (icon === "ByteDance" || icon === "Jimeng") return true;
+    const text = `${model || ""} ${displayName || ""} ${protocol || ""}`.toLowerCase();
+    if (!text.trim()) return false;
+    if (text.includes("seedance") || text.includes("doubao-seedance") || text.includes("即梦") || text.includes("jimeng")) return true;
+    if (protocol) {
+        const p = protocol.toLowerCase();
+        if (isSeedanceCompatibleVideoProtocol(p) || p.includes("sd-video") || p.includes("sd-mini") || p.includes("seedance-hc")) return true;
+    }
+    const m = (model || "").toLowerCase();
+    if (m.startsWith("sd-") || m.startsWith("sd2") || m.includes("-sd-") || m.includes("-sd2") || m.includes("video-ultra") || m.includes("dola-720p")) return true;
+    const d = (displayName || "").toLowerCase();
+    if (d.includes("seedance")) return true;
+    return false;
+}
+
+export function resolveModelIcon(icon?: string, model?: string, protocol?: string, displayName?: string): string {
+    const raw = (icon || "").trim();
+    if (raw === "Jimeng" || raw === "ByteDance") return "Jimeng";
+    if (isSeedanceModel(model, protocol, displayName, raw)) return "Jimeng";
+    return raw;
+}
+// @opc-feature: seedance-jimeng-icon-governance [end]
 
 export function isSeedanceFastModel(model: string) {
     const value = model.toLowerCase();

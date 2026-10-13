@@ -1,0 +1,75 @@
+﻿{
+  "id": "short_form_video",
+  "name": "高留存竖屏短视频",
+  "description": "围绕首秒钩子、开放循环、注意力打断、字幕安全区和无缝回环，制作 7–60 秒的 Reels、TikTok、Shorts 或抖音短视频。",
+  "icon": "▯",
+  "color": "#EC4899",
+  "category": "Video",
+  "scenarios": [
+    "抖音短视频",
+    "Reels 视频",
+    "TikTok 视频",
+    "YouTube Shorts",
+    "9:16 竖屏广告",
+    "首三秒钩子",
+    "短视频完播率",
+    "seamless loop video"
+  ],
+  "promptTemplate": "使用 $short-form-video 完成当前任务。以一个核心回报组织 Hook、Setup、Body、Payoff/Loop，规划不等距注意力打断和平台安全区；需要 AI 素材时只走智影 Platform Media，最后用 Remotion 渲染并验收成片。\n\n用户需求：{userInput}",
+  "negativePrompt": "slow fade in, weak first frame, dead air, flat middle, multiple competing ideas, unreadable caption, covered safe area, repetitive cut rhythm, broken loop, random zoom, flicker, watermark, low quality",
+  "preferredModel": "auto",
+  "outputType": "video",
+  "aspectRatio": "auto",
+  "analysisPrompt": "先锁定单一核心回报、目标平台、受众、时长、素材权利和 CTA，再从结尾反推首秒 Hook、开放循环、主体节拍和 Payoff。每 2–4 秒安排不等距视觉变化，在分镜中锁定原生声音意图、字幕原文和起止时间并保持字幕/主体处于平台安全区。任何 AI 生图、生视频或音频只通过智影 Platform Media，AI 视频必须以 generateAudio=true 原生生成同步声音；使用 Remotion 保留合格原生声轨与字幕并做确定性帧驱动合成，检查 Hook、中段、尾帧、循环接缝和完整播放后交付。",
+  "displayName": "高留存竖屏短视频",
+  "shortDescription": "制作首秒抓人、节奏紧凑、字幕安全且可循环的竖屏短视频。",
+  "skillIds": [
+    "short_form_video",
+    "short-form-video"
+  ],
+  "role": "竖屏短视频留存导演",
+  "agentType": "short-form-retention-director",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "guided",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "锁定单一回报、平台和素材边界",
+      "设计首秒钩子和开放循环",
+      "规划不等距打断点、字幕和声音",
+      "实现确定性竖屏 Remotion composition",
+      "检查安全区、循环接缝和完整成片"
+    ],
+    "requiredInputs": [
+      {
+        "key": "short_brief",
+        "label": "主题、核心回报和目标平台",
+        "required": true,
+        "blocking": true,
+        "accepts": ["text", "image", "images", "video", "audio"],
+        "prompt": "请提供短视频主题、唯一核心回报、目标平台和已有素材。"
+      },
+      {
+        "key": "delivery_spec",
+        "label": "时长、画幅、字幕、音乐和 CTA",
+        "required": false,
+        "blocking": false,
+        "accepts": ["text", "choice", "number", "audio"]
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "image_generation",
+      "video_generation",
+      "multi_asset_planning",
+      "task_status",
+      "post_production_handoff"
+    ]
+  },
+  "tools": [
+    "image_generate",
+    "web_search",
+    "web_extract",
+    "fetch_url_context"
+  ]
+}

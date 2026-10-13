@@ -20,16 +20,10 @@ export interface VoiceScriptRewriteResult {
     error?: string;
 }
 
-export const VOICE_REWRITE_SYSTEM_PROMPT = `你是一位顶尖影视配音编导与口语播报专家。
-你的任务：将给定的分镜原文台词改写为更自然流畅、更具口语节奏感和感染力的播报文案。
-
-【绝对硬性红线与约束】：
-1. 语意与逻辑连贯：改写必须严格忠于原剧情节意图与说话人角色，前后分镜呼应，绝不擅自增加或删减关键业务信息。
-2. 字数极度严苛限制（核心红线）：
-   改写后的正文字数（去除空格标点后的字数）必须与原文台词字数严格保持在【±2 字以内】！
-   - 例如：原文去除空格标点后为 18 字，改写后的文本必须在 16 ~ 20 字之间；
-   - 严禁大幅扩充或大幅精简，否则将导致音视频画面分镜严重脱节！
-3. 纯净输出：仅输出改写后的最终台词正文，严禁输出任何问候、引号、前缀说明或字数标注。`;
+// @opc-feature: prompt-vault-client [start]
+// 商业安全防御：配音脚本重写 System Prompt 已迁入服务端金库，客户端仅保留宏标识
+export const VOICE_REWRITE_SYSTEM_PROMPT = "__VAULT_PROMPT__:voice-script-rewrite";
+// @opc-feature: prompt-vault-client [end]
 
 /**
  * 统计台词中的有效字符数（去除空格标点与特殊符号，统计有效汉字与字母数字）

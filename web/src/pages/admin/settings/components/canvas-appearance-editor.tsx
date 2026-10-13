@@ -3,6 +3,7 @@ import { Alert, App, Button, Form, Input, InputNumber, Radio } from "antd";
 import { ExternalLink, Upload } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { Live2DAvatar } from "@/components/canvas/live2d-avatar";
+import { PixiuPet } from "@/components/canvas/pixiu-pet";
 import { FluidOrb } from "@/components/ui/fluid-orb";
 import { agentCopy, type CanvasAppearance } from "@/lib/canvas/agent-appearance";
 import { live2DModelURL, uploadLive2D } from "@/services/api/appearance";
@@ -68,6 +69,7 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
                     onChange={(event) => change({ avatarType: event.target.value })}
                     options={[
                         { label: "默认动态球", value: "orb" },
+                        { label: "貔貅桌宠", value: "pixiu" },
                         { label: "Live2D", value: "live2d", disabled: !url || readyURL !== url },
                     ]}
                 />
@@ -120,7 +122,9 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
                     px
                 </label>
                 <div className="grid justify-items-center gap-3 rounded-xl border border-border bg-background p-5" aria-label="Agent 形象预览">
-                    {url ? (
+                    {value.avatarType === "pixiu" ? (
+                        <PixiuPet size={96} mood="idle" />
+                    ) : url ? (
                         <Live2DAvatar
                             key={`${url}-${attempt}`}
                             url={url}

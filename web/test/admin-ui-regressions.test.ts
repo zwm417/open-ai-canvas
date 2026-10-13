@@ -116,6 +116,17 @@ test("channel model manager supports bounded atomic batch deletion", async () =>
     expect(component).toContain("批量删除");
 });
 
+test("channel model manager single item deletion uses modal confirm and cleans selection", async () => {
+    const componentSource = await Bun.file(new URL("../src/pages/admin/components/channel-model-manager.tsx", import.meta.url)).text();
+    const component = compactSource(componentSource);
+
+    expect(component).not.toContain("<Popconfirm");
+    expect(component).toContain("onClick={() => confirmRemove(item)}");
+    expect(component).toContain("deleteAdminChannelModel(channel.id, item.id)");
+    expect(component).toContain("setSelectedModelIds((current) => current.filter((id) => id !== item.id))");
+    expect(component).toContain("title: `删除模型「${item.displayName || item.modelKey}」？`");
+});
+
 test("analytics keeps range presets and uses order finances without a separate pricing editor", async () => {
     const source = compactSource(await Bun.file(new URL("../src/pages/admin/components/analytics-panel.tsx", import.meta.url)).text());
 

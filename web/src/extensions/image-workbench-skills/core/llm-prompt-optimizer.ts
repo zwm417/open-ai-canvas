@@ -7,6 +7,7 @@ export interface SkillPromptOptimizeParams {
     skill?: WorkbenchSkill | null;
     userPrompt: string;
     slotFiles: Record<string, ActiveSlotFile | undefined>;
+    slotFilesMap?: Record<string, ActiveSlotFile[]>;
     targetModel?: string;
     config: AiConfig;
     signal?: AbortSignal;
@@ -19,23 +20,20 @@ export interface SkillPromptOptimizeResult {
     error?: string;
 }
 
-const SYSTEM_PROMPT = `你是视觉艺术总监与生图提示词导演 (Prompt Director)。
-你的核心职责：将用户的【原始输入意图】、当前【工作流卡片规范与内置提示词】以及【参考素材插槽映射】进行深度融合与提炼，生成一段可直接交付给生图模型的最优终极正向提示词。
-
-【严格执行规则】：
-1. 意图保真：忠实保留用户明确输入的主体特征、动作、核心视觉意图。
-2. 深度融合内置指令：将工作流卡片中的光线（明暗/光源/色温）、构图（视角/景别/比例）、材质纹理（皮肤/面料/反光）与环境氛围有机融入用户画面中，而不是生硬罗列标题。
-3. 素材槽位绝对保留：若存在参考素材映射（如 @图片1、@图片2），必须在对应的画面描述中精准保留 @图片1 / @图片2 标记（例如："@图片1 中的主体放置在..."），绝对不能丢失或篡改槽位编号。
-4. 纯净输出：直接输出融合优化后的完整提示词正文，严禁包含任何前缀、问候语、额外解释或 Markdown 代码块标记（如 \`\`\` ）。`;
+// @opc-feature: prompt-vault-client [start]
+// 商业安全防御：提示词优化导演 System Prompt 已迁入服务端金库，客户端仅保留宏标识
+const SYSTEM_PROMPT = "__VAULT_PROMPT__:image-prompt-optimizer";
+// @opc-feature: prompt-vault-client [end]
 
 export async function optimizeSkillPrompt(params: SkillPromptOptimizeParams): Promise<SkillPromptOptimizeResult> {
-    const { skill, userPrompt, slotFiles, targetModel, config, signal, onDelta } = params;
+    const { skill, userPrompt, slotFiles, slotFilesMap, targetModel, config, signal, onDelta } = params;
 
     // 先计算基础结构与槽位映射
     const baseAssembled = assembleWorkbenchPrompt({
         skill,
         userPrompt,
         slotFiles,
+        slotFilesMap,
     });
 
     // 检查是否有配置文本模型渠道
@@ -56,9 +54,13 @@ export async function optimizeSkillPrompt(params: SkillPromptOptimizeParams): Pr
         ? baseAssembled.slotMappings.map((m) => `@图片${m.index}为【${m.label}】`).join("，")
         : "无";
 
+    const effectiveSystemPrompt = [
+        SYSTEM_PROMPT,
+        skill?.instructions ? `【当前应用的工作流技能规范】：\n${skill.instructions}` : "",
+    ].filter(Boolean).join("\n\n");
+
     const userMessage = [
         `【工作流卡片目标】：${skill ? skill.name : "自由生图"}`,
-        skill?.instructions ? `【卡片内置核心规范与风格】：${skill.instructions}` : "",
         skill?.avoid?.length ? `【需规避瑕疵】：${skill.avoid.join("；")}` : "",
         `【已上传参考素材映射】：${slotMappingsText}`,
         `【目标生图模型】：${targetModel || "通用图片模型"}`,
@@ -71,7 +73,7 @@ export async function optimizeSkillPrompt(params: SkillPromptOptimizeParams): Pr
         const rawResponse = await requestImageQuestion(
             config,
             [
-                { role: "system", content: SYSTEM_PROMPT },
+                { role: "system", content: effectiveSystemPrompt },
                 { role: "user", content: userMessage },
             ],
             onDelta || (() => {}),

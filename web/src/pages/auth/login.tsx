@@ -8,6 +8,9 @@ import { useUserStore } from "@/stores/use-user-store";
 import { LinuxDOIcon } from "./auth-scene";
 import { VerificationFields } from "@/components/auth/verification-fields";
 import { emptyVerification, loginVerification, methodLabels, verificationMethods, type VerificationMethod } from "@/services/api/verification";
+// @opc-feature: license-login [start]
+import { LicenseLoginForm } from "@/extensions/license/license-login-form";
+// @opc-feature: license-login [end]
 
 export default function LoginPage() {
     const navigate = useNavigate();
@@ -18,7 +21,9 @@ export default function LoginPage() {
     const [submitting, setSubmitting] = useState(false);
     const [linuxdoEnabled, setLinuxdoEnabled] = useState(false);
     const [methods, setMethods] = useState<VerificationMethod[]>([]);
-    const [method, setMethod] = useState<"password" | VerificationMethod>("password");
+    // @opc-feature: license-login [start]
+    const [method, setMethod] = useState<"password" | "license" | VerificationMethod>(params.get("tab") === "password" ? "password" : "license");
+    // @opc-feature: license-login [end]
     const [verification, setVerification] = useState({ ...emptyVerification });
     const next = safeNext(params.get("next"));
     const forgotPasswordURL = `/forgot-password?next=${encodeURIComponent(next)}`;
@@ -64,51 +69,84 @@ export default function LoginPage() {
         }
     };
 
+    const loginOptions = [
+        // @opc-feature: license-login [start]
+        { value: "license", label: "激活码开启" },
+        // @opc-feature: license-login [end]
+        { value: "password", label: "密码登录" },
+        ...methods.map((value) => ({ value, label: methodLabels[value] })),
+    ];
+
     return (
-        <form onSubmit={submit} className="space-y-5">
-            {methods.length > 0 && <Segmented block aria-label="登录方式" value={method} disabled={submitting} options={[{ value: "password", label: "密码登录" }, ...methods.map((value) => ({ value, label: methodLabels[value] }))]} onChange={(value) => { setMethod(value as typeof method); setVerification({ ...emptyVerification }); }} />}
-            {method !== "password" ? <VerificationFields key={method} purpose="login" method={method} value={verification} onChange={setVerification} disabled={submitting} /> : <>
-            <AuthField label="用户名 / 邮箱" htmlFor="login-account">
-                <Input id="login-account" size="large" prefix={<UserRound className="auth-scene-icon size-4" />} value={username} onChange={(event) => setUsername(event.target.value)} placeholder="用户名或邮箱" autoComplete="username" required />
-            </AuthField>
-            <AuthField
-                label="密码"
-                htmlFor="login-password"
-                action={
-                    <Link
-                        to={forgotPasswordURL}
-                        className="auth-scene-link -my-2 inline-flex min-h-8 items-center rounded-sm text-xs font-medium transition-colors"
-                    >
-                        忘记密码？
-                    </Link>
-                }
-            >
-                <Input.Password
-                    id="login-password"
-                    size="large"
-                    prefix={<LockKeyhole className="auth-scene-icon size-4" />}
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="请输入密码"
-                    autoComplete="current-password"
-                    required
-                />
-            </AuthField>
-            </>}
-            <Button type="primary" htmlType="submit" size="large" block loading={submitting} icon={<ArrowRight className="size-4" />} iconPlacement="end">
-                登录
-            </Button>
-            {linuxdoEnabled ? (
-                <>
-                    <Divider plain className="auth-scene-divider">
-                        或
-                    </Divider>
-                    <Button size="large" block icon={<LinuxDOIcon />} href={linuxDOLoginURL(next)}>
-                        使用 Linux.do 登录
+        <div className="space-y-5">
+            <Segmented
+                block
+                aria-label="登录方式"
+                value={method}
+                disabled={submitting}
+                options={loginOptions}
+                onChange={(value) => {
+                    setMethod(value as typeof method);
+                    setVerification({ ...emptyVerification });
+                }}
+            />
+
+            {/* @opc-feature: license-login [start] */}
+            {method === "license" ? (
+                <LicenseLoginForm next={next} />
+            ) : (
+            /* @opc-feature: license-login [end] */
+                <form onSubmit={submit} className="space-y-5">
+                    {method !== "password" ? (
+                        <VerificationFields key={method} purpose="login" method={method} value={verification} onChange={setVerification} disabled={submitting} />
+                    ) : (
+                        <>
+                            <AuthField label="用户名 / 邮箱" htmlFor="login-account">
+                                <Input id="login-account" size="large" prefix={<UserRound className="auth-scene-icon size-4" />} value={username} onChange={(event) => setUsername(event.target.value)} placeholder="用户名或邮箱" autoComplete="username" required />
+                            </AuthField>
+                            <AuthField
+                                label="密码"
+                                htmlFor="login-password"
+                                action={
+                                    <Link
+                                        to={forgotPasswordURL}
+                                        className="auth-scene-link -my-2 inline-flex min-h-8 items-center rounded-sm text-xs font-medium transition-colors"
+                                    >
+                                        忘记密码？
+                                    </Link>
+                                }
+                            >
+                                <Input.Password
+                                    id="login-password"
+                                    size="large"
+                                    prefix={<LockKeyhole className="auth-scene-icon size-4" />}
+                                    value={password}
+                                    onChange={(event) => setPassword(event.target.value)}
+                                    placeholder="请输入密码"
+                                    autoComplete="current-password"
+                                    required
+                                />
+                            </AuthField>
+                        </>
+                    )}
+                    <Button type="primary" htmlType="submit" size="large" block loading={submitting} icon={<ArrowRight className="size-4" />} iconPlacement="end">
+                        登录
                     </Button>
-                </>
-            ) : null}
-        </form>
+                    {linuxdoEnabled ? (
+                        <>
+                            <Divider plain className="auth-scene-divider">
+                                或
+                            </Divider>
+                            <Button size="large" block icon={<LinuxDOIcon />} href={linuxDOLoginURL(next)}>
+                                使用 Linux.do 登录
+                            </Button>
+                        </>
+                    ) : null}
+                </form>
+            /* @opc-feature: license-login [start] */
+            )}
+            {/* @opc-feature: license-login [end] */}
+        </div>
     );
 }
 

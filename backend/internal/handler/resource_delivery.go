@@ -8,6 +8,7 @@ import (
 
 	"infinite-canvas/backend/internal/assets"
 	"infinite-canvas/backend/internal/service"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -48,7 +49,30 @@ func serveResourceDelivery(c *gin.Context, delivery *service.ResourceDelivery, c
 	c.Header("X-Content-Type-Options", "nosniff")
 	c.Header("Accept-Ranges", "bytes")
 	if access.Delivery == assets.DeliveryCDN || access.Delivery == assets.DeliveryOrigin {
-		c.Header("Cache-Control", "private, no-store")
+		// @opc-adapter: fast-media-redirect-cache [start]
+		redirectCache := cacheControl
+		if redirectCache == "" || redirectCache == "private, no-cache" {
+			maxAge := 300
+			if access.ExpiresAt != nil {
+				rem := int(time.Until(*access.ExpiresAt).Seconds())
+				// 留 20% 余量防止客户端临界重试时遇到 OSS 403 签名过期
+				safeTTL := int(float64(rem) * 0.8)
+				if safeTTL > 240 {
+					safeTTL = 240
+				}
+				if safeTTL < 15 {
+					safeTTL = 0
+				}
+				maxAge = safeTTL
+			}
+			if maxAge > 0 {
+				redirectCache = fmt.Sprintf("private, max-age=%d", maxAge)
+			} else {
+				redirectCache = "private, no-cache"
+			}
+		}
+		c.Header("Cache-Control", redirectCache)
+		// @opc-adapter: fast-media-redirect-cache [end]
 		// Do not let Gin generate its default HTML redirect body. A media request
 		// should transfer only the redirect metadata; the actual bytes must be
 		// fetched from the CDN/origin selected by the access contract.

@@ -125,7 +125,7 @@ function providerPayloadMessage(payload: unknown): string {
 }
 
 function isNetworkFailure(value: string) {
-    return /\b(?:dial tcp|connection refused|connection reset|no such host|i\/o timeout|context deadline exceeded|network error|failed to fetch|fetch failed|socket hang up|econnrefused|econnreset|etimedout)\b/i.test(value);
+    return /(?:\b(?:dial tcp|connection refused|connection reset|no such host|i\/o timeout|context deadline exceeded|network error|failed to fetch|fetch failed|socket hang up|econnrefused|econnreset|etimedout|broken pipe|unexpected eof|tls handshake timeout|wsaeconnreset|wsaeconnaborted)\b|forcibly closed|connection abort)/i.test(value);
 }
 
 function hasHttpStatus(value: string, ...statuses: number[]) {

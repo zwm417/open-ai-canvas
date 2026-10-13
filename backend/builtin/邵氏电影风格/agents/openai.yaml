@@ -1,0 +1,4 @@
+interface:
+  display_name: "邵氏电影风格提示词"
+  short_description: "一句话生成 Midjourney 与 ImageGen 邵氏武侠图片提示词"
+  default_prompt: "使用 $shaw-wuxia-image-prompts 把一句中文想法编译为同画面的 Midjourney V8.2 英文提示词和 ImageGen 中文提示词。"

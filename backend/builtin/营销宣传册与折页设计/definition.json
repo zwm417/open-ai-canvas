@@ -1,0 +1,76 @@
+﻿{
+  "id": "marketing_brochure",
+  "name": "营销宣传册",
+  "description": "规划和生成宣传册、折页、单页、产品手册和数字 brochure 的页面结构与视觉稿。",
+  "icon": "▱",
+  "color": "#A855F7",
+  "category": "Branding",
+  "scenarios": [
+    "营销宣传册",
+    "三折页",
+    "brochure",
+    "宣传折页",
+    "产品推广册"
+  ],
+  "promptTemplate": "使用 $marketing-brochure 完成当前任务。先执行领域工作流和必要确认，再为每个批准的生成单元输出独立、可执行的供应商提示词。\n\n用户需求：{userInput}",
+  "negativePrompt": "random flyer, messy collage, unreadable tiny text, text wall, inconsistent brand, low resolution, watermark, blurry",
+  "preferredModel": "gemini-3-pro-image-preview",
+  "outputType": "image",
+  "aspectRatio": "auto",
+  "analysisPrompt": "把真实内容组织成可阅读、可校对、可印刷或数字发布的编辑设计。你负责信息架构、页序、折法、版式和印前边界，不把长文案压成一张不可读海报。 按以下阶段执行：核对内容源与缺失项 → 建立读者旅程和信息层级 → 规划页序、折法与内容分配 → 锁定版式系统和生产规格 → 确认平面页序与关键文案 → 逐页生成视觉稿 → 执行校对与印前检查。",
+  "displayName": "营销宣传册",
+  "shortDescription": "按真实内容、读者旅程和生产规格规划宣传册，不套固定折页模板。",
+  "skillIds": [
+    "marketing_brochure",
+    "marketing-brochure"
+  ],
+  "role": "营销编辑设计与印前导演",
+  "agentType": "brochure-editorial-director",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "guided",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "核对内容源与缺失项",
+      "建立读者旅程和信息层级",
+      "规划页序、折法与内容分配",
+      "锁定版式系统和生产规格",
+      "确认平面页序与关键文案",
+      "逐页生成视觉稿",
+      "执行校对与印前检查"
+    ],
+    "requiredInputs": [
+      {
+        "key": "content_source",
+        "label": "宣传册真实内容与素材",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "text",
+          "image",
+          "images"
+        ],
+        "prompt": "请提供必须出现的内容、图片和 CTA。"
+      },
+      {
+        "key": "production_spec",
+        "label": "读者、使用场景和印刷/数字规格",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "text"
+        ],
+        "prompt": "请说明目标读者、页数或折法、尺寸和交付方式。"
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "image_generation",
+      "task_status",
+      "post_production_handoff"
+    ]
+  },
+  "tools": [
+    "image_generate"
+  ]
+}

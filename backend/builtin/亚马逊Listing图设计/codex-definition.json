@@ -1,0 +1,78 @@
+﻿{
+  "id": "amazon_listing_images",
+  "name": "亚马逊产品套图",
+  "description": "按目标站点规则规划和生成 Amazon MAIN、卖点、尺寸、场景、包装与移动端信息图套图。",
+  "icon": "📦",
+  "color": "#F59E0B",
+  "category": "E-Commerce",
+  "scenarios": [
+    "亚马逊产品套图",
+    "Amazon Listing 图片",
+    "亚马逊白底主图",
+    "亚马逊辅图",
+    "亚马逊卖点图",
+    "亚马逊尺寸图",
+    "亚马逊场景图",
+    "亚马逊包装图",
+    "Amazon listing images"
+  ],
+  "promptTemplate": "使用 $amazon-listing-images 根据真实商品资料和目标 Amazon 站点规划并生成 Listing 图片。先核对当前站点规则和商品事实；MAIN 与辅图分开处理，每张辅图背景必须明显不同。\n\n用户需求：{userInput}",
+  "negativePrompt": "wrong product, wrong packaging, wrong logo, invented accessory, fake badge, fake certification, fake review, fake rating, misleading comparison, unsupported claim, repeated secondary background, same scene, unreadable text, collage, contact sheet, watermark",
+  "preferredModel": "gemini-3-pro-image-preview",
+  "outputType": "image",
+  "aspectRatio": "auto",
+  "analysisPrompt": "锁定 SKU、包装、配件、规格和证据，核对目标 Amazon 站点与类目的当前规则，再根据购买问题选择必要槽位。MAIN 图遵守当前白底和内容限制；辅图在环境、表面、光线、镜头和空间结构上保持明显差异。",
+  "tools": [
+    "image_generate",
+    "web_search",
+    "web_extract",
+    "fetch_url_context",
+    "search_reference_images"
+  ],
+  "displayName": "亚马逊产品套图",
+  "shortDescription": "按站点规则规划并生成亚马逊主图、辅图和移动端信息图套图",
+  "skillIds": [
+    "amazon_listing_images",
+    "amazon-listing-images"
+  ],
+  "role": "Amazon Listing 图片导演",
+  "agentType": "amazon-listing-image-director",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "guided",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "锁定 SKU 与到手内容",
+      "核对站点与类目规则",
+      "诊断购买障碍和槽位需求",
+      "逐槽位生成独立图片",
+      "执行政策、商品身份和背景差异检查"
+    ],
+    "requiredInputs": [
+      {
+        "key": "product_reference",
+        "label": "商品、包装与配件参考资料",
+        "required": true,
+        "blocking": true,
+        "accepts": ["image", "images", "text"],
+        "prompt": "请提供准确商品、包装、配件、尺寸和不可改变细节。"
+      },
+      {
+        "key": "amazon_marketplace",
+        "label": "Amazon 目标站点和类目",
+        "required": true,
+        "blocking": true,
+        "accepts": ["text", "choice"],
+        "prompt": "请说明 Amazon 目标站点、类目和需要制作的槽位。"
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "web_research",
+      "image_generation",
+      "task_status",
+      "multi_asset_planning",
+      "post_production_handoff"
+    ]
+  }
+}

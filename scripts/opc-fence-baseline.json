@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "description": "OPC Media-Lab 核心隐式围栏基准清单（防上游更新覆盖与二开丢失）",
-  "updatedAt": "2026-10-02T13:55:02+08:00",
-  "totalFences": 288,
+  "updatedAt": "2026-10-12T18:54:54+08:00",
+  "totalFences": 347,
   "fences": {
     "adapter:auto-derive-tier-price-configured": [
       "backend/internal/app/channel_models_pricing.go"
@@ -22,7 +22,11 @@
       "backend/internal/database/migrations.go"
     ],
     "adapter:canvas-extensions-schema": [
+      "backend/cmd/migrate-sqlite-postgres/main.go",
       "backend/internal/database/schema.go"
+    ],
+    "adapter:cgo-sqlite-replacement": [
+      "backend/internal/app/agent_cancel_authorization_test.go"
     ],
     "adapter:channel-model-fetch-adaptive": [
       "backend/internal/app/channel_model_catalog.go"
@@ -66,17 +70,39 @@
       "backend/internal/app/cloud_agent_policy.go"
     ],
     "adapter:custom-agent-nodes": [
+      "backend/internal/app/cloud_agent_layout.go",
       "backend/internal/app/cloud_agent_test.go",
-      "backend/internal/canvas/capability/builtin.go"
+      "backend/internal/canvas/capability/builtin.go",
+      "backend/internal/canvas/capability/registry_test.go"
+    ],
+    "adapter:custom-agent-nodes-schema-budget": [
+      "backend/internal/app/cloud_agent_tool_schema_budget_test.go"
     ],
     "adapter:custom-agent-nodes-test": [
       "backend/internal/app/cloud_agent_contract_test.go"
     ],
+    "adapter:custom-batch-tables": [
+      "backend/internal/app/cloud_agent_batch_table_test.go",
+      "backend/internal/app/cloud_agent_batch_table.go"
+    ],
+    "adapter:custom-license": [
+      "backend/internal/app/service.go",
+      "backend/internal/database/migrations.go",
+      "backend/internal/handler/api.go",
+      "backend/internal/repository/repository.go"
+    ],
     "adapter:custom-plugin-v1-test-bypass": [
       "backend/internal/protocol/official_catalog_test.go"
     ],
+    "adapter:fast-media-redirect-cache": [
+      "backend/internal/handler/resource_delivery_test.go",
+      "backend/internal/handler/resource_delivery.go",
+      "backend/internal/handler/user_data.go"
+    ],
     "adapter:feature-credits": [
+      "backend/internal/app/feature_credits_test.go",
       "backend/internal/app/feature_credits.go",
+      "backend/internal/app/finance.go",
       "backend/internal/handler/finance.go",
       "backend/internal/repository/finance.go",
       "backend/internal/service/aliases_types.go"
@@ -106,8 +132,29 @@
     "adapter:local_channel_and_private_upstreams": [
       "scripts/start-local.ps1"
     ],
+    "adapter:media-dual-track": [
+      "backend/internal/app/storage_quota.go",
+      "backend/internal/app/task_media_recovery_test.go",
+      "backend/internal/app/task_media_recovery.go",
+      "backend/internal/app/task_media_storage.go",
+      "backend/internal/app/task_output.go",
+      "backend/internal/app/task_worker.go",
+      "backend/internal/database/migrations.go",
+      "backend/internal/model/models_project.go",
+      "backend/internal/model/models_task.go",
+      "backend/internal/model/models.go",
+      "backend/internal/repository/repository_storage_resources.go",
+      "backend/internal/repository/repository_tasks.go",
+      "backend/internal/storage/settings.go"
+    ],
     "adapter:media-recovery-storage-retry": [
       "backend/internal/app/task_media_recovery.go"
+    ],
+    "adapter:model-pricing-and-capability-governance": [
+      "backend/internal/app/channel_model_pricing_test.go",
+      "backend/internal/app/channel_models.go",
+      "backend/internal/app/model_capability_test.go",
+      "backend/internal/app/model_capability.go"
     ],
     "adapter:model-smart-router": [
       "backend/internal/app/logical_models.go",
@@ -120,22 +167,39 @@
     "adapter:opc-prompt-vault-test": [
       "backend/internal/custom/opc-vault/vault_test.go"
     ],
+    "adapter:prompt-vault-agent-governance": [
+      "backend/internal/app/provider_agent_protocol.go"
+    ],
+    "adapter:prompt-vault-app-import": [
+      "backend/internal/app/provider_agent_protocol.go",
+      "backend/internal/app/provider_image.go",
+      "backend/internal/app/provider_protocol_request.go",
+      "backend/internal/app/provider.go"
+    ],
     "adapter:prompt-vault-endpoints": [
       "backend/internal/handler/user_data.go"
     ],
     "adapter:prompt-vault-endpoints-test": [
       "backend/internal/handler/user_data_page_test.go"
     ],
+    "adapter:prompt-vault-governance-test": [
+      "backend/internal/app/provider_macro_test.go"
+    ],
+    "adapter:prompt-vault-macro-governance": [
+      "backend/internal/app/provider.go"
+    ],
     "adapter:prompt-vault-macro-injection": [
       "backend/internal/app/provider_image.go",
       "backend/internal/app/provider_protocol_request.go",
-      "backend/internal/app/provider_text.go",
       "backend/internal/app/provider.go",
+      "backend/internal/custom/opc-vault/injection.go",
+      "backend/internal/handler/auth.go",
       "backend/internal/handler/custom_proxy.go"
     ],
     "adapter:prompt-vault-macro-injection-test": [
       "backend/internal/app/provider_test.go",
-      "backend/internal/handler/custom_proxy_test.go"
+      "backend/internal/handler/custom_proxy_test.go",
+      "backend/internal/handler/system_proxy_vault_test.go"
     ],
     "adapter:pure-go-sqlite": [
       "backend/internal/app/admin_channel_test.go",
@@ -157,15 +221,29 @@
     "adapter:runtime-data-isolation": [
       "scripts/start-local.ps1"
     ],
+    "adapter:seedance-jimeng-icon-governance": [
+      "backend/internal/app/admin.go",
+      "backend/internal/app/channel_models_catalog.go",
+      "backend/internal/app/channel_models_test.go",
+      "backend/internal/app/channel_models.go",
+      "backend/internal/app/model_catalog.go"
+    ],
     "adapter:seedance-protocol-alias-routing": [
       "backend/internal/app/provider_test.go",
       "backend/internal/app/provider_video_options.go"
+    ],
+    "adapter:skill-bundle-protection": [
+      "backend/internal/skills/skill_packages_files.go",
+      "backend/internal/skills/skill_packages_test.go"
     ],
     "adapter:skill-package-metadata-bound": [
       "backend/internal/skills/skill_packages_archive.go"
     ],
     "adapter:smart-model-router": [
       "backend/internal/app/model_router.go"
+    ],
+    "adapter:sqlite-wal-concurrency": [
+      "backend/internal/database/database.go"
     ],
     "adapter:storage-s3-timeout": [
       "backend/internal/storage/s3.go"
@@ -193,11 +271,24 @@
     "adapter:vquality-orientation-tolerance": [
       "backend/internal/app/model_router_capability.go"
     ],
+    "adapter:workbench_batch_concurrency": [
+      "backend/internal/app/runtime_policy_test.go",
+      "backend/internal/platform/runtime_policy.go"
+    ],
     "feature:admin-ant-dropdown-popover-zindex": [
       "web/src/pages/admin/theme/admin-ant-theme.ts"
     ],
+    "feature:admin-ant-select-dark-surface": [
+      "web/src/pages/admin/theme/admin-ant-theme.ts"
+    ],
+    "feature:admin-anti-clipping-container": [
+      "web/src/pages/admin/components/admin-shell.tsx"
+    ],
     "feature:admin-channel-model-batch": [
       "web/src/pages/admin/components/channel-model-manager.tsx"
+    ],
+    "feature:admin-model-editor-select-contrast": [
+      "web/src/styles/admin-ui.css"
     ],
     "feature:admin-plugin-enhancements": [
       "web/src/pages/admin/plugins/plugins-page.tsx",
@@ -214,6 +305,12 @@
     "feature:admin-system-performance": [
       "web/src/styles/admin-ui.css"
     ],
+    "feature:admin-theme-button-sync": [
+      "web/src/pages/admin/components/admin-shell.tsx"
+    ],
+    "feature:admin-theme-state-sync": [
+      "web/src/pages/admin/components/admin-shell.tsx"
+    ],
     "feature:ant-dropdown-popover-zindex": [
       "web/src/lib/app-theme.ts"
     ],
@@ -227,6 +324,9 @@
     "feature:ant-popup-zindex-defense": [
       "web/src/styles/globals.css"
     ],
+    "feature:ant-select-tag-click-passthrough": [
+      "web/src/styles/admin-ui.css"
+    ],
     "feature:ant-tag-inline-align": [
       "web/src/styles/globals.css"
     ],
@@ -236,6 +336,9 @@
     "feature:ant-tag-theme-tokens-components": [
       "web/src/lib/app-theme.ts"
     ],
+    "feature:ant-tooltip-commercial-governance": [
+      "web/src/styles/globals.css"
+    ],
     "feature:asset-deduplication": [
       "web/src/lib/asset-fingerprint.ts",
       "web/src/pages/assets/asset-batch-upload-modal.tsx",
@@ -244,6 +347,15 @@
       "web/src/services/file-storage.ts",
       "web/src/services/image-storage.ts",
       "web/src/stores/use-asset-store.ts"
+    ],
+    "feature:asset-video-poster-governance": [
+      "web/src/components/asset-media-preview.tsx"
+    ],
+    "feature:assets-card-dropdown-menu": [
+      "web/src/pages/assets/asset-library-cards.tsx"
+    ],
+    "feature:assets-image-zoom-governance": [
+      "web/src/pages/assets/asset-library-panels.tsx"
     ],
     "feature:assets-page-dropdown": [
       "web/src/pages/assets/index.tsx"
@@ -315,8 +427,20 @@
     "feature:canvas-batch-generation": [
       "web/src/pages/canvas/canvas-image-generation-executor.ts"
     ],
+    "feature:canvas-batch-handle-gesture-guard": [
+      "web/src/pages/canvas/canvas-project-world-layers.tsx"
+    ],
     "feature:canvas-batch-table-cell-actions": [
       "web/src/components/canvas/canvas-batch-table-node.tsx"
+    ],
+    "feature:canvas-connection-menu-cleanup": [
+      "web/src/pages/canvas/use-canvas-connection-controller.ts"
+    ],
+    "feature:canvas-create-menu-redesign": [
+      "web/src/components/canvas/canvas-create-menu-icons.tsx",
+      "web/src/components/canvas/canvas-create-menu.tsx",
+      "web/src/components/canvas/canvas-short-drama-entry.tsx",
+      "web/src/components/canvas/canvas-toolbar.tsx"
     ],
     "feature:canvas-dialogs-lazy-mount": [
       "web/src/pages/canvas/project.tsx"
@@ -325,8 +449,17 @@
       "web/src/lib/canvas/canvas-aceternity-style.ts",
       "web/src/styles/globals.css"
     ],
+    "feature:canvas-folder-card-dropdown": [
+      "web/src/components/canvas/canvas-folder-card.tsx"
+    ],
     "feature:canvas-image-eager-render": [
       "web/src/components/canvas/canvas-node-content.tsx",
+      "web/src/components/canvas/canvas-node-media-content.tsx"
+    ],
+    "feature:canvas-image-loader-optimization": [
+      "web/src/services/canvas-image-loader.ts"
+    ],
+    "feature:canvas-image-progressive-stream": [
       "web/src/components/canvas/canvas-node-media-content.tsx"
     ],
     "feature:canvas-interactive-controls-guard": [
@@ -339,6 +472,9 @@
       "web/src/pages/canvas/use-canvas-project-lifecycle.ts",
       "web/src/services/user-data-sync.ts"
     ],
+    "feature:canvas-menu-gesture-guard": [
+      "web/src/components/canvas/canvas-workspace-overlays.tsx"
+    ],
     "feature:canvas-node-copy-to-slot": [
       "web/src/pages/canvas/use-canvas-node-operations.ts"
     ],
@@ -346,8 +482,18 @@
       "web/src/components/canvas/canvas-node-graph-context.ts",
       "web/src/pages/canvas/project.tsx"
     ],
+    "feature:canvas-node-header-select-guard": [
+      "web/src/components/canvas/canvas-node.tsx"
+    ],
     "feature:canvas-node-size-upgrades": [
       "web/src/lib/canvas/canvas-batch-table.ts"
+    ],
+    "feature:canvas-prompt-chip-clipboard-and-undo": [
+      "web/src/components/canvas/canvas-prompt-chip-input.tsx"
+    ],
+    "feature:canvas-prompt-newline-preservation": [
+      "web/src/components/canvas/canvas-config-composer.tsx",
+      "web/src/components/canvas/canvas-prompt-chip-input.tsx"
     ],
     "feature:canvas-resource-mention-enhanced-search": [
       "web/src/components/canvas/canvas-resource-mention-textarea.tsx"
@@ -647,6 +793,22 @@
     "feature:deep-replication-test": [
       "web/src/extensions/video-workbench-skills/stores/__tests__/deep-replication.test.ts"
     ],
+    "feature:depth-video": [
+      "web/src/components/canvas/canvas-node-toolbar.tsx",
+      "web/src/components/canvas/canvas-toolbar.tsx",
+      "web/src/extensions/opc-depth-video/bridge.ts",
+      "web/src/extensions/opc-depth-video/capability-store.ts",
+      "web/src/extensions/opc-depth-video/job-registry.ts",
+      "web/src/extensions/opc-depth-video/stage-steps.ts",
+      "web/src/extensions/opc-depth-video/tool-definition.tsx",
+      "web/src/extensions/opc-depth-video/use-depth-video.ts",
+      "web/src/lib/canvas/tool-registry/definitions/node-hover-tools.tsx",
+      "web/src/lib/canvas/tool-registry/tool-definition.ts",
+      "web/src/pages/canvas/project.tsx",
+      "web/src/pages/canvas/shared.tsx",
+      "web/src/pages/canvas/use-canvas-media-tools.ts",
+      "web/src/types/canvas.ts"
+    ],
     "feature:desktop-local-channel": [
       "web/src/lib/desktop-local-channel.ts",
       "web/src/pages/settings/channel-settings-pane.tsx",
@@ -676,19 +838,68 @@
     "feature:desktop-theme-sync": [
       "web/src/stores/use-theme-store.ts"
     ],
+    "feature:detail_set_workflow": [
+      "web/src/extensions/image-workbench-skills/catalog/builtin-skills.ts",
+      "web/src/extensions/image-workbench-skills/catalog/detail-set-templates.ts",
+      "web/src/extensions/image-workbench-skills/components/detail-set-workflow-card.tsx",
+      "web/src/extensions/image-workbench-skills/components/image-language-popover.tsx",
+      "web/src/extensions/image-workbench-skills/core/detail-set-compliance.ts",
+      "web/src/extensions/image-workbench-skills/core/detail-set-planner.ts",
+      "web/src/extensions/image-workbench-skills/index.ts",
+      "web/src/extensions/image-workbench-skills/stores/use-detail-set-store.ts",
+      "web/src/extensions/image-workbench-skills/types/detail-set.ts",
+      "web/src/extensions/image-workbench-skills/types/skill-contract.ts",
+      "web/src/styles/globals.css"
+    ],
+    "feature:director-language-popover-portal": [
+      "web/src/extensions/video-workbench-skills/components/director-language-duration-popover.tsx"
+    ],
     "feature:dual-plugin-api-version": [
       "web/src/lib/plugins/plugin-registry.ts"
     ],
     "feature:extended-workspace-route-loaders": [
       "web/src/lib/workspace-route-modules.ts"
     ],
+    "feature:fast-audio-track-guard": [
+      "web/src/components/video-player.tsx"
+    ],
     "feature:feature-credits": [
       "web/src/components/feature-credit-badge.tsx",
+      "web/src/extensions/creative-voice-table/services/voice-script-rewrite.ts",
+      "web/src/extensions/image-workbench-skills/core/llm-prompt-optimizer.ts",
+      "web/src/extensions/video-workbench-skills/components/director-assistant-panel.tsx",
       "web/src/hooks/use-feature-credit.ts",
       "web/src/pages/admin/admin-route-pages.tsx",
       "web/src/pages/admin/components/credit-operations-panel.tsx",
       "web/src/pages/admin/components/feature-credits-panel.tsx",
       "web/src/services/api/feature-credits.ts"
+    ],
+    "feature:fix-ant-select-dropdown-solid-contrast": [
+      "web/src/styles/globals.css"
+    ],
+    "feature:fix-field-label-select-conflict": [
+      "web/src/components/model-capability-editor.tsx",
+      "web/src/pages/settings/diagnostics-panel.tsx"
+    ],
+    "feature:fix-label-select-conflict": [
+      "web/src/components/workflow-field-mapping-editor.tsx",
+      "web/src/components/workflow-graph-editor.tsx",
+      "web/src/components/workflow-test-workbench.tsx",
+      "web/src/pages/admin/logical-models/logical-models-page.tsx",
+      "web/src/pages/assets/asset-batch-upload-modal.tsx",
+      "web/src/pages/projects/index.tsx"
+    ],
+    "feature:fix-model-tags-select-popup": [
+      "web/src/pages/admin/components/channel-model-tags-editor.tsx"
+    ],
+    "feature:fix-routing-capability-label-select-conflict": [
+      "web/src/pages/admin/logical-models/model-routing-capabilities.tsx"
+    ],
+    "feature:fix-unified-select-high-contrast": [
+      "web/src/styles/globals.css"
+    ],
+    "feature:fix-workspace-quiet-popup-shadow": [
+      "web/src/styles/workspace-menus.css"
     ],
     "feature:gemini-endpoint-normalization": [
       "web/src/services/api/image-transport.ts"
@@ -698,6 +909,12 @@
     ],
     "feature:generation-logs-sync": [
       "web/src/services/user-data-sync.ts"
+    ],
+    "feature:global_task_guardian": [
+      "web/src/layouts/user-layout.tsx"
+    ],
+    "feature:global_task_guardian_mount": [
+      "web/src/layouts/user-layout.tsx"
     ],
     "feature:hypit": [
       "web/src/components/canvas/canvas-node-action-context.ts",
@@ -728,6 +945,11 @@
       "web/src/lib/image-reference-prompt.ts",
       "web/src/lib/plugins/plugin-types.ts"
     ],
+    "feature:image-workbench-typography": [
+      "web/src/extensions/image-workbench-skills/catalog/builtin-skills.ts",
+      "web/src/extensions/image-workbench-skills/core/prompt-assembler.ts",
+      "web/src/extensions/image-workbench-skills/hooks/use-active-workbench-skills.ts"
+    ],
     "feature:instant-local-persistence": [
       "web/src/pages/canvas/use-canvas-upload.ts"
     ],
@@ -746,8 +968,14 @@
     "feature:library-icon-tokens": [
       "web/src/styles/globals.css"
     ],
+    "feature:license-login": [
+      "web/src/pages/auth/login.tsx"
+    ],
     "feature:local-first-media-resolver": [
       "web/src/services/local-first-media-resolver.ts"
+    ],
+    "feature:media-dual-track": [
+      "web/src/services/api/task-center.ts"
     ],
     "feature:model-capability-resolver": [
       "web/src/stores/use-config-store.ts"
@@ -775,8 +1003,15 @@
     "feature:multi-user-scope": [
       "web/src/lib/user-scope.ts"
     ],
+    "feature:multimodal-visual-channel": [
+      "web/src/pages/creation-assistant/index.tsx"
+    ],
     "feature:network-error-friendly-message": [
       "web/src/services/api/request.ts"
+    ],
+    "feature:opc-task-hub": [
+      "web/src/extensions/opc-infinite/services/opc-task-hub.ts",
+      "web/src/pages/canvas/project.tsx"
     ],
     "feature:plugin-canvas-node-default-metadata": [
       "web/src/lib/canvas/node-registry/node-definition.ts",
@@ -806,7 +1041,11 @@
     ],
     "feature:prompt-vault-client": [
       "web/src/application.tsx",
+      "web/src/extensions/creative-voice-table/services/voice-script-rewrite.ts",
+      "web/src/extensions/image-workbench-skills/core/llm-prompt-optimizer.ts",
+      "web/src/extensions/image-workbench-skills/core/prompt-assembler.ts",
       "web/src/lib/creation-assistant-prompts.ts",
+      "web/src/pages/canvas/list-mode-generator.ts",
       "web/src/services/api/prompt-vault.ts"
     ],
     "feature:reference-replication-panel": [
@@ -835,11 +1074,23 @@
     "feature:resilient-model-picker-popover": [
       "web/src/components/model-picker.tsx"
     ],
+    "feature:resilient-script-generation": [
+      "web/src/pages/creation-assistant/index.tsx"
+    ],
     "feature:resilient-system-model-filtering": [
       "web/src/lib/user-session.ts"
     ],
     "feature:resilient-system-model-price": [
       "web/src/stores/use-config-store.ts"
+    ],
+    "feature:resource-access-batching": [
+      "web/src/services/api/resources.ts"
+    ],
+    "feature:seedance-jimeng-icon-governance": [
+      "web/src/components/model-picker.tsx",
+      "web/src/lib/seedance-video.ts",
+      "web/src/pages/admin/components/channel-model-editor-form.ts",
+      "web/src/stores/config-model-options.ts"
     ],
     "feature:seedance-protocol-alias-routing": [
       "web/src/lib/model-protocols.ts",
@@ -929,6 +1180,11 @@
     "feature:tiered-video-polling": [
       "web/src/services/video-segment-runner.ts"
     ],
+    "feature:upstream-image-adaptation": [
+      "web/src/services/api/image-validation.ts",
+      "web/src/services/api/image.ts",
+      "web/src/services/image-storage.ts"
+    ],
     "feature:users-panel-column-settings": [
       "web/src/pages/admin/users/users-panel.tsx"
     ],
@@ -951,6 +1207,10 @@
     ],
     "feature:video-reverse-create-menu": [
       "web/src/lib/canvas/tool-registry/definitions/add-node-menu-tools.tsx"
+    ],
+    "feature:video-reverse-default-deconstruct": [
+      "web/src/extensions/opc-infinite/components/video-reverse-node.tsx",
+      "web/src/pages/canvas/use-canvas-node-operations.ts"
     ],
     "feature:video-reverse-duplicate-dialog-guard": [
       "web/src/pages/canvas/use-canvas-node-operations.ts"
@@ -982,6 +1242,10 @@
     "feature:window-location-guard": [
       "web/src/services/diagnostics/client-diagnostics.ts"
     ],
+    "feature:workbench_batch_concurrency": [
+      "web/src/components/canvas/canvas-image-settings-popover.tsx",
+      "web/src/components/image-settings-panel.tsx"
+    ],
     "feature:workbench-navigation": [
       "web/src/constant/navigation-tools.ts"
     ],
@@ -1002,8 +1266,11 @@
     "feature:zero-overhead-local-cache": [
       "web/src/components/cached-resource-image.tsx",
       "web/src/components/canvas/canvas-node-media-content.tsx",
+      "web/src/lib/user-session.ts",
+      "web/src/pages/assets/asset-library-panels.tsx",
       "web/src/services/file-storage.ts",
-      "web/src/services/image-storage.ts"
+      "web/src/services/image-storage.ts",
+      "web/src/stores/use-asset-store.ts"
     ]
   }
 }

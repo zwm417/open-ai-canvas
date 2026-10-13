@@ -1,0 +1,6 @@
+interface:
+  display_name: "小红书封面"
+  short_description: "让封面承诺与真实笔记内容一致，并在移动端保持清晰辨识。"
+  default_prompt: "使用 $xiaohongshu-cover 按领域工作流完成当前任务；复用已确认输入，只在必要确认门暂停，并按真实任务状态交付。"
+policy:
+  allow_implicit_invocation: true

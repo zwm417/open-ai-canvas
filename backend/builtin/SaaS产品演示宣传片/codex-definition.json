@@ -1,0 +1,76 @@
+﻿{
+  "id": "saas_product_demo_video",
+  "name": "商用 SaaS 产品宣传片",
+  "description": "使用真实产品页面、品牌系统、参考片风格拆解、BGM 节拍和 Remotion，制作 20–45 秒可发布的 SaaS 产品演示与 launch film。",
+  "icon": "▶",
+  "color": "#2563EB",
+  "category": "Video",
+  "scenarios": [
+    "SaaS 产品宣传片",
+    "App 功能演示视频",
+    "产品发布片",
+    "网页产品视频",
+    "横竖版产品广告",
+    "product demo reel",
+    "launch film",
+    "SaaS explainer video"
+  ],
+  "promptTemplate": "使用 $saas-product-demo-video 完成当前任务。先检查真实产品页面和品牌素材，完成参考片拆解、脚本与节拍图，再使用 Remotion 制作并验收成片。AI 补充素材只允许通过智影 Platform Media。\n\n用户需求：{userInput}",
+  "negativePrompt": "fake product UI, invented feature, fake testimonial, wrong logo, wrong brand copy, sensitive user data, missed click target, off-beat transition, unreadable text, generic template look, broken safe area, flicker, watermark",
+  "preferredModel": "auto",
+  "outputType": "video",
+  "aspectRatio": "auto",
+  "analysisPrompt": "先做最小只读产品检查和素材风险核验，提取真实设计系统、功能路径与可验证卖点；再完成四幕脚本、参考片导演拆解、逐镜声音意图及字幕原文/起止时间和实现规格。任何 AI 补充图像、视频或音频只通过智影 Platform Media，AI 视频必须选择支持原生同步声音的模型并以 generateAudio=true 生成，禁止供应商直连。使用 Remotion 实现确定性 UI 场景并保留合格原生声轨与字幕，完成主 composition、静帧检查和整片渲染；只有原生背景音乐不符合效果时才替换或调整，最终检查点击位置、品牌事实、节拍、字幕、安全区和音画同步。",
+  "displayName": "商用 SaaS 产品宣传片",
+  "shortDescription": "用真实页面、品牌系统和节拍卡点制作商用 SaaS 产品宣传片。",
+  "skillIds": [
+    "saas_product_demo_video",
+    "saas-product-demo-video"
+  ],
+  "role": "SaaS 产品宣传片导演与 Remotion 工程师",
+  "agentType": "saas-product-film-director",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "guided",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "检查真实产品、品牌和素材风险",
+      "锁定脚本、参考片风格和交付规格",
+      "分析音乐节拍并规划分镜",
+      "实现逐场景 Remotion 工程",
+      "渲染终检并交付横竖版成片"
+    ],
+    "requiredInputs": [
+      {
+        "key": "product_source",
+        "label": "产品路径、网址、截图或录屏",
+        "required": true,
+        "blocking": true,
+        "accepts": ["text", "image", "images", "video"],
+        "prompt": "请提供可检查的产品路径、网址、截图或录屏。"
+      },
+      {
+        "key": "delivery_spec",
+        "label": "平台、画幅、时长、品牌和配乐",
+        "required": false,
+        "blocking": false,
+        "accepts": ["text", "image", "images", "audio"]
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "web_research",
+      "image_generation",
+      "video_generation",
+      "multi_asset_planning",
+      "task_status",
+      "post_production_handoff"
+    ]
+  },
+  "tools": [
+    "image_generate",
+    "web_search",
+    "web_extract",
+    "fetch_url_context"
+  ]
+}

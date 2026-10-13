@@ -224,7 +224,9 @@ func publicChannel(channel model.ModelChannel, admin bool, channelModels []model
 					capabilityConfig = normalized
 				}
 			}
-			modelCosts = append(modelCosts, PublicChannelModelPrice{Model: item.ModelKey, DisplayName: item.DisplayName, ChannelLabel: item.ChannelLabel, Tags: item.Tags, Description: item.Description, Icon: item.Icon, Capability: item.Capability, Protocol: item.Protocol, BillingMode: item.BillingMode, UnitPriceMicrocredits: item.UnitPriceMicrocredits, InputTokenPriceMicrocredits: item.InputTokenPriceMicrocredits, OutputTokenPriceMicrocredits: item.OutputTokenPriceMicrocredits, CachedTokenPriceMicrocredits: item.CachedTokenPriceMicrocredits, CapabilityConfig: capabilityConfig})
+			// @opc-adapter: seedance-jimeng-icon-governance [start]
+			modelCosts = append(modelCosts, PublicChannelModelPrice{Model: item.ModelKey, DisplayName: item.DisplayName, ChannelLabel: item.ChannelLabel, Tags: item.Tags, Description: item.Description, Icon: normalizeChannelModelIcon(item.Icon, item.ModelKey, item.ProviderModelKey, item.DisplayName, item.Protocol), Capability: item.Capability, Protocol: item.Protocol, BillingMode: item.BillingMode, UnitPriceMicrocredits: item.UnitPriceMicrocredits, InputTokenPriceMicrocredits: item.InputTokenPriceMicrocredits, OutputTokenPriceMicrocredits: item.OutputTokenPriceMicrocredits, CachedTokenPriceMicrocredits: item.CachedTokenPriceMicrocredits, CapabilityConfig: capabilityConfig})
+			// @opc-adapter: seedance-jimeng-icon-governance [end]
 		}
 	}
 	if len(models) == 0 {

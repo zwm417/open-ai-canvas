@@ -142,7 +142,7 @@ function catalogCapabilityConfig(item: ChannelModelCatalogItem, protocol: ModelP
     const defaultRatio = item.defaultParameters?.aspectRatio?.trim() || "";
     if (ratios.length) {
         video.ratios = ratios;
-        video.defaultRatio = ratios.includes(defaultRatio) ? defaultRatio : ratios[0]!;
+        video.defaultRatio = defaultRatio && ratios.includes(defaultRatio) ? defaultRatio : ratios.includes("9:16") ? "9:16" : ratios[0]!;
     } else if (defaultRatio) {
         video.ratios = [defaultRatio];
         video.defaultRatio = defaultRatio;

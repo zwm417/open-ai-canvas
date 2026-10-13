@@ -186,6 +186,125 @@ func BuiltinRegistry() *Registry {
 				}
 			},
 		},
+		{
+			Type: "creative-asset-table:table", Version: "1", Label: "创意资产表", DefaultWidth: 1560, DefaultHeight: 680,
+			Purpose:     "专业创意资产表节点，提供人物、商品、场景等多类核心母版资产管理、多视角转化与图生图/文生图批量生产。",
+			GoodFor:     []string{"人物/商品/场景母版资产规划", "角色多视角一致性四视图", "商品微距与多角度资产沉淀", "文生图与图生图批量资产提取"},
+			NotIdealFor: []string{"单张图片临时试验", "连续多镜头叙事分镜（应使用创意分镜表或分镜脚本）"},
+			Tradeoffs:   []string{"资产表维护母版资产，生成后作为下游分镜与画面的参考依据"},
+			Actions:     []string{"read_rows", "append_row", "update_row", "remove_row", "set_operation", "set_concurrency", "add_reference_column", "remove_reference_column", "set_global_prompt", "preview_batch_generation"},
+			InputKind:   "text",
+			Connection:  ConnectionPolicy{CanSource: true, CanTarget: true, AcceptedInputKinds: []string{"image", "text"}},
+			CanUpdate:   true, SummaryFields: []string{"batchTable"}, DetailFields: []string{"batchTable"}, ProjectionKind: "batch_table", ProjectionField: "batchTable",
+			PatchFields: titleAndPositionPatchFields(),
+			CreateMetadata: func(string) map[string]any {
+				return map[string]any{
+					"status": "idle",
+					"batchTable": map[string]any{
+						"operation": "creative", "concurrency": float64(6),
+						"contentKind": "master-slots",
+						"referenceColumns": []any{
+							map[string]any{"id": "ref-image", "label": "参考图插槽"},
+						},
+						"textColumns": []any{
+							map[string]any{"id": "col-slot-name", "label": "资产名称与分类", "type": "text"},
+							map[string]any{"id": "col-visual-desc", "label": "视觉外观特征", "type": "text"},
+						},
+						"rows": []any{},
+					},
+				}
+			},
+		},
+		{
+			Type: "creative-voice-table:table", Version: "1", Label: "创意配音", DefaultWidth: 1560, DefaultHeight: 680,
+			Purpose:     "专业创意配音节点，提供参考音色与参考情绪插槽、口播文案精准±2字改写、成品配音合成及与分镜总装表的动态联动。",
+			GoodFor:     []string{"口播台词时长拟合与字数微调", "角色音色与参考情绪插槽绑定", "批量配音任务并发生成", "与分镜总装表台词双向联动"},
+			NotIdealFor: []string{"长篇有声书录制", "画面视觉生图（应使用创意资产表或批量创作表）"},
+			Tradeoffs:   []string{"专注于音频与台词配音，可被分镜总装表直接引用"},
+			Actions:     []string{"read_rows", "append_row", "update_row", "remove_row", "set_operation", "set_concurrency", "add_reference_column", "remove_reference_column", "set_global_prompt", "preview_batch_generation"},
+			InputKind:   "text",
+			Connection:  ConnectionPolicy{CanSource: true, CanTarget: true, AcceptedInputKinds: []string{"audio", "text"}},
+			CanUpdate:   true, SummaryFields: []string{"batchTable"}, DetailFields: []string{"batchTable"}, ProjectionKind: "batch_table", ProjectionField: "batchTable",
+			PatchFields: titleAndPositionPatchFields(),
+			CreateMetadata: func(string) map[string]any {
+				return map[string]any{
+					"status": "idle",
+					"batchTable": map[string]any{
+						"operation": "creative", "concurrency": float64(6),
+						"contentKind": "creative-voice",
+						"voiceSlotMode": "all",
+						"referenceColumns": []any{
+							map[string]any{"id": "ref-voice", "label": "参考音色"},
+							map[string]any{"id": "ref-tone", "label": "参考情绪"},
+						},
+						"textColumns": []any{
+							map[string]any{"id": "col-time", "label": "起止与时长", "type": "text"},
+							map[string]any{"id": "col-speaker-tone", "label": "说话人与情绪", "type": "text"},
+							map[string]any{"id": "col-lines", "label": "原文台词", "type": "text"},
+							map[string]any{"id": "col-rewrite", "label": "改写文案", "type": "text"},
+						},
+						"rows": []any{},
+					},
+				}
+			},
+		},
+		{
+			Type: "creative-storyboard-table:table", Version: "1", Label: "创意分镜表", DefaultWidth: 1680, DefaultHeight: 720,
+			Purpose:     "专业创意分镜总装表节点，支持多镜头物理时长弹性规划、参考脚本文本插槽、创意资产与创意配音动态装配、首帧图生图与镜头视频批量渲染。",
+			GoodFor:     []string{"短视频与短剧全流程多镜头总装", "资产插槽与配音插槽动态关联", "分镜头首帧图生图批量渲染", "镜头物理时长与动态运镜精准控制"},
+			NotIdealFor: []string{"非分镜的纯通用批量表格任务", "单张图片的快速零散试验"},
+			Tradeoffs:   []string{"汇聚资产表、配音表与脚本输入，作为批量渲染的中枢"},
+			Actions:     []string{"read_rows", "append_row", "update_row", "remove_row", "set_operation", "set_concurrency", "add_reference_column", "remove_reference_column", "set_global_prompt", "preview_batch_generation"},
+			InputKind:   "text",
+			Connection:  ConnectionPolicy{CanSource: true, CanTarget: true, AcceptedInputKinds: []string{"image", "video", "audio", "text"}},
+			CanUpdate:   true, SummaryFields: []string{"batchTable"}, DetailFields: []string{"batchTable"}, ProjectionKind: "batch_table", ProjectionField: "batchTable",
+			PatchFields: titleAndPositionPatchFields(),
+			CreateMetadata: func(string) map[string]any {
+				return map[string]any{
+					"status": "idle",
+					"batchTable": map[string]any{
+						"operation": "creative", "concurrency": float64(10),
+						"contentKind": "storyboard",
+						"referenceColumns": []any{
+							map[string]any{"id": "ref-script", "label": "参考脚本"},
+							map[string]any{"id": "ref-master-slots", "label": "创意资产"},
+							map[string]any{"id": "ref-voiceover", "label": "创意配音"},
+						},
+						"textColumns": []any{
+							map[string]any{"id": "col-time", "label": "时间与镜头形态", "type": "text"},
+							map[string]any{"id": "col-image-prompt", "label": "首帧提示词", "type": "text"},
+						},
+						"rows": []any{},
+					},
+				}
+			},
+		},
+		{
+			Type: "standard-batch-table:table", Version: "1", Label: "批量创作表", DefaultWidth: 1480, DefaultHeight: 640,
+			Purpose:     "标准批量创作表基准节点，基于上游纯净能力，提供排队列多任务批量生图、全局参数协同、拖拽交换与素材悬浮复制/删除管理。",
+			GoodFor:     []string{"商品与模特批量换装", "同一商品多场景创意图", "多组参考图组合生成", "批量结果追踪与失败重试"},
+			NotIdealFor: []string{"通用数据库或库存管理", "单张图片快速试验", "多镜头叙事连续性"},
+			Tradeoffs:   []string{"参考图必须先作为图片节点进入画布", "批量提交会产生多项生成任务，执行前必须确认模型、数量和费用"},
+			Actions:     []string{"read_rows", "append_row", "update_row", "remove_row", "set_operation", "set_concurrency", "add_reference_column", "remove_reference_column", "set_global_prompt", "preview_batch_generation"},
+			InputKind:   "text",
+			Connection:  ConnectionPolicy{CanSource: true, CanTarget: true, AcceptedInputKinds: []string{"image"}},
+			CanUpdate:   true, SummaryFields: []string{"batchTable"}, DetailFields: []string{"batchTable"}, ProjectionKind: "batch_table", ProjectionField: "batchTable",
+			PatchFields: titleAndPositionPatchFields(),
+			CreateMetadata: func(string) map[string]any {
+				return map[string]any{
+					"status": "idle",
+					"batchTable": map[string]any{
+						"operation": "creative", "concurrency": float64(10),
+						"referenceColumns": []any{
+							map[string]any{"id": "reference-1", "label": "参考图 1"},
+							map[string]any{"id": "reference-2", "label": "参考图 2"},
+							map[string]any{"id": "reference-3", "label": "参考图 3"},
+						},
+						"rows": []any{},
+					},
+				}
+			},
+		},
 		// @opc-adapter: custom-agent-nodes [end]
 	})
 	if err != nil {

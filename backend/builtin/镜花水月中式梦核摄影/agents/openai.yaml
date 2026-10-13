@@ -1,0 +1,4 @@
+interface:
+  display_name: "镜花水月 · 中式梦核摄影"
+  short_description: "一句想法输出有情绪版与无情绪版双 MJ 提示词及中文 ImageGen"
+  default_prompt: "用 $mirror-flower-water-moon-prompts 写一张女子在暗青长廊奔跑回头的16:9画面，分别输出有情绪版、无情绪版的 MJ 提示词及中文 ImageGen 提示词。"

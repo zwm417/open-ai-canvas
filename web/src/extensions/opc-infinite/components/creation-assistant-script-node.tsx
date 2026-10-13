@@ -14,6 +14,7 @@ import { FeatureCreditBadge } from "@/components/feature-credit-badge";
 import { useFeatureCredit } from "@/hooks/use-feature-credit";
 import { requestImageQuestion } from "@/services/api/image";
 import { resolveResourceUrl } from "@/services/api/resources";
+import { HEADER_CANVAS_SYSTEM_PROMPT_ID, VAULT_PROMPT_IDS } from "@/services/api/prompt-vault";
 import {
     CREATION_ASSISTANT_DURATION_PRESETS,
     CREATION_ASSISTANT_PLATFORMS,
@@ -430,6 +431,10 @@ export function CreationAssistantScriptNodeContent({ node, theme }: Props) {
                 ? customPrompt.trim()
                 : promptBundle.systemPrompt;
 
+            const promptId = isRefMode
+                ? VAULT_PROMPT_IDS.CREATION_ASSISTANT_REFERENCE
+                : VAULT_PROMPT_IDS.CREATION_ASSISTANT;
+
             const effectiveScriptModel = selectedModel || config.textModel || config.model;
             const response = await requestImageQuestion(
                 { ...config, model: effectiveScriptModel, systemPrompt: effectiveSystemPrompt },
@@ -438,7 +443,17 @@ export function CreationAssistantScriptNodeContent({ node, theme }: Props) {
                     streamedScriptAccumulator += delta;
                     reportStream(streamedScriptAccumulator);
                 },
-                { temperature: 0.85, presence_penalty: 0.2, signal: controller.signal, scene: "config_script" },
+                {
+                    temperature: 0.85,
+                    presence_penalty: 0.2,
+                    signal: controller.signal,
+                    scene: "config_script",
+                    headers: !useCustomPrompt
+                        ? {
+                              [HEADER_CANVAS_SYSTEM_PROMPT_ID]: promptId,
+                          }
+                        : undefined,
+                },
             );
 
             if (!isCurrentExecution(node.id, currentExecutionId)) return;

@@ -1,0 +1,7 @@
+interface:
+  display_name: "品牌 VI 全案"
+  short_description: "从 Logo 定稿到 VI、社媒、包装、IP 与品牌动效的一站式视觉系统"
+  default_prompt: "使用 $brand-specialist 为当前品牌制作完整、统一且可验收的 VI 全案。"
+
+policy:
+  allow_implicit_invocation: true

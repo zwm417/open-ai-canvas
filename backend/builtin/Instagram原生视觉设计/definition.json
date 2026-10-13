@@ -1,0 +1,75 @@
+﻿{
+  "id": "instagram_post_new",
+  "name": "Instagram Post",
+  "description": "规划和生成 Instagram Feed 单图、轮播、Reels 封面和品牌帖子视觉。",
+  "icon": "◎",
+  "color": "#E1306C",
+  "category": "Social Media",
+  "scenarios": [
+    "Instagram Post",
+    "Instagram 帖子",
+    "IG feed",
+    "社媒单图",
+    "品牌帖子"
+  ],
+  "promptTemplate": "使用 $instagram-post-new 完成当前任务。先执行领域工作流和必要确认，再为每个批准的生成单元输出独立、可执行的供应商提示词。\n\n用户需求：{userInput}",
+  "negativePrompt": "collage, grid, phone mockup, screenshot UI, unreadable tiny text, generic stock look, distorted product, wrong logo, watermark, low quality",
+  "preferredModel": "gemini-3-pro-image-preview",
+  "outputType": "image",
+  "aspectRatio": "auto",
+  "analysisPrompt": "把账号定位、内容价值和 Instagram 的浏览语境转化为可保存、可分享、可识别的视觉内容。你负责内容层级与账号连续性，不把每个帖子都做成促销海报。 按以下阶段执行：确定帖子任务与账号语境 → 提炼可保存或可分享的内容价值 → 选择单图、轮播或封面结构 → 确认标题、首图和视觉语言 → 逐页生成 Instagram 资产 → 检查 Feed 连续性和移动端阅读。",
+  "displayName": "Instagram Post",
+  "shortDescription": "设计具有特定行业视觉基因的 Instagram 原生视觉内容。",
+  "skillIds": [
+    "instagram_post_new",
+    "instagram-post-new"
+  ],
+  "role": "Instagram 内容视觉设计师",
+  "agentType": "instagram-content-designer",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "guided",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "确定帖子任务与账号语境",
+      "提炼可保存或可分享的内容价值",
+      "选择单图、轮播或封面结构",
+      "确认标题、首图和视觉语言",
+      "逐页生成 Instagram 资产",
+      "检查 Feed 连续性和移动端阅读"
+    ],
+    "requiredInputs": [
+      {
+        "key": "content_brief",
+        "label": "内容目标、受众和账号语境",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "text"
+        ],
+        "prompt": "请说明帖文目标、受众、账号定位和行动目标。"
+      },
+      {
+        "key": "brand_assets",
+        "label": "品牌与内容参考素材",
+        "required": false,
+        "blocking": false,
+        "accepts": [
+          "image",
+          "images",
+          "text"
+        ]
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "image_generation",
+      "task_status",
+      "post_production_handoff"
+    ]
+  },
+  "tools": [
+    "image_generate",
+    "web_search"
+  ]
+}

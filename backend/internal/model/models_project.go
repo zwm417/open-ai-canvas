@@ -60,6 +60,13 @@ type Resource struct {
 	// UploadKey 是客户端逻辑上传身份的摘要；NULL 表示不参与幂等约束。
 	UploadKey *string   `json:"-" gorm:"size:64;uniqueIndex:idx_resources_user_upload_key,priority:2"`
 	Error     string    `json:"error"`
+	// @opc-adapter: media-dual-track [start]
+	UpstreamURL   string        `json:"-" gorm:"type:text"`
+	LocalStatus   LocalStatus   `json:"localStatus,omitempty" gorm:"index;size:24"`
+	LocalPath     string        `json:"localPath,omitempty" gorm:"size:500"`
+	OSSSyncStatus OSSSyncStatus `json:"ossSyncStatus,omitempty" gorm:"index;size:24"`
+	OSSSyncedAt   *time.Time    `json:"ossSyncedAt,omitempty"`
+	// @opc-adapter: media-dual-track [end]
 	CreatedAt time.Time `json:"createdAt" gorm:"index:idx_resources_user_created,priority:2"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }

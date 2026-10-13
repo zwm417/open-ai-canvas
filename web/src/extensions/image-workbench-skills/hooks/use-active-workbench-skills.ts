@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router";
 import { usePluginStore, isPluginEffectivelyEnabled } from "@/stores/use-plugin-store";
 import { BUILTIN_CATEGORIES, BUILTIN_SKILLS } from "../catalog/builtin-skills";
@@ -62,6 +62,7 @@ export function useActiveWorkbenchSkills() {
                             description: skill.description || "",
                             isRecommended: Boolean(skill.isRecommended),
                             defaultCount: skill.defaultCount,
+                            defaultAspectRatio: skill.defaultAspectRatio,
                             uploadSlots: skill.uploadSlots || [
                                 {
                                     id: "source",
@@ -73,6 +74,7 @@ export function useActiveWorkbenchSkills() {
                             placeholder: skill.placeholder || "输入画面提示词，描述期望生成的场景与细节",
                             instructions: skill.instructions || "精准参考输入素材的主体外形与构图，生成高品质视觉图像。",
                             avoid: skill.avoid,
+                            keywords: skill.keywords,
                             showcaseTitle: `${skill.name}效果示例`,
                             showcaseSubtitle: skill.subtitle || "",
                             showcaseImageUrl: skill.showcaseImageUrl || "/images/skills/product-hero.webp",
@@ -91,15 +93,27 @@ export function useActiveWorkbenchSkills() {
         };
     }, [pluginStore.installations, pluginStore.pluginStates, pluginStore.runtimeStatuses]);
 
+    // @opc-feature: image-workbench-typography [start]
     const activeSkill = useMemo(() => {
         if (!selectedSkillId) return null;
-        return skills.find((s) => s.id === selectedSkillId) || null;
+        return (
+            skills.find(
+                (s) =>
+                    s.id === selectedSkillId ||
+                    (selectedSkillId === "redbook-seed" && s.id === "xiaohongshu-cover") ||
+                    (selectedSkillId === "promo-poster" && s.id === "ad-creative")
+            ) || null
+        );
     }, [selectedSkillId, skills]);
+    // @opc-feature: image-workbench-typography [end]
 
-    const selectSkill = (skillId: string | null) => {
+    const selectSkill = useCallback((skillId: string | null) => {
         setSelectedSkillId(skillId);
         setSearchParams(
             (prev) => {
+                const current = prev.get("skill");
+                const target = skillId || null;
+                if (current === target) return prev;
                 const next = new URLSearchParams(prev);
                 if (skillId) {
                     next.set("skill", skillId);
@@ -110,9 +124,9 @@ export function useActiveWorkbenchSkills() {
             },
             { replace: true }
         );
-    };
+    }, [setSearchParams]);
 
-    const getSkillsByCategory = (categoryId: string, searchKeyword = ""): WorkbenchSkill[] => {
+    const getSkillsByCategory = useCallback((categoryId: string, searchKeyword = ""): WorkbenchSkill[] => {
         const keyword = searchKeyword.trim().toLowerCase();
         return skills.filter((skill) => {
             const matchesCategory =
@@ -126,10 +140,11 @@ export function useActiveWorkbenchSkills() {
             return (
                 skill.name.toLowerCase().includes(keyword) ||
                 skill.subtitle.toLowerCase().includes(keyword) ||
-                skill.description.toLowerCase().includes(keyword)
+                skill.description.toLowerCase().includes(keyword) ||
+                Boolean(skill.keywords?.some((k) => k.toLowerCase().includes(keyword)))
             );
         });
-    };
+    }, [skills]);
 
     return {
         categories,

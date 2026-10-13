@@ -1,0 +1,6 @@
+interface:
+  display_name: "室内设计与空间可视化"
+  short_description: "室内设计全流程出图助手。支持空间效果图、软装搭配、材质、灯光和布局方案。"
+  default_prompt: "使用 $interior-design 按领域工作流完成当前任务；复用已确认输入，只在必要确认门暂停，并按真实任务状态交付。"
+policy:
+  allow_implicit_invocation: true

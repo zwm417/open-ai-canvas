@@ -10,3 +10,12 @@ export * from "./components/skill-picker-popover";
 export * from "./components/skill-upload-slots";
 export * from "./components/skill-showcase-panel";
 export * from "./components/skill-nav-tooltip";
+// @opc-feature: detail_set_workflow [start]
+export * from "./types/detail-set";
+export * from "./catalog/detail-set-templates";
+export * from "./core/detail-set-planner";
+export * from "./core/detail-set-compliance";
+export * from "./stores/use-detail-set-store";
+export * from "./components/detail-set-workflow-card";
+export * from "./components/image-language-popover";
+// @opc-feature: detail_set_workflow [end]

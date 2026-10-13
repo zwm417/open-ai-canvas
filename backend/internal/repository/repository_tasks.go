@@ -245,15 +245,27 @@ func (r *Repository) UpdateTaskTerminalState(id string, owner string, expected m
 }
 
 func (r *Repository) UpdateTaskTerminalDiagnostic(task *model.Task, completedAt time.Time) (bool, error) {
+	updates := map[string]any{
+		"status": task.Status, "stage": task.Stage, "error": task.Error, "completed_at": &completedAt,
+		"execution_diagnostic_json": task.ExecutionDiagnosticJSON,
+		"cancellation_source":       task.CancellationSource, "cancellation_actor_id": task.CancellationActorID,
+		"cancellation_requested_at": task.CancellationRequestedAt,
+		"lease_owner":               "", "lease_expires_at": nil, "updated_at": completedAt,
+	}
+	// @opc-adapter: media-dual-track [start]
+	if task.UpstreamURL != "" {
+		updates["upstream_url"] = task.UpstreamURL
+	}
+	if task.LocalStatus != "" {
+		updates["local_status"] = task.LocalStatus
+	}
+	if task.OSSSyncStatus != "" {
+		updates["oss_sync_status"] = task.OSSSyncStatus
+	}
+	// @opc-adapter: media-dual-track [end]
 	result := taskLeaseWriter(r.db.Model(&model.Task{}), task.LeaseOwner).
 		Where("id = ? AND status = ?", task.ID, model.TaskStatusRunning).
-		Updates(map[string]any{
-			"status": task.Status, "stage": task.Stage, "error": task.Error, "completed_at": &completedAt,
-			"execution_diagnostic_json": task.ExecutionDiagnosticJSON,
-			"cancellation_source":       task.CancellationSource, "cancellation_actor_id": task.CancellationActorID,
-			"cancellation_requested_at": task.CancellationRequestedAt,
-			"lease_owner":               "", "lease_expires_at": nil, "updated_at": completedAt,
-		})
+		Updates(updates)
 	return result.RowsAffected == 1, result.Error
 }
 
@@ -375,7 +387,7 @@ func (r *Repository) Tasks(userID string, limit int, projectID string, activeOnl
 	if limit <= 0 || limit > 100 {
 		limit = 50
 	}
-	query := r.db.Select("id", "project_id", "type", "status", "stage", "media_stage", "media_recovery_json", "progress", "prompt", "operation", "provider", "model", "input_json", "result_json", "billing_order_id", "provider_request_id", "provider_cancel_status", "provider_cancel_error", "provider_cancel_attempts", "provider_cancel_requested_at", "provider_cancelled_at", "provider_cancel_next_check_at", "attempts", "started_at", "completed_at", "created_at", "updated_at", "agent_run_id", "generation_id", "approval_id", "authorized_charge_microcredits", "execution_diagnostic_json", "cancellation_source", "cancellation_actor_id", "cancellation_requested_at").
+	query := r.db.Select("id", "project_id", "type", "status", "stage", "media_stage", "media_recovery_json", "progress", "prompt", "operation", "provider", "model", "input_json", "result_json", "billing_order_id", "provider_request_id", "provider_cancel_status", "provider_cancel_error", "provider_cancel_attempts", "provider_cancel_requested_at", "provider_cancelled_at", "provider_cancel_next_check_at", "attempts", "started_at", "completed_at", "created_at", "updated_at", "agent_run_id", "generation_id", "approval_id", "authorized_charge_microcredits", "execution_diagnostic_json", "cancellation_source", "cancellation_actor_id", "cancellation_requested_at", "upstream_url", "local_status", "oss_sync_status").
 		Where("user_id = ?", userID)
 	if strings.TrimSpace(projectID) != "" {
 		query = query.Where("project_id = ?", strings.TrimSpace(projectID))
@@ -401,3 +413,40 @@ func (r *Repository) TaskLogs(userID string, taskID string) ([]model.TaskLog, er
 	err := r.db.Order("created_at asc").Find(&logs, "user_id = ? AND task_id = ?", userID, taskID).Error
 	return logs, err
 }
+
+// @opc-adapter: media-dual-track [start]
+func (r *Repository) UpdateTaskUpstreamInfo(id string, upstreamURL string, localStatus model.LocalStatus, ossSyncStatus model.OSSSyncStatus) error {
+	return r.db.Model(&model.Task{}).Where("id = ?", id).Updates(map[string]any{
+		"upstream_url":    upstreamURL,
+		"local_status":    localStatus,
+		"oss_sync_status": ossSyncStatus,
+		"updated_at":      time.Now(),
+	}).Error
+}
+
+func (r *Repository) UpdateTaskDeliveryStatus(id string, localStatus model.LocalStatus, ossSyncStatus model.OSSSyncStatus) error {
+	updates := map[string]any{
+		"updated_at": time.Now(),
+	}
+	if localStatus != "" {
+		updates["local_status"] = localStatus
+	}
+	if ossSyncStatus != "" {
+		updates["oss_sync_status"] = ossSyncStatus
+	}
+	return r.db.Model(&model.Task{}).Where("id = ?", id).Updates(updates).Error
+}
+// @opc-adapter: media-dual-track [end]
+
+// @opc-adapter: task_list_batch_id [start]
+func (r *Repository) TasksForBatch(userID string, batchID string) ([]model.Task, error) {
+	var tasks []model.Task
+	query := r.db.Select("id", "project_id", "type", "status", "stage", "media_stage", "media_recovery_json", "progress", "prompt", "operation", "provider", "model", "input_json", "result_json", "billing_order_id", "provider_request_id", "provider_cancel_status", "provider_cancel_error", "provider_cancel_attempts", "provider_cancel_requested_at", "provider_cancelled_at", "provider_cancel_next_check_at", "attempts", "started_at", "completed_at", "created_at", "updated_at", "agent_run_id", "generation_id", "approval_id", "authorized_charge_microcredits", "execution_diagnostic_json", "cancellation_source", "cancellation_actor_id", "cancellation_requested_at", "upstream_url", "local_status", "oss_sync_status").
+		Where("user_id = ? AND input_json LIKE ?", userID, "%"+strings.TrimSpace(batchID)+"%").
+		Order("created_at desc")
+	err := query.Find(&tasks).Error
+	return tasks, err
+}
+// @opc-adapter: task_list_batch_id [end]
+
+

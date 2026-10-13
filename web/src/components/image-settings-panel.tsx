@@ -1,7 +1,7 @@
 import { ImageSizePicker } from "./image-size-picker";
 import { imageResolutionUsesQuality } from "@/lib/image-size-presets";
 import { type ReactNode } from "react";
-import { ConfigProvider } from "antd";
+import { ConfigProvider, message } from "antd";
 import { Switch } from "@/components/ui/base/switch";
 
 import { type CanvasTheme } from "@/lib/canvas-theme";
@@ -57,13 +57,15 @@ type ImageSettingsPanelProps = {
     bypassPriceGuard?: boolean;
 };
 
-export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = true, showQuality = true, showTransparent = true, showSize = true, showCount = true, className = "w-[304px] space-y-3 rounded-2xl px-1 py-0.5", maxCount = 15, quickCount = 3, bypassPriceGuard = false }: ImageSettingsPanelProps) {
+export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = true, showQuality = true, showTransparent = true, showSize = true, showCount = true, className = "w-[304px] space-y-3 rounded-2xl px-1 py-0.5", maxCount, quickCount = 3, bypassPriceGuard = false }: ImageSettingsPanelProps) {
     const profile = mergedImageCapabilityConfig(config, config.model || config.imageModel);
     const normalized = normalizeImageValue(profile, config);
     const quality = normalized.quality;
     const transparentBackground = normalized.transparentBackground === "true";
-    const effectiveMaxCount = Math.min(maxCount, profile.maxOutputs);
-    const count = Math.max(1, Math.min(effectiveMaxCount, Number(normalized.count)));
+    // @opc-feature: workbench_batch_concurrency [start]
+    const effectiveMaxCount = maxCount !== undefined ? maxCount : profile.maxOutputs;
+    const count = Math.max(1, Math.min(effectiveMaxCount, Number(config.count) || 1));
+    // @opc-feature: workbench_batch_concurrency [end]
     const activeSize = normalized.size;
     const activeQualityOptions = profile.quality.values.map((value) => qualityOptions.find((item) => item.value === value) || { value, label: value });
     const priceTiers = imageModelPriceTiers(config);
@@ -189,7 +191,13 @@ function OptionPill({ selected, disabled = false, theme, onClick, children }: { 
 
 function CountInput({ value, quickCount, max, theme, onChange }: { value: number; quickCount: number; max: number; theme: CanvasTheme; onChange: (value: number | null) => void }) {
     const commit = (input: HTMLInputElement) => {
-        const next = Math.max(1, Math.min(max, Math.floor(Number(input.value) || 1)));
+        // @opc-feature: workbench_batch_concurrency [start]
+        const raw = Math.floor(Number(input.value) || 1);
+        if (raw > max) {
+            message.warning(`单次批量生成上限为 ${max} 张图片，已自动调整为 ${max} 张`);
+        }
+        const next = Math.max(1, Math.min(max, raw));
+        // @opc-feature: workbench_batch_concurrency [end]
         input.value = String(next);
         onChange(next);
     };

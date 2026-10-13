@@ -15,6 +15,16 @@ import { useUserStore } from "@/stores/use-user-store";
 import { PLUGIN_STORE_KEY, usePluginStore } from "@/stores/use-plugin-store";
 import { initializeRemoteUserDataSession, installRemoteUserDataAutoSync, resetRemoteUserDataSync, withRemoteUserDataSyncExclusive } from "@/services/user-data-sync";
 import { withGenerationConsumersPaused } from "@/services/generation-consumer-lifecycle";
+import { nanoid } from "nanoid";
+import { defaultImageWorkbenchDraft, useImageWorkbenchStore } from "@/stores/use-image-workbench-store";
+import { defaultVideoWorkbenchDraft, useVideoWorkbenchStore } from "@/stores/use-video-workbench-store";
+import { defaultCreationAssistantDraft, useCreationAssistantStore } from "@/stores/use-creation-assistant-store";
+// @opc-feature: zero-overhead-local-cache [start]
+import { clearResourceAccessCache } from "@/services/api/resources";
+import { clearResourceBlobCache } from "@/services/resource-blob-cache";
+import { clearLocalFirstMediaCache } from "@/services/local-first-media-resolver";
+import { InspirationCache } from "@/components/prompts/inspiration-cache";
+// @opc-feature: zero-overhead-local-cache [end]
 
 export async function switchUserStorageScope(userId?: string | null) {
     await withGenerationConsumersPaused(async () => {
@@ -22,6 +32,13 @@ export async function switchUserStorageScope(userId?: string | null) {
             await Promise.all([flushCanvasStorePersistence(), flushAssetStorePersistence()]);
             resetRemoteUserDataSync();
             setActiveUserScope(userId);
+            // @opc-feature: zero-overhead-local-cache [start]
+            // 多账号强隔离规范：切号/登出时彻底释放前序账号签名凭据、二进制Blob与内存映射
+            clearResourceAccessCache();
+            clearResourceBlobCache();
+            await clearLocalFirstMediaCache();
+            InspirationCache.clear();
+            // @opc-feature: zero-overhead-local-cache [end]
         });
     });
 }
@@ -65,6 +82,9 @@ function resetUserScopedMemory() {
     useConfigStore.setState({ config: normalizeConfigSnapshot({ config: defaultConfig }).config });
     usePluginStore.setState({ hydrated: false, installations: [], runtimeStatuses: {}, pluginStates: {} });
     useCreationPreferencesStore.setState({ hydrated: false, preferences: {} });
+    useImageWorkbenchStore.setState({ hydrated: false, hasStoredDraft: false, draft: { ...defaultImageWorkbenchDraft, sessionId: nanoid() }, past: [], future: [] });
+    useVideoWorkbenchStore.setState({ hydrated: false, hasStoredDraft: false, draft: { ...defaultVideoWorkbenchDraft, sessionId: nanoid() }, past: [], future: [] });
+    useCreationAssistantStore.setState({ hydrated: false, draft: defaultCreationAssistantDraft, past: [], future: [] });
 }
 
 async function hydrateUserSessionData(payload: AuthSessionPayload, generation: number) {
@@ -86,6 +106,9 @@ async function hydrateUserSessionData(payload: AuthSessionPayload, generation: n
         useConfigStore.persist.rehydrate(),
         usePluginStore.persist.rehydrate(),
         useCreationPreferencesStore.persist.rehydrate(),
+        useImageWorkbenchStore.persist.rehydrate(),
+        useVideoWorkbenchStore.persist.rehydrate(),
+        useCreationAssistantStore.persist.rehydrate(),
     ]);
     if (!isCurrentSession(generation, userId)) return;
     // Zustand 在目标 scope 没有快照时会保留旧内存，必须显式恢复该 scope 的空状态。
@@ -331,7 +354,7 @@ export function projectLogicalCapability(spec: CapabilitySpec, defaults: Record<
         const sizePresets = concreteSizeValues.length ? concreteSizeValues : sizeAllowsCustom ? [...STANDARD_IMAGE_SIZE_VALUES] : [];
         if (sizePresets.length || sizeAllowsCustom || spec.imageSize?.presets?.length) {
             const parameter = spec.imageSize?.parameter === "aspect_ratio" || spec.imageSize?.parameter === "size" ? spec.imageSize.parameter : "size";
-            projected.image.size = { parameter, values: sizePresets, default: concreteDefault(defaults.size, sizePresets, "1:1"), allowCustom: sizeAllowsCustom };
+            projected.image.size = { parameter, values: sizePresets, default: concreteDefault(defaults.size, sizePresets, "9:16"), allowCustom: sizeAllowsCustom };
             if (spec.imageSize?.presets?.length) projected.image.size = imageSizeConfigWithPresets(projected.image, spec.imageSize.presets);
         }
         applyStringOption(spec.options?.quality, defaults.quality, (values, initial) => {
@@ -351,7 +374,7 @@ export function projectLogicalCapability(spec: CapabilitySpec, defaults: Record<
         if (duration?.values?.length) projected.video.duration = { selection: "enum", values: duration.values.map(Number).filter(Number.isFinite), default: Number(defaults.videoSeconds ?? duration.values[0]) };
         else if (duration?.min !== undefined && duration.max !== undefined) projected.video.duration = { selection: "range", min: duration.min, max: duration.max, step: duration.step || 1, default: Number(defaults.videoSeconds ?? duration.min) };
         projected.video.ratios = stringValues(spec.options?.size || spec.options?.aspectRatio);
-        projected.video.defaultRatio = concreteDefault(defaults.size, projected.video.ratios, "");
+        projected.video.defaultRatio = concreteDefault(defaults.size, projected.video.ratios, "9:16");
         projected.video.resolutions = stringValues(spec.options?.vquality || spec.options?.resolution);
         projected.video.defaultResolution = String(defaults.vquality ?? projected.video.resolutions[0] ?? "");
         projected.video.generateAudio = booleanOption(spec.options?.videoGenerateAudio, defaults.videoGenerateAudio);
@@ -374,7 +397,9 @@ function stringValues(option?: OptionConstraint) {
 
 function concreteDefault(value: unknown, values: string[], fallback: string) {
     const candidate = String(value ?? "").trim();
-    return candidate && candidate !== "*" && values.includes(candidate) ? candidate : values.find((item) => item !== "*") || fallback;
+    if (candidate && candidate !== "*" && values.includes(candidate)) return candidate;
+    if (values.includes("9:16")) return "9:16";
+    return values.find((item) => item !== "*") || fallback;
 }
 
 function maxNumericOption(option: OptionConstraint | undefined, fallback: number) {

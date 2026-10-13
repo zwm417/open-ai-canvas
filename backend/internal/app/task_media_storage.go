@@ -197,7 +197,9 @@ func mediaUploadKey(taskID string, index int) *string {
 	return &key
 }
 
-func (s *Service) storeTaskMediaFile(task *model.Task, index int, path, mimeType, kind string, existing *model.Resource) (*model.Resource, error) {
+// @opc-adapter: media-dual-track [start]
+func (s *Service) storeTaskMediaFile(task *model.Task, index int, path, mimeType, kind string, existing *model.Resource, upstreamURL string) (*model.Resource, error) {
+// @opc-adapter: media-dual-track [end]
 	info, err := os.Lstat(path)
 	if err != nil {
 		return nil, err
@@ -255,7 +257,14 @@ func (s *Service) storeTaskMediaFile(task *model.Task, index int, path, mimeType
 	}()
 	var resource *model.Resource
 	if existing == nil {
-		resource, _, err = s.storeResourceWithWriter(task.UserID, kind, "generated."+extensionFromMimeType(mimeType), mimeType, info.Size(), width, height, durationMs, file, mediaUploadKey(task.ID, index), false, s.storeTaskMediaObject)
+		forceLocal := false
+		// @opc-adapter: media-dual-track [start]
+		ossSetting, _, _, _ := s.activeResourceOSSSetting(task.UserID)
+		if ossSetting.OSSSyncMode == "skip" {
+			forceLocal = true
+		}
+		// @opc-adapter: media-dual-track [end]
+		resource, _, err = s.storeResourceWithWriter(task.UserID, kind, "generated."+extensionFromMimeType(mimeType), mimeType, info.Size(), width, height, durationMs, file, mediaUploadKey(task.ID, index), forceLocal, s.storeTaskMediaObject)
 	} else {
 		// Reuse the same object key after a failed upload; no orphan per retry.
 		resource = existing
@@ -270,8 +279,46 @@ func (s *Service) storeTaskMediaFile(task *model.Task, index int, path, mimeType
 		}
 	}
 	if err != nil {
+		// @opc-adapter: media-dual-track [start]
+		effectiveUpstreamURL := strings.TrimSpace(upstreamURL)
+		if effectiveUpstreamURL == "" {
+			effectiveUpstreamURL = task.UpstreamURL
+		}
+		if existing != nil {
+			existing.UpstreamURL = effectiveUpstreamURL
+			existing.LocalStatus = model.LocalStatusReady
+			existing.LocalPath = path
+			existing.OSSSyncStatus = model.OSSSyncStatusFailed
+			_ = s.repo.SaveResource(existing)
+		} else if res, lookupErr := s.resourceForUploadKey(task.UserID, mediaUploadKey(task.ID, index)); lookupErr == nil && res != nil {
+			res.UpstreamURL = effectiveUpstreamURL
+			res.LocalStatus = model.LocalStatusReady
+			res.LocalPath = path
+			res.OSSSyncStatus = model.OSSSyncStatusFailed
+			_ = s.repo.SaveResource(res)
+		}
+		// @opc-adapter: media-dual-track [end]
 		return nil, err
 	}
+	// @opc-adapter: media-dual-track [start]
+	if resource != nil {
+		effectiveUpstreamURL := strings.TrimSpace(upstreamURL)
+		if effectiveUpstreamURL == "" {
+			effectiveUpstreamURL = task.UpstreamURL
+		}
+		resource.UpstreamURL = effectiveUpstreamURL
+		resource.LocalStatus = model.LocalStatusReady
+		resource.LocalPath = path
+		if resource.Provider == "local" {
+			resource.OSSSyncStatus = model.OSSSyncStatusSkipped
+		} else {
+			resource.OSSSyncStatus = model.OSSSyncStatusSynced
+			now := time.Now()
+			resource.OSSSyncedAt = &now
+		}
+		_ = s.repo.SaveResource(resource)
+	}
+	// @opc-adapter: media-dual-track [end]
 	s.commitUserUploadQuota(task.UserID, info.Size())
 	committed = true
 	if existing != nil {

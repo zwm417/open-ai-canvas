@@ -21,6 +21,7 @@ import { getNodeResourceKind } from "@/lib/canvas/node-registry";
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import type { CanvasNodeData } from "@/types/canvas";
 import { useEffectiveConfig } from "@/stores/use-config-store";
+import { VAULT_PROMPT_IDS } from "@/services/api/prompt-vault";
 import { ModelPicker } from "@/components/model-picker";
 import { FeatureCreditBadge } from "@/components/feature-credit-badge";
 import { useFeatureCredit } from "@/hooks/use-feature-credit";
@@ -118,7 +119,13 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
     const [selectedModel, setSelectedModel] = useState<string>(defaultModel);
 
     // 本地交互状态（不频繁触发全局画布重绘）
-    const [activeTab, setActiveTab] = useState<"classic" | "deconstruct">(meta.activeTab || "classic");
+    // @opc-feature: video-reverse-default-deconstruct [start]
+    const [activeTab, setActiveTab] = useState<"classic" | "deconstruct">(() => {
+        if (meta.activeTab) return meta.activeTab;
+        if (meta.classic?.prompt && !meta.deconstruct?.prompt && !meta.shotManifest?.length) return "classic";
+        return "deconstruct";
+    });
+    // @opc-feature: video-reverse-default-deconstruct [end]
     const [wordLevelAudio, setWordLevelAudio] = useState<boolean>(meta.wordLevelAudio !== false);
     const [userTouchedAsr, setUserTouchedAsr] = useState<boolean>(Boolean(meta.userTouchedAsr));
     const initialLocalAsr = meta.localAsrEnabled !== undefined
@@ -295,7 +302,7 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
         });
     };
 
-    const featureCredit = useFeatureCredit("video_reverse", selectedModel);
+    const featureCredit = useFeatureCredit("canvas_video_reverse", selectedModel);
 
     // 弹窗状态与草稿
     const [rulesModalOpen, setRulesModalOpen] = useState(false);
@@ -729,9 +736,11 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                 prepared,
                 userRequirement: effectiveRequirement,
                 promptRules: effectiveSystemPrompt,
-                replaceBuiltInPrompt: isDeconstruct ? true : classicReplacePrompt,
+                replaceBuiltInPrompt: isDeconstruct ? Boolean(deconstructReplacePrompt) : classicReplacePrompt,
+                vaultPromptId: isDeconstruct ? VAULT_PROMPT_IDS.CREATIVE_REVERSE : VAULT_PROMPT_IDS.VIDEO_REVERSE_CLASSIC,
                 localAsrEnabled: effectiveAsrEnabled,
                 wordLevelAudio: isDeconstruct ? wordLevelAudio : false,
+                scene: "canvas_video_reverse",
                 onProgress: (progress) => {
                     lastActivityTime = Date.now();
                     if (!controller.signal.aborted) {
@@ -1100,7 +1109,7 @@ export function VideoReverseNodeContent({ node, theme }: VideoReverseNodeContent
                     </div>
 
                     <div onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
-                        <FeatureCreditBadge scene="video_reverse" model={selectedModel} size="small" />
+                        <FeatureCreditBadge scene="canvas_video_reverse" model={selectedModel} size="small" />
                     </div>
                 </div>
 

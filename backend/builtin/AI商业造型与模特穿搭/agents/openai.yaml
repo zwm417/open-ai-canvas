@@ -1,0 +1,6 @@
+interface:
+  display_name: "AI 商业造型与模特图"
+  short_description: "瞬时生成多款专业模特造型。全方位展现商品潜力，触达更多目标人群。"
+  default_prompt: "使用 $fashion-outfit-stylist 按领域工作流完成当前任务；复用已确认输入，只在必要确认门暂停，并按真实任务状态交付。"
+policy:
+  allow_implicit_invocation: true

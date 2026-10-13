@@ -1,0 +1,75 @@
+﻿{
+  "id": "ai_film_director",
+  "name": "AI 短剧与电影导演",
+  "description": "把故事或创意转换为具有戏剧冲突、角色连续性、专业分镜、系统媒体生成和确定性后期合成的 AI 短剧或电影化视频。",
+  "icon": "🎬",
+  "color": "#7C2D12",
+  "category": "Video",
+  "scenarios": [
+    "AI 短剧一键成片",
+    "故事转视频",
+    "多镜头电影化叙事",
+    "角色一致性短片",
+    "导演方案与分镜",
+    "短剧视频提示词",
+    "AI mini movie",
+    "cinematic story video"
+  ],
+  "promptTemplate": "使用 $ai-film-director 完成当前任务。先建立戏剧冲突、角色锚点、镜头连续性和声音结构；用户要求一键成片时，逐生成单元调用智影 Platform Media，并使用 Remotion/ffmpeg 完成拼接、终检和交付。不得直连外部媒体供应商。\n\n用户需求：{userInput}",
+  "negativePrompt": "character drift, identity change, costume change, broken continuity, random montage, unmotivated camera, axis break, mismatched dialogue, melted hands, unreadable text, flicker, abrupt ending, watermark, low quality",
+  "preferredModel": "auto",
+  "outputType": "video",
+  "aspectRatio": "auto",
+  "analysisPrompt": "先核验故事目标、角色、时长、画幅、素材权利和交付平台，再按 dramaturgy、three-detail、five-anchor 与模型适配规则完成节拍、分镜和自包含生成单元。任何 AI 生图、生视频或音频只允许通过智影 Platform Media，使用系统模型配置、默认参数、积分和持久化链路；不得直连供应商。用户明确要求一键成片时，生成真实镜头后继续 Remotion/ffmpeg 拼接、连续性检查、整片渲染和终检。",
+  "displayName": "AI 短剧与电影导演",
+  "shortDescription": "用专业剧作、分镜和系统媒体链路完成 AI 短剧与电影化视频。",
+  "skillIds": [
+    "ai_film_director",
+    "ai-film-director"
+  ],
+  "role": "AI 电影导演与短剧制作人",
+  "agentType": "ai-film-director",
+  "workflowProfile": "short_drama",
+  "workflow": {
+    "mode": "staged",
+    "confirmationPolicy": "phase_gated",
+    "stages": [
+      "核验故事目标、角色和制作边界",
+      "建立戏剧节拍、角色锚点和视觉圣经",
+      "完成分镜、生成单元和声音设计",
+      "通过系统媒体链路逐镜生成",
+      "拼接成片并执行连续性和质量终检"
+    ],
+    "requiredInputs": [
+      {
+        "key": "story_brief",
+        "label": "故事、剧本、大纲或核心创意",
+        "required": true,
+        "blocking": true,
+        "accepts": ["text", "image", "images", "video"],
+        "prompt": "请提供故事、剧本、大纲或核心创意，以及期望时长和画幅。"
+      },
+      {
+        "key": "character_assets",
+        "label": "角色、场景和风格参考",
+        "required": false,
+        "blocking": false,
+        "accepts": ["text", "image", "images", "video"]
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "image_generation",
+      "video_generation",
+      "multi_asset_planning",
+      "task_status",
+      "post_production_handoff"
+    ]
+  },
+  "tools": [
+    "image_generate",
+    "web_search",
+    "web_extract",
+    "fetch_url_context"
+  ]
+}

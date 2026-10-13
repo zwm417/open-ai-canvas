@@ -9,6 +9,7 @@ import { resolveResourceUrl } from "@/services/api/resources";
 import { getCachedResourceBlob } from "@/services/resource-blob-cache";
 import { setMediaBlob } from "@/services/file-storage";
 import { requestImageQuestion } from "@/services/api/image";
+import { HEADER_CANVAS_SYSTEM_PROMPT_ID, VAULT_PROMPT_IDS } from "@/services/api/prompt-vault";
 import {
     resolveChannelVideoModelDurationBounds,
     resolveChannelVideoModelMaxDuration,
@@ -196,7 +197,7 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
             deductedMicrocredits = 0;
             try {
                 await refundFeatureCredits({
-                    scene: "video_reverse",
+                    scene: "canvas_video_reverse",
                     model: effectiveModel,
                     amountMicrocredits: amount,
                     note: "画布视频反推取消退款",
@@ -219,7 +220,7 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
 
     try {
         const creditRes = await deductFeatureCredits({
-            scene: "video_reverse",
+            scene: "canvas_video_reverse",
             model: effectiveModel,
             note: "画布视频反推任务",
             referenceKey: deductKey,
@@ -365,10 +366,12 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
             config: { ...(generationConfig as any), model: effectiveModel },
             prepared,
             userRequirement: effectiveRequirement,
-            replaceBuiltInPrompt: isDeconstruct ? true : Boolean(classicReplacePrompt),
+            replaceBuiltInPrompt: isDeconstruct ? Boolean(deconstructReplacePrompt) : Boolean(classicReplacePrompt),
             promptRules: effectivePromptRules,
+            vaultPromptId: isDeconstruct ? VAULT_PROMPT_IDS.CREATIVE_REVERSE : VAULT_PROMPT_IDS.VIDEO_REVERSE_CLASSIC,
             localAsrEnabled: effectiveAsrEnabled,
             wordLevelAudio: isDeconstruct ? wordLevelAudio : false,
+            scene: "canvas_video_reverse",
             signal: controller.signal,
             onProgress: (p) => {
                 task.progress = p.percent;
@@ -519,7 +522,7 @@ async function executeVideoReverse(execution: CanvasGenerationExecution) {
             deductedMicrocredits = 0;
             try {
                 await refundFeatureCredits({
-                    scene: "video_reverse",
+                    scene: "canvas_video_reverse",
                     model: effectiveModel,
                     amountMicrocredits: amount,
                     note: "画布视频反推失败退款",
@@ -695,7 +698,7 @@ async function executeMaterialAnalysis(execution: CanvasGenerationExecution) {
             deductedMicrocredits = 0;
             try {
                 await refundFeatureCredits({
-                    scene: "material_analysis",
+                    scene: "canvas_material_analysis",
                     model: effectiveModel,
                     amountMicrocredits: amount,
                     note: "画布素材分析取消退款",
@@ -718,7 +721,7 @@ async function executeMaterialAnalysis(execution: CanvasGenerationExecution) {
 
     try {
         const creditRes = await deductFeatureCredits({
-            scene: "material_analysis",
+            scene: "canvas_material_analysis",
             model: effectiveModel,
             note: "画布素材分析任务",
             referenceKey: deductKey,
@@ -771,7 +774,7 @@ async function executeMaterialAnalysis(execution: CanvasGenerationExecution) {
         if (controller.signal.aborted) {
             if (deductedMicrocredits > 0) {
                 void refundFeatureCredits({
-                    scene: "material_analysis",
+                    scene: "canvas_material_analysis",
                     model: effectiveModel,
                     amountMicrocredits: deductedMicrocredits,
                     note: "画布素材分析取消退款",
@@ -792,13 +795,14 @@ async function executeMaterialAnalysis(execution: CanvasGenerationExecution) {
                 customRules: meta.customRules,
                 replaceBuiltInPrompt: meta.replaceBuiltInPrompt,
                 promptRules: meta.promptRules,
+                scene: "canvas_material_analysis",
             },
         );
 
         if (controller.signal.aborted) {
             if (deductedMicrocredits > 0) {
                 void refundFeatureCredits({
-                    scene: "material_analysis",
+                    scene: "canvas_material_analysis",
                     model: effectiveModel,
                     amountMicrocredits: deductedMicrocredits,
                     note: "画布素材分析取消退款",
@@ -886,7 +890,7 @@ async function executeMaterialAnalysis(execution: CanvasGenerationExecution) {
             deductedMicrocredits = 0;
             try {
                 await refundFeatureCredits({
-                    scene: "material_analysis",
+                    scene: "canvas_material_analysis",
                     model: effectiveModel,
                     amountMicrocredits: amount,
                     note: "画布素材分析失败退款",
@@ -1054,7 +1058,17 @@ async function executeConfigScript(execution: CanvasGenerationExecution) {
             { ...generationConfig, model: effectiveModel, systemPrompt: effectiveSystemPrompt },
             [{ role: "user", content: [{ type: "text", text: promptBundle.userPrompt }] }],
             () => undefined,
-            { signal: controller.signal, temperature: 0.85, presence_penalty: 0.2, scene: "config_script" },
+            {
+                signal: controller.signal,
+                temperature: 0.85,
+                presence_penalty: 0.2,
+                scene: "config_script",
+                headers: !meta.useCustomPrompt
+                    ? {
+                          [HEADER_CANVAS_SYSTEM_PROMPT_ID]: VAULT_PROMPT_IDS.CREATION_ASSISTANT,
+                      }
+                    : undefined,
+            },
         );
     } catch (err) {
         if (deductedMicrocredits > 0) {
@@ -1326,7 +1340,17 @@ async function executeRefScript(execution: CanvasGenerationExecution) {
             { ...generationConfig, model: effectiveModel, systemPrompt: effectiveSystemPrompt },
             [{ role: "user", content: classicContentParts }],
             () => undefined,
-            { signal: controller.signal, temperature: 0.85, presence_penalty: 0.2, scene: "ref_script" },
+            {
+                signal: controller.signal,
+                temperature: 0.85,
+                presence_penalty: 0.2,
+                scene: "ref_script",
+                headers: !meta.useCustomPrompt
+                    ? {
+                          [HEADER_CANVAS_SYSTEM_PROMPT_ID]: VAULT_PROMPT_IDS.CREATION_ASSISTANT_REFERENCE,
+                      }
+                    : undefined,
+            },
         );
     } catch (err) {
         if (deductedMicrocredits > 0) {

@@ -1,0 +1,391 @@
+{
+  "name": "Song pastoral fixed anchors",
+  "selection_rule": "Select a coherent subset for every prompt; do not paste all anchors.",
+  "entries": [
+    {
+      "id": "core.worldview.01",
+      "category": "worldview",
+      "tier": "hard",
+      "zh": "谦抑朴素的宋式乡居世界",
+      "en": "a modest and unadorned Song-style rural world",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.worldview.02",
+      "category": "worldview",
+      "tier": "hard",
+      "zh": "普通日常劳动被呈现为田园诗",
+      "en": "ordinary daily work rendered as pastoral poetry",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.worldview.03",
+      "category": "worldview",
+      "tier": "hard",
+      "zh": "自然亲近的邻里陪伴",
+      "en": "natural neighborly companionship",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.worldview.04",
+      "category": "worldview",
+      "tier": "hard",
+      "zh": "非宫廷、非贵族、非仪式化的生活",
+      "en": "non-courtly, non-aristocratic, non-ceremonial life",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.character.01",
+      "category": "character",
+      "tier": "hard",
+      "zh": "自然比例、气质温和的年轻女子",
+      "en": "a gently present young woman with natural proportions",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.character.02",
+      "category": "character",
+      "tier": "hard",
+      "zh": "简洁半束黑发",
+      "en": "simple half-up black hair",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.character.03",
+      "category": "character",
+      "tier": "hard",
+      "zh": "随微风移动的零散碎发",
+      "en": "loose black strands carried by a mild breeze",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.character.04",
+      "category": "character",
+      "tier": "hard",
+      "zh": "自然连续、柔和克制的面部明暗",
+      "en": "soft continuous natural facial modeling",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.character.05",
+      "category": "character",
+      "tier": "hard",
+      "zh": "闭唇而克制的浅笑",
+      "en": "a restrained closed-lip smile",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.character.06",
+      "category": "character",
+      "tier": "hard",
+      "zh": "视线落在劳动、器物或同伴身上",
+      "en": "a gaze tied to the work, object, or companion",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.attire.01",
+      "category": "attire",
+      "tier": "hard",
+      "zh": "米白色宽松宋式外袍",
+      "en": "a loose rice-white Song-style outer robe",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.attire.02",
+      "category": "attire",
+      "tier": "hard",
+      "zh": "苔绿或黛绿交领内衫",
+      "en": "a moss-green or deep-green cross-collar inner layer",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.attire.03",
+      "category": "attire",
+      "tier": "hard",
+      "zh": "朴素宋式夏季层叠衣装",
+      "en": "plain layered Song-style summer clothing",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.attire.04",
+      "category": "attire",
+      "tier": "hard",
+      "zh": "有真实纤维感的棉麻面料",
+      "en": "cotton-linen fabric with visible natural fiber",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.attire.05",
+      "category": "attire",
+      "tier": "hard",
+      "zh": "适合劳动的宽大衣袖",
+      "en": "broad sleeves suited to quiet manual work",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.attire.06",
+      "category": "attire",
+      "tier": "hard",
+      "zh": "自然下垂并带柔和褶皱的长裙",
+      "en": "a long skirt falling in soft natural creases",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.attire.07",
+      "category": "attire",
+      "tier": "hard",
+      "zh": "无华丽首饰与宫廷装饰",
+      "en": "no ornate jewelry or courtly adornment",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.setting_material.01",
+      "category": "setting_material",
+      "tier": "hard",
+      "zh": "带岁月痕迹的白粉墙",
+      "en": "weathered whitewashed rural walls",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.setting_material.02",
+      "category": "setting_material",
+      "tier": "hard",
+      "zh": "深色旧木窗框与梁柱",
+      "en": "dark aged timber windows and beams",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.setting_material.03",
+      "category": "setting_material",
+      "tier": "hard",
+      "zh": "克制朴素的黛瓦屋檐",
+      "en": "restrained black-tile eaves",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.setting_material.04",
+      "category": "setting_material",
+      "tier": "hard",
+      "zh": "手工搭建的竹架与竹篱",
+      "en": "hand-built bamboo frames and fences",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.setting_material.05",
+      "category": "setting_material",
+      "tier": "hard",
+      "zh": "带磨损痕迹的木器",
+      "en": "weathered wooden utensils with signs of use",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.setting_material.06",
+      "category": "setting_material",
+      "tier": "hard",
+      "zh": "粗陶、石器、旧铁与竹编组成的材料系统",
+      "en": "a material system of rough clay, stone, aged iron, and woven bamboo",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.light_palette.01",
+      "category": "light_palette",
+      "tier": "hard",
+      "zh": "树叶或竹架筛落的温暖自然光",
+      "en": "warm natural light filtered through leaves or bamboo",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.light_palette.02",
+      "category": "light_palette",
+      "tier": "hard",
+      "zh": "开放天空、门窗或白墙形成的柔和冷色补光",
+      "en": "gentle cool fill from open sky, doorways, or pale walls",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.light_palette.03",
+      "category": "light_palette",
+      "tier": "hard",
+      "zh": "缓慢移动的斑驳树影",
+      "en": "slowly drifting dappled leaf shadows",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.light_palette.04",
+      "category": "light_palette",
+      "tier": "hard",
+      "zh": "明亮通透而不过曝的高光",
+      "en": "bright translucent highlights without broad clipping",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.light_palette.05",
+      "category": "light_palette",
+      "tier": "hard",
+      "zh": "低饱和、低全局反差的色调",
+      "en": "a restrained low-saturation, low-global-contrast grade",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.light_palette.06",
+      "category": "light_palette",
+      "tier": "hard",
+      "zh": "米白与灰白占据主要色域",
+      "en": "rice white and pale plaster owning the main color field",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.light_palette.07",
+      "category": "light_palette",
+      "tier": "hard",
+      "zh": "苔绿识别人物，暖木与陶土提供少量点缀",
+      "en": "moss green identifying the subject with sparse warm wood and clay accents",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.optics.01",
+      "category": "optics",
+      "tier": "hard",
+      "zh": "人物面部与劳动中的双手保持清晰",
+      "en": "the face and working hands held in clear focus",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.optics.02",
+      "category": "optics",
+      "tier": "hard",
+      "zh": "画框边缘有少量柔焦枝叶或窗格遮挡",
+      "en": "soft foliage or lattice occlusion confined to the frame edges",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.optics.03",
+      "category": "optics",
+      "tier": "hard",
+      "zh": "克制而明确的浅景深",
+      "en": "restrained and intentional shallow depth of field",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.optics.04",
+      "category": "optics",
+      "tier": "hard",
+      "zh": "柔和奶油状散景",
+      "en": "soft creamy bokeh",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.optics.05",
+      "category": "optics",
+      "tier": "hard",
+      "zh": "高光处只有克制光晕",
+      "en": "restrained bloom limited to bright edges",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.optics.06",
+      "category": "optics",
+      "tier": "hard",
+      "zh": "细微而不脏的电影胶片颗粒",
+      "en": "subtle clean cinematic film grain",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.motion.01",
+      "category": "motion",
+      "tier": "hard",
+      "zh": "温和且方向明确的横向微风",
+      "en": "a mild cross breeze with one clear direction",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.motion.02",
+      "category": "motion",
+      "tier": "hard",
+      "zh": "发丝、袖口与叶片服从同一风向",
+      "en": "hair, sleeve edges, and leaves obeying the same breeze",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.motion.03",
+      "category": "motion",
+      "tier": "hard",
+      "zh": "蒸汽、水滴、谷尘、湿布或枝叶只响应当前动作",
+      "en": "steam, droplets, grain dust, wet cloth, or foliage responding only to the current action",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.motion.04",
+      "category": "motion",
+      "tier": "hard",
+      "zh": "手与器物具有可信的接触、重量和受力",
+      "en": "believable hand-object contact, weight, and force",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.motion.05",
+      "category": "motion",
+      "tier": "hard",
+      "zh": "动作节奏安静、自然且不表演",
+      "en": "quiet natural movement without performative posing",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.mood.01",
+      "category": "mood",
+      "tier": "hard",
+      "zh": "宁静、诗意、亲近土地的田园气息",
+      "en": "a serene poetic pastoral atmosphere close to the land",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.mood.02",
+      "category": "mood",
+      "tier": "hard",
+      "zh": "亲密、温柔而具有恢复感",
+      "en": "an intimate gentle restorative mood",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.mood.03",
+      "category": "mood",
+      "tier": "hard",
+      "zh": "非摆拍的中国古装电影观察式静帧",
+      "en": "an unposed observational still from a Chinese period film",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.anti_drift.01",
+      "category": "anti_drift",
+      "tier": "hard",
+      "zh": "避免宫殿、华丽唐风与仙侠魔法",
+      "en": "avoid palaces, ornate Tang styling, and xianxia magic",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.anti_drift.02",
+      "category": "anti_drift",
+      "tier": "hard",
+      "zh": "避免现代电器、塑料工具与合成面料",
+      "en": "avoid modern appliances, plastic tools, and synthetic fabric",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.anti_drift.03",
+      "category": "anti_drift",
+      "tier": "hard",
+      "zh": "避免时装硬照姿态与所有人物直视镜头",
+      "en": "avoid fashion-editorial posing and every figure looking at the camera",
+      "source": "house-style visual DNA"
+    },
+    {
+      "id": "core.anti_drift.04",
+      "category": "anti_drift",
+      "tier": "hard",
+      "zh": "避免高饱和、塑料皮肤、文字与水印",
+      "en": "avoid oversaturation, plastic skin, text, and watermarks",
+      "source": "house-style visual DNA"
+    }
+  ],
+  "entry_count": 48
+}

@@ -38,29 +38,30 @@ const sizeMap: Record<SelectSize, "small" | "middle"> = {
 export const Select = forwardRef<RefSelectProps, SelectProps>(function Select({ size, ariaLabel, appearance = "pill", className, variant, onMouseDown, onKeyDown, onFocus, onBlur, ...props }, ref) {
     const [inputModality, setInputModality] = useState<"unknown" | "pointer" | "keyboard">("unknown");
     const normalizedSize = size && size in sizeMap ? sizeMap[size as SelectSize] : size;
+    const resolvedAriaLabel = ariaLabel ?? (props as { "aria-label"?: string })["aria-label"];
     return (
         <AntSelect
             ref={ref}
             {...props}
             variant={variant ?? "filled"}
             size={normalizedSize as AntSelectProps["size"]}
-            aria-label={ariaLabel}
+            aria-label={resolvedAriaLabel}
             className={cn("app-unified-select", `app-unified-select--${appearance}`, className)}
             data-input-modality={inputModality}
             onMouseDown={(event) => {
-                setInputModality("pointer");
+                if (inputModality !== "pointer") setInputModality("pointer");
                 onMouseDown?.(event);
             }}
             onKeyDown={(event) => {
-                setInputModality("keyboard");
+                if (inputModality !== "keyboard") setInputModality("keyboard");
                 onKeyDown?.(event);
             }}
             onFocus={(event) => {
-                setInputModality((current) => (current === "unknown" ? "keyboard" : current));
+                if (inputModality === "unknown") setInputModality("keyboard");
                 onFocus?.(event);
             }}
             onBlur={(event) => {
-                setInputModality("unknown");
+                if (inputModality !== "unknown") setInputModality("unknown");
                 onBlur?.(event);
             }}
         />

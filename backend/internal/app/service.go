@@ -22,6 +22,10 @@ import (
 	"infinite-canvas/backend/internal/skills"
 	"infinite-canvas/backend/internal/sms"
 	"infinite-canvas/backend/internal/tools"
+
+	// @opc-adapter: custom-license [start]
+	"gorm.io/gorm"
+	// @opc-adapter: custom-license [end]
 )
 
 type Service struct {
@@ -120,6 +124,9 @@ type TaskListOptions struct {
 	Limit      int
 	ProjectID  string
 	ActiveOnly bool
+	// @opc-adapter: task_list_batch_id [start]
+	BatchID    string
+	// @opc-adapter: task_list_batch_id [end]
 }
 
 func New(repo *repository.Repository, dataDir string) *Service {
@@ -234,7 +241,15 @@ func (s *Service) Tasks(userID string, limit int) ([]TaskSummary, error) {
 }
 
 func (s *Service) TasksWithOptions(userID string, options TaskListOptions) ([]TaskSummary, error) {
-	tasks, err := s.repo.Tasks(userID, options.Limit, options.ProjectID, options.ActiveOnly)
+	// @opc-adapter: task_list_batch_id [start]
+	var tasks []model.Task
+	var err error
+	if strings.TrimSpace(options.BatchID) != "" {
+		tasks, err = s.repo.TasksForBatch(userID, strings.TrimSpace(options.BatchID))
+	} else {
+		tasks, err = s.repo.Tasks(userID, options.Limit, options.ProjectID, options.ActiveOnly)
+	}
+	// @opc-adapter: task_list_batch_id [end]
 	if err != nil {
 		return nil, err
 	}
@@ -450,3 +465,12 @@ func defaultString(value string, fallback string) string {
 func newID() string {
 	return kernel.NewID()
 }
+
+// @opc-adapter: custom-license [start]
+func (s *Service) DB() *gorm.DB {
+	if s.repo == nil {
+		return nil
+	}
+	return s.repo.DB()
+}
+// @opc-adapter: custom-license [end]

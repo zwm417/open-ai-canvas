@@ -1,0 +1,35 @@
+{
+  "skill_name": "fashion-outfit-stylist",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "用这件风衣做学生、通勤和轻户外三套模特造型。",
+      "should_trigger": true,
+      "expected_output": "锁定风衣结构；三个 Look 人群不同；不改服装",
+      "assertions": [
+        "锁定风衣结构",
+        "三个 Look 人群不同",
+        "不改服装"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "做三张真实买家随手拍。",
+      "should_trigger": false,
+      "expected_output": "应路由到 fashion-ugc-post-creator",
+      "assertions": [
+        "应路由到 fashion-ugc-post-creator"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "只提供了正面图，但要准确展示背部腰带。",
+      "should_trigger": true,
+      "expected_output": "要求补充背面；不得补造结构",
+      "assertions": [
+        "要求补充背面",
+        "不得补造结构"
+      ]
+    }
+  ]
+}

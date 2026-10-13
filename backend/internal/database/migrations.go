@@ -10,13 +10,16 @@ import (
 	// @opc-adapter: creative-prompt-templates [start]
 	creativeprompts "infinite-canvas/backend/internal/custom/creative-prompts"
 	// @opc-adapter: creative-prompt-templates [end]
+	// @opc-adapter: custom-license [start]
+	"infinite-canvas/backend/internal/custom/license"
+	// @opc-adapter: custom-license [end]
 
 	"gorm.io/gorm"
 )
 
-// @opc-adapter: canvas-extensions-migration [start]
-const CurrentSchemaVersion int64 = 45
-// @opc-adapter: canvas-extensions-migration [end]
+// @opc-adapter: media-dual-track [start]
+const CurrentSchemaVersion int64 = 46
+// @opc-adapter: media-dual-track [end]
 
 const baselineSchemaChecksum = "sha256:open-ai-canvas-schema-v1-20260830"
 const schemaMigrationAppliedAtIndexChecksum = "sha256:schema-migrations-applied-at-index-v2-20260830"
@@ -163,6 +166,11 @@ var schemaMigrations = []migration{
 		return tx.AutoMigrate(&model.Canvas{}, &model.CanvasNode{}, &model.Approval{})
 	}},
 	// @opc-adapter: canvas-extensions-migration [end]
+	// @opc-adapter: media-dual-track [start]
+	{version: 46, name: "media_delivery_dual_track", checksum: "sha256:media-delivery-dual-track-v46-20261007", apply: func(tx *gorm.DB) error {
+		return tx.AutoMigrate(&model.Task{}, &model.Resource{})
+	}},
+	// @opc-adapter: media-dual-track [end]
 }
 
 func migratePrefixedIDSequenceReconcile(tx *gorm.DB) error {
@@ -533,6 +541,11 @@ func MigrateSchema(db *gorm.DB) error {
 			return fmt.Errorf("确保生成历史表结构就绪：%w", err)
 		}
 		// @opc-adapter: generation_logs_schema [end]
+		// @opc-adapter: custom-license [start]
+		if err := license.AutoMigrate(tx); err != nil {
+			return fmt.Errorf("确保激活码授权表结构就绪：%w", err)
+		}
+		// @opc-adapter: custom-license [end]
 		return RequireSchemaVersion(tx)
 	})
 }

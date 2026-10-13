@@ -11216,6 +11216,23 @@ html[data-magicui-theme-vt="active"] .admin-shell * {
     overflow: hidden;
 }
 
+/* The protocol browser is a real two-pane field, not a popup. Keep its
+   fixed-height list inside the modal scroll area instead of letting the form
+   grid place it below the visible viewport. */
+.admin-model-editor-modal .admin-model-protocol-field .choice-browser {
+    min-height: 0;
+}
+
+.admin-model-editor-modal .admin-model-protocol-field .choice-browser-panels {
+    max-height: 248px;
+}
+
+.admin-model-editor-modal .admin-model-protocol-field .choice-browser-list,
+.admin-model-editor-modal .admin-model-protocol-field .choice-browser-detail {
+    min-height: 0;
+    max-height: 248px;
+}
+
 .admin-model-editor-modal .admin-model-editor-form {
     display: flex;
     min-height: 0;
@@ -11242,3 +11259,20 @@ html[data-magicui-theme-vt="active"] .admin-shell * {
 .admin-model-editor-modal .admin-model-editor-form > .ant-tabs > .ant-tabs-body-holder > .ant-tabs-content > .ant-tabs-tabpane {
     min-height: 100%;
 }
+
+/* @opc-feature: ant-select-tag-click-passthrough [start] */
+/* 确保多选/标签 Select 在点击 tag 文字区域时直接透传点击到容器以展开下拉框，同时保留删除按钮点击 */
+.ant-select-multiple .ant-select-content-item:not(.ant-select-content-item-suffix),
+.ant-select-multiple .ant-select-selection-item-content,
+.ant-select-multiple .ant-select-selection-item {
+    pointer-events: none;
+}
+.ant-select-multiple .ant-select-selection-item-remove {
+    pointer-events: auto;
+    cursor: pointer;
+}
+/* @opc-feature: ant-select-tag-click-passthrough [end] */
+
+/* @opc-feature: admin-model-editor-select-contrast [start] */
+/* Popup surfaces are owned by the scoped admin overlay extension. */
+/* @opc-feature: admin-model-editor-select-contrast [end] */

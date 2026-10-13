@@ -2,8 +2,12 @@
 //
 // 纯展示组件，数据与操作回调由素材库页面传入。
 
-import { Dropdown, type MenuProps } from "antd";
+// @opc-feature: assets-card-dropdown-menu [start]
+import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/base/dropdown-menu";
+import { Modal, Select } from "antd";
+// @opc-feature: assets-card-dropdown-menu [end]
 import { AlertTriangle, AudioLines, Box, Copy, Download, FileText, FolderOpen, MoreHorizontal, PencilLine, Play, RotateCcw, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";
 import { type AssetKind } from "@/stores/use-asset-store";
 import { AssetMediaPreview } from "@/components/asset-media-preview";
@@ -64,17 +68,34 @@ export function AssetCard({
     onMoveToFolder: (folderId: string) => void;
 }) {
     const summary = assetSummary(asset);
-    const menuItems: MenuProps["items"] = isTrash
-        ? [{ key: "restore", icon: <RotateCcw className="size-3.5" />, label: "还原到素材库", onClick: onRestore }, { type: "divider" as const }, { key: "delete", danger: true, icon: <Trash2 className="size-3.5" />, label: "彻底删除", onClick: onDelete }]
+    // @opc-feature: assets-card-dropdown-menu [start]
+    const [moveModalOpen, setMoveModalOpen] = useState(false);
+    const [targetFolderId, setTargetFolderId] = useState(asset.folderId || "");
+
+    const menuItems: DropdownMenuItem[] = isTrash
+        ? [
+              { key: "restore", icon: <RotateCcw className="size-3.5" />, label: "还原到素材库", onClick: onRestore },
+              { key: "divider-1", divider: true },
+              { key: "delete", danger: true, icon: <Trash2 className="size-3.5" />, label: "彻底删除", onClick: onDelete },
+          ]
         : [
               ...(asset.kind === "text" || asset.kind === "image" ? [{ key: "edit", icon: <PencilLine className="size-3.5" />, label: "编辑", onClick: onEdit }] : []),
               ...(asset.kind === "text" ? [{ key: "copy", icon: <Copy className="size-3.5" />, label: "复制文本", onClick: () => void onCopy(asset) }] : []),
               ...(asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model" ? [{ key: "download", icon: <Download className="size-3.5" />, label: "下载", onClick: () => onDownload(asset) }] : []),
-              { key: "move", icon: <FolderOpen className="size-3.5" />, label: "移动到分类", children: folderOptions.map((folder) => ({ key: folder.value || "uncategorized", label: folder.label, onClick: () => onMoveToFolder(folder.value) })) },
-              { type: "divider" as const },
+              {
+                  key: "move",
+                  icon: <FolderOpen className="size-3.5" />,
+                  label: "移动到分类...",
+                  onClick: () => {
+                      setTargetFolderId(asset.folderId || "");
+                      setMoveModalOpen(true);
+                  },
+              },
+              { key: "divider-2", divider: true },
               { key: "archive", icon: <Trash2 className="size-3.5 text-amber-500" />, label: "移入回收站", onClick: onArchive },
               { key: "delete", danger: true, icon: <Trash2 className="size-3.5" />, label: "彻底删除", onClick: onDelete },
           ];
+    // @opc-feature: assets-card-dropdown-menu [end]
     return (
         <AssetLibraryCard selected={selected}>
             <AssetCover asset={asset} selected={selected} isTrash={isTrash} onSelect={onSelect} onOpen={onOpen} menuItems={menuItems} />
@@ -101,6 +122,31 @@ export function AssetCard({
                     <span className="truncate">{assetProjectLabel(asset)}</span>
                 </div>
             </button>
+            {/* @opc-feature: assets-card-dropdown-menu [start] */}
+            <Modal
+                title={`移动《${asset.title}》到分类`}
+                open={moveModalOpen}
+                destroyOnClose
+                onCancel={() => setMoveModalOpen(false)}
+                onOk={() => {
+                    onMoveToFolder(targetFolderId);
+                    setMoveModalOpen(false);
+                }}
+                okText="确认移动"
+                cancelText="取消"
+            >
+                <div className="py-3">
+                    <label className="mb-2 block text-xs text-muted-foreground">选择目标分类：</label>
+                    <Select
+                        className="w-full"
+                        value={targetFolderId}
+                        onChange={(val) => setTargetFolderId(val)}
+                        options={folderOptions}
+                        placeholder="请选择分类"
+                    />
+                </div>
+            </Modal>
+            {/* @opc-feature: assets-card-dropdown-menu [end] */}
         </AssetLibraryCard>
     );
 }
@@ -109,7 +155,7 @@ export function isKnownAssetKind(kind: unknown): kind is AssetKind {
     return kind === "image" || kind === "video" || kind === "audio" || kind === "model" || kind === "text" || kind === "entity";
 }
 
-export function AssetCover({ asset, selected, isTrash = false, onSelect, onOpen, menuItems }: { asset: LibraryAsset; selected: boolean; isTrash?: boolean; onSelect: (selected: boolean) => void; onOpen: () => void; menuItems: MenuProps["items"] }) {
+export function AssetCover({ asset, selected, isTrash = false, onSelect, onOpen, menuItems }: { asset: LibraryAsset; selected: boolean; isTrash?: boolean; onSelect: (selected: boolean) => void; onOpen: () => void; menuItems: DropdownMenuItem[] }) {
     const kind = isKnownAssetKind(asset.kind) ? asset.kind : undefined;
     const KindIcon = kind ? assetKindIcons[kind] : FileText;
     const clock = asset.kind === "video" || asset.kind === "audio" ? formatAssetClock(asset.data.durationMs) : null;
@@ -156,11 +202,21 @@ export function AssetCover({ asset, selected, isTrash = false, onSelect, onOpen,
             {clock ? <span className="assets-cover-clock">{clock}</span> : null}
             {asset.kind === "audio" && !isTrash ? <AudioPlayButton asset={asset} className="absolute bottom-2 left-2" /> : null}
             <input type="checkbox" checked={selected} onClick={(event) => event.stopPropagation()} onChange={(event) => onSelect(event.target.checked)} className="assets-select-check" aria-label={`选择 ${asset.title}`} />
-            <Dropdown trigger={["click"]} menu={{ items: menuItems }}>
-                <button type="button" className="assets-cover-more" aria-label="更多素材操作" title="更多操作">
-                    <MoreHorizontal className="size-4" />
-                </button>
-            </Dropdown>
+            {/* @opc-feature: assets-card-dropdown-menu [start] */}
+            <div
+                className="assets-cover-more-wrap"
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+            >
+                <DropdownMenu
+                    placement="bottom end"
+                    triggerClassName="assets-cover-more"
+                    trigger={<MoreHorizontal className="size-4" />}
+                    items={menuItems}
+                    ariaLabel="更多素材操作"
+                />
+            </div>
+            {/* @opc-feature: assets-card-dropdown-menu [end] */}
         </AssetLibraryCardMedia>
     );
 }

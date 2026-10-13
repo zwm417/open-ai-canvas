@@ -1,0 +1,91 @@
+﻿{
+  "id": "personal_ip_generator",
+  "name": "个人 IP 生成",
+  "description": "从授权肖像或代表形象需求出发，通过逐步确认的预设风格流程生成一致的个人 IP、正式头像和表情贴纸套系。",
+  "icon": "◉",
+  "color": "#EC4899",
+  "category": "IP & Character",
+  "scenarios": [
+    "个人 IP",
+    "真人卡通形象",
+    "个人头像",
+    "数字分身",
+    "微信表情包",
+    "sticker pack",
+    "personal avatar",
+    "digital double"
+  ],
+  "promptTemplate": "使用 $personal-ip-generator，通过一次一个问题的确认流程锁定身份、预设风格和角色方案，再生成一致的个人 IP 与表情套系。\n\n用户需求：{userInput}",
+  "negativePrompt": "unauthorized likeness, sensitive attribute inference, copied reference character, copied logo, copied watermark, identity drift, inconsistent face, changed hairstyle, changed outfit anchors, duplicate accessories, extra limbs, unreadable expression, generated numbering, random style, low quality",
+  "preferredModel": "auto",
+  "outputType": "image",
+  "aspectRatio": "auto",
+  "analysisPrompt": "先区分人物 IP 与代表形象 IP，再按一次一个问题的方式确认授权身份来源、预设或自定义风格、增强特征、配色和提示词锁；生成六选一预览，锁定候选后交付正式头像、九宫格表情和可复用角色规范。",
+  "displayName": "个人 IP 生成",
+  "shortDescription": "逐步锁定身份与风格，生成一致的个人头像、角色和表情套系",
+  "skillIds": [
+    "personal_ip_generator",
+    "personal-ip-generator"
+  ],
+  "role": "个人 IP 与表情系统设计师",
+  "agentType": "personal-ip-production-designer",
+  "workflowProfile": "staged",
+  "workflow": {
+    "mode": "staged",
+    "confirmationPolicy": "phase_gated",
+    "stages": [
+      "确认人物 IP 或代表形象模式",
+      "核验肖像授权与身份锚点",
+      "选择预设或解析自定义风格",
+      "锁定增强特征、配色与提示词",
+      "生成六选一角色预览",
+      "确认候选并生成头像与表情套系",
+      "执行身份一致性与交付验收"
+    ],
+    "requiredInputs": [
+      {
+        "key": "ip_mode",
+        "label": "人物 IP 或代表形象 IP",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "text"
+        ],
+        "prompt": "请先选择人物 IP，或代表个人、团队、品牌与概念的原创形象 IP。"
+      },
+      {
+        "key": "identity_or_representative_source",
+        "label": "授权肖像或代表形象需求",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "image",
+          "images",
+          "text"
+        ],
+        "prompt": "请提供已授权的人物照片，或说明原创代表形象需要表达的身份与特征。"
+      },
+      {
+        "key": "style_source",
+        "label": "预设风格或授权自定义风格参考",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "image",
+          "images",
+          "text"
+        ],
+        "prompt": "请选择一个现有风格预设，或上传已授权的自定义风格参考。"
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "image_generation",
+      "multi_asset_planning",
+      "performance_iteration",
+      "task_status",
+      "post_production_handoff"
+    ]
+  },
+  "tools": []
+}

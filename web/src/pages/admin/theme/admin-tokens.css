@@ -66,6 +66,7 @@
     --border: var(--admin-border);
     --muted: var(--admin-surface-2);
     --popover: var(--admin-surface);
+    --popover-foreground: var(--admin-text);
     --ring: var(--admin-focus);
     --font-sans: var(--admin-font);
     --workspace-content: var(--admin-canvas);
@@ -129,6 +130,8 @@
     --admin-chart-secondary: #2dd4bf;
     --admin-chart-warning: #fbbf24;
     --admin-shadow-overlay: 0 22px 56px rgba(0, 0, 0, 0.48);
+    --popover: var(--admin-surface);
+    --popover-foreground: var(--admin-text);
 }
 
 [data-admin-root][data-admin-density="comfortable"] {

@@ -1,0 +1,7 @@
+interface:
+  display_name: "巨物天宫中式美学提示词"
+  short_description: "一句场景生成 ImageGen 与 Midjourney 8.2 天宫提示词"
+  default_prompt: "使用 $giant-celestial-palace-prompts，把‘宫殿内一群女子坐着喝茶’扩写为 ImageGen 与 Midjourney 8.2 提示词。"
+
+policy:
+  allow_implicit_invocation: true

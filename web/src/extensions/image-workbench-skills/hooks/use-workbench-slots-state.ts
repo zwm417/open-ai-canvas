@@ -2,6 +2,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { nanoid } from "nanoid";
 import { uploadImage } from "@/services/image-storage";
+import { resolveResourceUrl } from "@/services/api/resources";
+import { peekLocalFirstMedia } from "@/services/local-first-media-resolver";
 import { useImageWorkbenchStore } from "@/stores/use-image-workbench-store";
 import type { ActiveSlotFile, SlotFilesContainer, WorkbenchSkill } from "../types/skill-contract";
 import type { ReferenceImage } from "@/types/image";
@@ -59,6 +61,25 @@ export function useWorkbenchSlotsState(skill: WorkbenchSkill | null) {
             }
 
             const newSlots = skill.uploadSlots;
+            const newSlotIds = new Set(newSlots.map((s) => s.id));
+            const occupiedSlotIds = Object.keys(prevContainers).filter(
+                (slotId) => prevContainers[slotId]?.files && prevContainers[slotId]!.files!.length > 0,
+            );
+
+            // 正向工程架构防御：若已有素材的槽位全部是目标技能的合法槽位，且各槽位内素材 slotId 均已正确对齐（如快照恢复或同类槽位复用），
+            // 严禁重新打散合并，完整保留用户原始槽位归属与主图选中态 (activeId)
+            const isAlreadyMatched =
+                occupiedSlotIds.length > 0 &&
+                occupiedSlotIds.every((slotId) => newSlotIds.has(slotId)) &&
+                occupiedSlotIds.every((slotId) => {
+                    const container = prevContainers[slotId];
+                    return container?.files?.every((f) => f.slotId === slotId);
+                });
+
+            if (isAlreadyMatched) {
+                return prevContainers;
+            }
+
             const slotCount = newSlots.length;
             const nextContainers: Record<string, SlotFilesContainer> = {};
 
@@ -262,6 +283,104 @@ export function useWorkbenchSlotsState(skill: WorkbenchSkill | null) {
         }
     }, [setSlotContainers]);
 
+    // 向指定槽位批量追加素材（使该槽位包含多张素材并自动进入折叠态）
+    const addSlotFiles = useCallback(async (slotId: string, files: (File | Blob)[], customNames?: string[]) => {
+        if (!files || files.length === 0) return;
+        const pendingItems: ActiveSlotFile[] = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const previewUrl = URL.createObjectURL(file);
+            objectUrlsRef.current.add(previewUrl);
+
+            const fileName = customNames?.[i] || (file instanceof File ? file.name : `${slotId}-${nanoid(6)}.png`);
+            const tempId = nanoid();
+
+            pendingItems.push({
+                id: tempId,
+                slotId,
+                name: fileName,
+                dataUrl: previewUrl,
+                previewUrl,
+                file: file instanceof File ? file : undefined,
+                bytes: file.size,
+                mimeType: file.type || "image/png",
+            });
+        }
+
+        setSlotContainers((prev) => {
+            const container = prev[slotId] || { files: [] };
+            const nextFiles = [...(container.files || []), ...pendingItems];
+            return {
+                ...prev,
+                [slotId]: {
+                    files: nextFiles,
+                    activeId: container.activeId || nextFiles[0]?.id,
+                },
+            };
+        });
+
+        // 异步静默持久化上传
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const tempId = pendingItems[i].id;
+            uploadImage(file)
+                .then((uploaded) => {
+                    setSlotContainers((prev) => {
+                        const container = prev[slotId];
+                        if (!container) return prev;
+                        const nextFiles = container.files.map((f) => {
+                            if (f.id === tempId) {
+                                return {
+                                    ...f,
+                                    dataUrl: uploaded.url,
+                                    previewUrl: uploaded.url,
+                                    storageKey: uploaded.storageKey,
+                                    width: uploaded.width,
+                                    height: uploaded.height,
+                                };
+                            }
+                            return f;
+                        });
+                        return {
+                            ...prev,
+                            [slotId]: { ...container, files: nextFiles },
+                        };
+                    });
+                })
+                .catch(() => {
+                    // 本地 previewUrl 仍可正常保真展示与端侧提交
+                });
+        }
+    }, [setSlotContainers]);
+
+    // 向指定槽位追加已上传/已解析的素材引用（如资产库选入或跨槽位转移）
+    const addSlotReference = useCallback((slotId: string, ref: ReferenceImage) => {
+        const effectiveUrl = ref.dataUrl || ref.url || (ref.storageKey ? (peekLocalFirstMedia(ref.storageKey) || resolveResourceUrl(ref.storageKey)) : "");
+        const activeFile: ActiveSlotFile = {
+            id: ref.id || nanoid(),
+            slotId,
+            name: ref.name || "reference.png",
+            dataUrl: effectiveUrl,
+            previewUrl: effectiveUrl,
+            storageKey: ref.storageKey,
+            mimeType: ref.type || "image/png",
+            width: ref.width,
+            height: ref.height,
+            bytes: ref.bytes,
+        };
+        setSlotContainers((prev) => {
+            const container = prev[slotId] || { files: [] };
+            const nextFiles = [...(container.files || []), activeFile];
+            return {
+                ...prev,
+                [slotId]: {
+                    files: nextFiles,
+                    activeId: container.activeId || activeFile.id,
+                },
+            };
+        });
+    }, [setSlotContainers]);
+
     // 设为槽位当前生效主图
     const setSlotActiveFile = useCallback((slotId: string, fileId: string) => {
         setSlotContainers((prev) => {
@@ -403,15 +522,18 @@ export function useWorkbenchSlotsState(skill: WorkbenchSkill | null) {
             return;
         }
 
-        const convertedFiles: ActiveSlotFile[] = refs.map((ref) => ({
-            id: ref.id || nanoid(),
-            slotId: "",
-            name: ref.name || "reference.png",
-            dataUrl: ref.dataUrl || "",
-            previewUrl: ref.dataUrl || "",
-            storageKey: ref.storageKey,
-            mimeType: ref.type || "image/png",
-        }));
+        const convertedFiles: ActiveSlotFile[] = refs.map((ref) => {
+            const effectiveUrl = ref.dataUrl || ref.url || (ref.storageKey ? (peekLocalFirstMedia(ref.storageKey) || resolveResourceUrl(ref.storageKey)) : "");
+            return {
+                id: ref.id || nanoid(),
+                slotId: "",
+                name: ref.name || "reference.png",
+                dataUrl: effectiveUrl,
+                previewUrl: effectiveUrl,
+                storageKey: ref.storageKey,
+                mimeType: ref.type || "image/png",
+            };
+        });
 
         const newSlots = targetSkill.uploadSlots;
         const slotCount = newSlots.length;
@@ -466,7 +588,7 @@ export function useWorkbenchSlotsState(skill: WorkbenchSkill | null) {
         if (!skill) return true;
         for (const slot of skill.uploadSlots) {
             const container = slotContainers[slot.id];
-            const hasValidFile = container && container.files && container.files.some((f) => Boolean(f.dataUrl));
+            const hasValidFile = container && container.files && container.files.some((f) => Boolean(f.dataUrl || f.previewUrl || f.storageKey));
             if (!slot.optional && !hasValidFile) {
                 return false;
             }
@@ -479,7 +601,7 @@ export function useWorkbenchSlotsState(skill: WorkbenchSkill | null) {
         let count = 0;
         for (const container of Object.values(slotContainers)) {
             if (container && container.files) {
-                count += container.files.filter((f) => Boolean(f.dataUrl)).length;
+                count += container.files.filter((f) => Boolean(f.dataUrl || f.previewUrl || f.storageKey)).length;
             }
         }
         return count;
@@ -493,6 +615,8 @@ export function useWorkbenchSlotsState(skill: WorkbenchSkill | null) {
         slotActiveIdMap,
         setSlotFile,
         addSlotFile,
+        addSlotFiles,
+        addSlotReference,
         setSlotActiveFile,
         removeSlotFile,
         replaceSlotFile,

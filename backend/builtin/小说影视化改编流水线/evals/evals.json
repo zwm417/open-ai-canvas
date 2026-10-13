@@ -1,0 +1,40 @@
+{
+  "skill_name": "novel-to-film-pipeline",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "请帮我完成：小说转剧本。使用我提供的真实素材，并交付可检查的结果。",
+      "should_trigger": true,
+      "expected_output": "触发Novel to Film Pipeline，由小说影视化 Showrunner、总编剧、分镜导演、资产连续性主管与成片制片人从“摄取原著并建立章节、哈希和证据索引”推进到“执行原著、剧本、资产、镜头、声音和技术六层终检”，使用image_generation能力并报告真实结果。",
+      "assertions": [
+        "触发Novel to Film Pipeline",
+        "摄取原著并建立章节、哈希和证据索引",
+        "执行原著、剧本、资产、镜头、声音和技术六层终检",
+        "image_generation",
+        "不虚构完成状态"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "我需要网文短剧化，请遵守现有素材和明确规格，失败时只修复失败单元。",
+      "should_trigger": true,
+      "expected_output": "使用Novel to Film Pipeline的领域工作流，保留用户事实和参考素材，按真实任务状态执行并只返工失败项。",
+      "assertions": [
+        "使用Novel to Film Pipeline",
+        "保留用户事实和参考素材",
+        "按真实任务状态执行",
+        "只返工失败项"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "只帮我检查一份 CSV 的重复行并给出数量，不需要视频、分镜、动画或媒体生成。",
+      "should_trigger": false,
+      "expected_output": "不触发Novel to Film Pipeline，因为请求不属于该 Skill 的领域或媒体边界。",
+      "assertions": [
+        "不触发Novel to Film Pipeline",
+        "识别领域边界"
+      ]
+    }
+  ]
+}

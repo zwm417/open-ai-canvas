@@ -8,7 +8,7 @@ import path from "node:path";
 describe("生图工作台视觉技能体系与装配引擎", () => {
     it("内置技能目录与分类完整有效，全面覆盖6大专业场景插件库", () => {
         expect(BUILTIN_CATEGORIES.length).toBe(8);
-        expect(BUILTIN_SKILLS.length).toBe(33);
+        expect(BUILTIN_SKILLS.length).toBe(35);
 
         // 验证 6 大专业场景覆盖
         const categories = new Set(BUILTIN_SKILLS.map((s) => s.categoryId));
@@ -33,6 +33,20 @@ describe("生图工作台视觉技能体系与装配引擎", () => {
                 "material-macro-texture",
             ])
         );
+
+        // 验证第一阶段图文排版核心工作流卡片
+        const typographySkillIds = [
+            "xiaohongshu-cover",
+            "youtube-thumbnail",
+            "ad-creative",
+            "amazon-listing-images",
+        ];
+        for (const id of typographySkillIds) {
+            const found = BUILTIN_SKILLS.find((s) => s.id === id);
+            expect(found).toBeDefined();
+            expect(found?.instructions).toBeTruthy();
+            expect(found?.avoid?.length).toBeGreaterThan(0);
+        }
 
         // 验证新加入的 6 个专业工作流卡片
         const newSkillIds = [
@@ -59,12 +73,41 @@ describe("生图工作台视觉技能体系与装配引擎", () => {
             expect(skill.showcaseImageUrl).toBeTruthy();
             expect(typeof skill.defaultCount).toBe("number");
             expect(skill.defaultCount).toBeGreaterThanOrEqual(1);
-            if (skill.id === "detail-8pack") {
-                expect(skill.defaultCount).toBe(8);
+            // @opc-feature: detail_set_workflow [start]
+            // 电商套图工作流卡片（替代原 detail-8pack）：AI 规划默认 6 张
+            if (skill.id === "ecommerce-detail-set") {
+                expect(skill.defaultCount).toBe(6);
+                expect(skill.workflow?.kind).toBe("detail-set");
             } else {
                 expect(skill.defaultCount).toBe(1);
             }
+            // @opc-feature: detail_set_workflow [end]
         }
+    });
+
+    it("针对现代图文排版卡片（小红书封面/YouTube缩略图/广告创意/亚马逊卖点图）正确注入字形与版式渲染规范", () => {
+        const xhsSkill = BUILTIN_SKILLS.find((s) => s.id === "xiaohongshu-cover");
+        expect(xhsSkill).toBeDefined();
+
+        const result = assembleWorkbenchPrompt({
+            skill: xhsSkill!,
+            userPrompt: "大标题：【极简穿搭教程】；副标题：照着穿不踩雷",
+            slotFiles: {
+                product: {
+                    id: "slot-file-p",
+                    slotId: "product",
+                    name: "dress.png",
+                    dataUrl: "data:image/png;base64,mockdress",
+                    previewUrl: "blob:http://localhost/mockdress",
+                },
+            },
+        });
+
+        expect(result.finalPrompt).toContain("【工作流目标：小红书爆款封面】");
+        expect(result.finalPrompt).toContain("排版与文字规范：依托顶尖字形渲染与商业版式构建能力");
+        expect(result.finalPrompt).toContain("中英文字符严格准确拼写");
+        expect(result.referenceImages.length).toBe(1);
+        expect(result.slotMappings[0].label).toBe("核心主体");
     });
 
     it("通用模式下提示词组装兜底正常", () => {
@@ -157,7 +200,7 @@ describe("生图工作台视觉技能体系与装配引擎", () => {
         }
     });
 
-    it("全量 33 个工作流卡片的静态图片资源均物理存在于 public/images/skills", () => {
+    it("全量 35 个工作流卡片的静态图片资源均物理存在于 public/images/skills", () => {
         const publicDir = path.resolve(import.meta.dir, "../public");
         for (const skill of BUILTIN_SKILLS) {
             if (skill.avatarUrl) {
@@ -169,6 +212,26 @@ describe("生图工作台视觉技能体系与装配引擎", () => {
                 expect(fs.existsSync(showcasePath)).toBe(true);
             }
         }
+    });
+
+    it("图文排版核心卡片正确配置 defaultAspectRatio 与 keywords 检索增强", () => {
+        const xhs = BUILTIN_SKILLS.find((s) => s.id === "xiaohongshu-cover");
+        expect(xhs?.defaultAspectRatio).toBe("3:4");
+        expect(xhs?.keywords).toContain("xhs");
+        expect(xhs?.keywords).toContain("小红书");
+
+        const ytb = BUILTIN_SKILLS.find((s) => s.id === "youtube-thumbnail");
+        expect(ytb?.defaultAspectRatio).toBe("16:9");
+        expect(ytb?.keywords).toContain("ytb");
+        expect(ytb?.keywords).toContain("油管");
+
+        const ad = BUILTIN_SKILLS.find((s) => s.id === "ad-creative");
+        expect(ad?.defaultAspectRatio).toBe("1:1");
+        expect(ad?.keywords).toContain("广告");
+
+        const amazon = BUILTIN_SKILLS.find((s) => s.id === "amazon-listing-images");
+        expect(amazon?.defaultAspectRatio).toBe("1:1");
+        expect(amazon?.keywords).toContain("亚马逊");
     });
 
     it("buildImageReferencePromptText 对已组装工作流提示词透明透传，杜绝重复【】中括号前缀", () => {
@@ -317,6 +380,96 @@ describe("生图工作台视觉技能体系与装配引擎", () => {
         expect(result.referenceImages.map((r) => r.id)).toContain("f-model");
         expect(result.referenceImages.map((r) => r.id)).toContain("f-top-1");
         expect(result.referenceImages.map((r) => r.id)).toContain("f-top-2");
+    });
+
+    it("ecommerce-detail-set 电商套图槽位定义支持最多 8 张商品图，并在装配时完整保留多图", () => {
+        const skill = BUILTIN_SKILLS.find((s) => s.id === "ecommerce-detail-set")!;
+        expect(skill).toBeDefined();
+
+        const productSlot = skill.uploadSlots.find((s) => s.id === "product");
+        expect(productSlot).toBeDefined();
+        expect(productSlot?.maxCount).toBe(8);
+
+        // 模拟用户批量上传了 6 张商品图至 product 槽位
+        const mockProductFiles = Array.from({ length: 6 }, (_, i) => ({
+            id: `prod-${i + 1}`,
+            slotId: "product",
+            name: `product_angle_${i + 1}.png`,
+            dataUrl: `data:image/png;base64,mockprod${i + 1}`,
+            previewUrl: `data:image/png;base64,mockprod${i + 1}`,
+        }));
+
+        const slotFiles = {
+            product: mockProductFiles[0],
+        };
+
+        const slotFilesMap = {
+            product: mockProductFiles,
+        };
+
+        const result = assembleWorkbenchPrompt({
+            skill,
+            userPrompt: "突出核心成分与高级质感",
+            slotFiles: slotFiles as any,
+            slotFilesMap: slotFilesMap as any,
+        });
+
+        // 验证商品主体映射正常
+        expect(result.slotMappings.some((m) => m.slotId === "product")).toBe(true);
+        // 验证所有 6 张商品图均完整进入 referenceImages
+        expect(result.referenceImages.length).toBe(6);
+        for (let i = 1; i <= 6; i++) {
+            expect(result.referenceImages.map((r) => r.id)).toContain(`prod-${i}`);
+        }
+    });
+
+    it("ecommerce-detail-set 彻底移除冗余 extra 插槽，保留精准 3 类分类插槽 (商品8/人物2/背景3)", () => {
+        const skill = BUILTIN_SKILLS.find((s) => s.id === "ecommerce-detail-set")!;
+        expect(skill).toBeDefined();
+
+        // 验证彻底无 extra 冗余插槽
+        const slotIds = skill.uploadSlots.map((s) => s.id);
+        expect(slotIds).not.toContain("extra");
+        expect(slotIds).toEqual(["product", "person", "background"]);
+
+        // 验证容量约束与总数一致性
+        const productSlot = skill.uploadSlots.find((s) => s.id === "product");
+        const personSlot = skill.uploadSlots.find((s) => s.id === "person");
+        const bgSlot = skill.uploadSlots.find((s) => s.id === "background");
+
+        expect(productSlot?.maxCount).toBe(8);
+        expect(personSlot?.maxCount).toBe(2);
+        expect(bgSlot?.maxCount).toBe(3);
+        expect(skill.maxFiles).toBe(13); // 8 + 2 + 3 = 13
+    });
+
+    it("assembleWorkbenchPrompt 在素材仅有 storageKey 或 previewUrl 时亦能正确收集并解析有效URL", () => {
+        const skill = BUILTIN_SKILLS.find((s) => s.id === "product-hero")!;
+        expect(skill).toBeDefined();
+
+        const slotFiles: Record<string, ActiveSlotFile> = {
+            product: {
+                id: "f-storage-only",
+                slotId: "product",
+                name: "item.png",
+                dataUrl: "",
+                previewUrl: "",
+                storageKey: "resource:res_test_12345",
+            },
+        };
+
+        const result = assembleWorkbenchPrompt({
+            skill,
+            userPrompt: "商用级产品大片",
+            slotFiles,
+        });
+
+        expect(result.slotMappings.length).toBe(1);
+        expect(result.slotMappings[0].slotId).toBe("product");
+        expect(result.referenceImages.length).toBe(1);
+        expect(result.referenceImages[0].id).toBe("f-storage-only");
+        expect(result.referenceImages[0].storageKey).toBe("resource:res_test_12345");
+        expect(result.referenceImages[0].dataUrl).toContain("/resources/res_test_12345/file");
     });
 });
 

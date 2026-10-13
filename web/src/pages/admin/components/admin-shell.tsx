@@ -43,7 +43,11 @@ import { AppChangelogButton } from "@/components/layout/app-changelog-modal";
 import { BrandLogoFrame } from "@/components/brand/brand-logo";
 import { publishWorkspaceSidebarCollapsed, readWorkspaceSidebarCollapsed, subscribeWorkspaceSidebarCollapsed } from "@/components/layout/workspace-sidebar-state";
 import { cn } from "@/lib/utils";
+import { getAdminPopupContainer } from "@/extensions/admin-overlay/admin-popup-container";
 import { useThemeStore } from "@/stores/use-theme-store";
+// @opc-feature: admin-theme-state-sync [start]
+import { useActiveTheme, useCanvasThemeStore } from "@/stores/canvas/use-canvas-theme-store";
+// @opc-feature: admin-theme-state-sync [end]
 import { useUserStore } from "@/stores/use-user-store";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { getIsolatedAdminAntTheme } from "../theme/admin-ant-theme";
@@ -51,6 +55,7 @@ import { AdminTooltip } from "../ui/controls";
 import "@/styles/admin-ui.css";
 import "../theme/admin-tokens.css";
 import "../theme/admin-chrome.css";
+import "@/extensions/admin-overlay/admin-overlay.css";
 
 type AdminNavigationItem = {
     path: string;
@@ -120,13 +125,30 @@ function isAdminNavigationPath(pathname: string, navigationPath: string) {
 }
 
 function adminPopupContainer(node?: HTMLElement) {
-    return document.getElementById("admin-root") || node?.closest("[data-admin-root]") || document.body;
+    // @opc-feature: admin-anti-clipping-container [start]
+    // 先挂载到后台根节点，使弹层继承后台主题变量；仅在根节点尚未创建时回退到 body。
+    return getAdminPopupContainer(node);
+    // @opc-feature: admin-anti-clipping-container [end]
 }
 
 export function AdminShell() {
     const appearance = useAppearanceStore((state) => state.appearance);
     const [collapsed, setCollapsed] = useState(readWorkspaceSidebarCollapsed);
-    const dark = useThemeStore((state) => state.theme === "dark");
+    // @opc-feature: admin-theme-state-sync [start]
+    const workspaceTheme = useThemeStore((state) => state.theme);
+    const activeTheme = useActiveTheme();
+    const [domDark, setDomDark] = useState(() => typeof document !== "undefined" && document.documentElement.classList.contains("dark"));
+
+    useEffect(() => {
+        const syncDom = () => setDomDark(document.documentElement.classList.contains("dark"));
+        syncDom();
+        const observer = new MutationObserver(syncDom);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        return () => observer.disconnect();
+    }, []);
+
+    const dark = workspaceTheme === "dark" || activeTheme === "dark" || domDark;
+    // @opc-feature: admin-theme-state-sync [end]
 
     useEffect(() => {
         document.body.classList.add("admin-overlays");
@@ -189,6 +211,7 @@ export function AdminShell() {
                         </Suspense>
                     </section>
                 </main>
+                <div data-admin-overlay-host />
             </App>
         </ConfigProvider>
     );
@@ -237,19 +260,42 @@ export function AdminPageFrame({ title, description, actions, back, scroll = fal
     );
 }
 
+// @opc-feature: admin-theme-button-sync [start]
 function AdminThemeButton() {
     const theme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
-    const dark = theme === "dark";
+    const activeTheme = useActiveTheme();
+    const [domDark, setDomDark] = useState(() => typeof document !== "undefined" && document.documentElement.classList.contains("dark"));
+
+    useEffect(() => {
+        const syncDom = () => setDomDark(document.documentElement.classList.contains("dark"));
+        syncDom();
+        const observer = new MutationObserver(syncDom);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        return () => observer.disconnect();
+    }, []);
+
+    const dark = theme === "dark" || activeTheme === "dark" || domDark;
+
+    const handleToggle = () => {
+        const next = dark ? "light" : "dark";
+        setTheme(next);
+        useCanvasThemeStore.getState().setTheme(next);
+        if (typeof document !== "undefined") {
+            document.documentElement.classList.toggle("dark", next === "dark");
+            document.documentElement.style.colorScheme = next;
+        }
+    };
 
     return (
         <AdminTooltip title={dark ? "切换到浅色主题" : "切换到深色主题"} placement="bottom">
-            <button type="button" className="admin-page-theme-toggle shrink-0" onClick={() => setTheme(dark ? "light" : "dark")} aria-label={dark ? "切换到浅色主题" : "切换到深色主题"}>
+            <button type="button" className="admin-page-theme-toggle shrink-0" onClick={handleToggle} aria-label={dark ? "切换到浅色主题" : "切换到深色主题"}>
                 {dark ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
             </button>
         </AdminTooltip>
     );
 }
+// @opc-feature: admin-theme-button-sync [end]
 
 function MobileAdminNavigation() {
     const features = useUserStore((state) => state.features);

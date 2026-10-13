@@ -65,7 +65,17 @@ func cloudAgentLayoutLane(nodeType string) (string, bool) {
 		return "audio", true
 	case "image":
 		return "image", true
-	case "text", "markdown", "script", "batch-table":
+	case "text", "markdown", "script", "batch-table",
+		// @opc-adapter: custom-agent-nodes [start]
+		"video-reverse:analyzer",
+		"creation-assistant-analysis:analyzer",
+		"creation-assistant-script:generator",
+		"creation-assistant-ref-script:generator",
+		"standard-batch-table:table",
+		"creative-asset-table:table",
+		"creative-voice-table:table",
+		"creative-storyboard-table:table":
+		// @opc-adapter: custom-agent-nodes [end]
 		return "text", true
 	default:
 		// 背板 / 文件夹是容器，插件节点也不参与几何整理。

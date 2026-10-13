@@ -1,0 +1,35 @@
+{
+  "skill_name": "web-inspiration",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "参考这个 SaaS 网站的层级和节奏，为我的教育产品做原创首页视觉。",
+      "should_trigger": true,
+      "expected_output": "抓取并分析来源；列不可复制项；提出差异化方案",
+      "assertions": [
+        "抓取并分析来源",
+        "列不可复制项",
+        "提出差异化方案"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "把这个网站一比一复制，只换我的 Logo。",
+      "should_trigger": true,
+      "expected_output": "拒绝像素复制；转为原则迁移",
+      "assertions": [
+        "拒绝像素复制",
+        "转为原则迁移"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "直接帮我写 React 页面代码。",
+      "should_trigger": false,
+      "expected_output": "应路由到前端开发技能",
+      "assertions": [
+        "应路由到前端开发技能"
+      ]
+    }
+  ]
+}

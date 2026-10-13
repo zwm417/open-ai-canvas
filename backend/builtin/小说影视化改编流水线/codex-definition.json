@@ -1,0 +1,104 @@
+﻿{
+  "id": "novel_to_film_pipeline",
+  "name": "小说影视化流水线",
+  "description": "把长篇小说和网文改编为标准剧本、统一资产、逐镜分镜与最终视频成片的智影全流程。",
+  "icon": "🎞️",
+  "color": "#6E3B8F",
+  "category": "Video",
+  "scenarios": [
+    "小说转剧本",
+    "网文短剧化",
+    "小说转视频",
+    "多集连续短剧",
+    "小说漫剧与动态漫",
+    "角色场景道具资产圣经",
+    "长篇故事影视化",
+    "novel to screenplay",
+    "novel to film pipeline"
+  ],
+  "promptTemplate": "使用 $novel-to-film-pipeline 执行当前小说影视化任务。先建立原著证据索引、canon 和改编决策，再完成分集规划、标准剧本、双重审校、资产圣经、逐镜分镜、独立关键帧、逐镜视频、声音、Remotion/FFmpeg 合成和最终 MP4 验收。所有图片、视频、音频和 3D 生成必须通过智影 Platform Media，禁止直连外部供应商。\n\n用户需求：{userInput}",
+  "negativePrompt": "source contradiction, lost causality, character identity drift, relationship inconsistency, wrong costume state, broken prop ownership, world rule violation, unmotivated twist, exposition dump, unfilmable internal monologue, generic storyboard, continuity error, axis break, motion mismatch, lip sync error, flicker, deformation, unreadable text, watermark, placeholder, missing final render",
+  "preferredModel": "auto",
+  "outputType": "video",
+  "aspectRatio": "auto",
+  "analysisPrompt": "按阶段读取并索引原著，建立可追溯 canon、人物关系、世界规则和改编决定；根据故事容量规划季集和准确时长，写可拍标准剧本并完成业务、证据、连续性和合规审校。为角色、场景、道具分配稳定资产 ID，通过智影 Platform Media 生成一致性资产及每镜 start/peak/end 独立关键帧，再逐镜生成视频和声音，使用 Remotion/FFmpeg 合成。只有最终 MP4 存在、可解码、验证器无阻断错误且六层终检通过时才宣称成片完成。",
+  "displayName": "Novel to Film Pipeline",
+  "shortDescription": "从小说分析到资产、分镜与最终视频成片。",
+  "skillIds": [
+    "novel_to_film_pipeline",
+    "novel-to-film-pipeline"
+  ],
+  "role": "小说影视化 Showrunner、总编剧、分镜导演、资产连续性主管与成片制片人",
+  "agentType": "novel-to-film-showrunner",
+  "workflowProfile": "staged",
+  "workflow": {
+    "mode": "staged",
+    "confirmationPolicy": "phase_gated",
+    "stages": [
+      "摄取原著并建立章节、哈希和证据索引",
+      "锁定改编目标、权利边界和交付规格",
+      "建立 canon、人物关系、世界规则和改编诊断",
+      "规划季、集、场次、时长和结尾钩子",
+      "编写可制作剧本并完成四类审校",
+      "建立角色、场景、道具和服装状态资产圣经",
+      "通过智影 Platform Media 生成一致性资产",
+      "生成逐镜分镜脚本及 start/peak/end 独立关键帧",
+      "根据分镜、关键帧和批准资产逐镜生成视频",
+      "生成对白、旁白、音乐、音效并制作字幕",
+      "使用 Remotion 和 FFmpeg 合成渲染最终 MP4",
+      "执行原著、剧本、资产、镜头、声音和技术六层终检"
+    ],
+    "requiredInputs": [
+      {
+        "key": "authorized_novel_source",
+        "label": "有权使用的小说原稿、章节文本或文档",
+        "required": true,
+        "blocking": true,
+        "accepts": ["text", "document", "file", "files"],
+        "prompt": "请提供你有权用于改编的小说原稿、章节文本或项目文件。"
+      },
+      {
+        "key": "adaptation_goal",
+        "label": "改编类型、受众、平台和交付范围",
+        "required": true,
+        "blocking": true,
+        "accepts": ["text", "choice"],
+        "prompt": "请说明希望改编为短剧、短片、动态漫或其他形式，以及要剧本/分镜还是最终成片。"
+      },
+      {
+        "key": "delivery_spec",
+        "label": "集数、单集时长、画幅、语言和发布平台",
+        "required": false,
+        "blocking": false,
+        "accepts": ["text", "choice", "number"]
+      },
+      {
+        "key": "visual_references",
+        "label": "角色、场景、画风和已有 IP 资产参考",
+        "required": false,
+        "blocking": false,
+        "accepts": ["image", "images", "video", "document"]
+      }
+    ],
+    "capabilities": [
+      "document_analysis",
+      "reference_analysis",
+      "web_research",
+      "screenplay_writing",
+      "storyboard_planning",
+      "image_generation",
+      "video_generation",
+      "audio_generation",
+      "3d_generation",
+      "multi_asset_planning",
+      "task_status",
+      "post_production_handoff"
+    ]
+  },
+  "tools": [
+    "image_generate",
+    "web_search",
+    "web_extract",
+    "fetch_url_context"
+  ]
+}

@@ -1,0 +1,6 @@
+interface:
+  display_name: "商品详情页设计"
+  short_description: "设计并实现高转化、响应式、可访问且支持多变体的商品详情页面"
+  default_prompt: "使用 $product-page-design 为当前商品设计并实现高转化、响应式的商品详情页。"
+policy:
+  allow_implicit_invocation: true

@@ -28,14 +28,41 @@ export type VideoWorkbenchDraft = {
     creationPlan?: VideoCreationPlan;
 };
 
+export type VideoSessionWorkspaceSnapshot = {
+    sessionId: string;
+    skillId: string | null;
+    isDirectorMode: boolean;
+    directorScenes?: any[];
+    prompt: string;
+    references: ReferenceImage[];
+    videoReferences: ReferenceVideo[];
+    audioReferences: ReferenceAudio[];
+    textReferences: VideoTextReference[];
+    referenceOrder: VideoReferenceOrderItem[];
+    model?: string;
+    aspectRatio?: string;
+    resolution?: string;
+    durationSec?: number;
+    videoSeconds?: string;
+    videoGenerateAudio?: string | boolean;
+    videoWatermark?: string | boolean;
+    creationPlan?: VideoCreationPlan;
+    creationAssistant?: any;
+    updatedAt: number;
+};
+
 type VideoWorkbenchStore = {
     hydrated: boolean;
     hasStoredDraft: boolean;
     draft: VideoWorkbenchDraft;
+    sessionSnapshots: Record<string, VideoSessionWorkspaceSnapshot>;
     past: VideoWorkbenchDraft[];
     future: VideoWorkbenchDraft[];
     updateDraft: (patch: Partial<VideoWorkbenchDraft> | ((draft: VideoWorkbenchDraft) => VideoWorkbenchDraft)) => void;
     replaceDraft: (draft: VideoWorkbenchDraft) => void;
+    saveSessionSnapshot: (sessionId: string, snapshot: Omit<VideoSessionWorkspaceSnapshot, "sessionId" | "updatedAt">) => void;
+    getSessionSnapshot: (sessionId: string) => VideoSessionWorkspaceSnapshot | undefined;
+    removeSessionSnapshot: (sessionId: string) => void;
     undo: () => void;
     redo: () => void;
     reset: () => void;
@@ -78,10 +105,11 @@ const videoWorkbenchStorage: PersistStorage<VideoWorkbenchStore> = {
 
 export const useVideoWorkbenchStore = create<VideoWorkbenchStore>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             hydrated: false,
             hasStoredDraft: false,
             draft: defaultVideoWorkbenchDraft,
+            sessionSnapshots: {},
             past: [],
             future: [],
             updateDraft: (patch) =>
@@ -103,6 +131,28 @@ export const useVideoWorkbenchStore = create<VideoWorkbenchStore>()(
                     past: [...state.past, state.draft].slice(-MAX_HISTORY),
                     future: [],
                 })),
+            saveSessionSnapshot: (sessionId, snapshot) =>
+                set((state) => {
+                    const next = { ...state.sessionSnapshots };
+                    next[sessionId] = {
+                        ...snapshot,
+                        sessionId,
+                        updatedAt: Date.now(),
+                    };
+                    const keys = Object.keys(next);
+                    if (keys.length > 100) {
+                        const sorted = keys.sort((a, b) => next[a].updatedAt - next[b].updatedAt);
+                        sorted.slice(0, keys.length - 100).forEach((k) => delete next[k]);
+                    }
+                    return { sessionSnapshots: next };
+                }),
+            getSessionSnapshot: (sessionId) => get().sessionSnapshots[sessionId],
+            removeSessionSnapshot: (sessionId) =>
+                set((state) => {
+                    const next = { ...state.sessionSnapshots };
+                    delete next[sessionId];
+                    return { sessionSnapshots: next };
+                }),
             undo: () =>
                 set((state) => {
                     const previous = state.past[state.past.length - 1];
@@ -134,12 +184,24 @@ export const useVideoWorkbenchStore = create<VideoWorkbenchStore>()(
         {
             name: VIDEO_WORKBENCH_STORE_KEY,
             storage: videoWorkbenchStorage,
-            partialize: (state) => ({ draft: state.draft }) as StorageValue<VideoWorkbenchStore>["state"],
+            partialize: (state) => ({ draft: state.draft, sessionSnapshots: state.sessionSnapshots }) as StorageValue<VideoWorkbenchStore>["state"],
             onRehydrateStorage: () => (state) => {
+                if (!state?.draft) {
+                    useVideoWorkbenchStore.setState({
+                        hydrated: true,
+                        hasStoredDraft: false,
+                        draft: { ...defaultVideoWorkbenchDraft, sessionId: nanoid() },
+                        sessionSnapshots: state?.sessionSnapshots || {},
+                        past: [],
+                        future: [],
+                    });
+                    return;
+                }
                 useVideoWorkbenchStore.setState((current) => ({
                     hydrated: true,
-                    hasStoredDraft: Boolean(state?.draft?.model),
+                    hasStoredDraft: Boolean(state.draft?.model),
                     draft: { ...current.draft, sessionId: current.draft.sessionId || nanoid() },
+                    sessionSnapshots: state?.sessionSnapshots || current.sessionSnapshots || {},
                 }));
             },
         },
@@ -150,7 +212,16 @@ async function restoreDraft(draft: VideoWorkbenchDraft | undefined): Promise<Vid
     const source = draft || defaultVideoWorkbenchDraft;
     // @opc-feature: workbench-optimistic-upload [start]
     const [references, videoReferences, audioReferences] = await Promise.all([
-        Promise.all((source.references || []).map(async (item) => ({ ...item, dataUrl: await resolveImageUrl(item.storageKey, item.dataUrl), uploading: false, progress: undefined }))),
+        Promise.all((source.references || []).map(async (item) => {
+            const resolvedUrl = await resolveImageUrl(item.storageKey, item.dataUrl || item.url);
+            return {
+                ...item,
+                url: resolvedUrl || item.url || item.dataUrl || "",
+                dataUrl: resolvedUrl || item.dataUrl || item.url || "",
+                uploading: false,
+                progress: undefined,
+            };
+        })),
         Promise.all((source.videoReferences || []).map(async (item) => ({
             ...item,
             url: await resolveMediaUrl(item.storageKey, item.url),

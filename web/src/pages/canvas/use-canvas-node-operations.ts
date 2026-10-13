@@ -160,11 +160,15 @@ export function useCanvasNodeOperations({
             return;
         }
         const workflowTitle = type === CanvasNodeType.Config && selectedWorkflowProvider === "runninghub" ? "RunningHub 工作流" : undefined;
+        // @opc-feature: video-reverse-default-deconstruct [start]
         const metadata: CanvasNodeMetadata | undefined = type === CanvasNodeType.Drawing
             ? { drawingEngine: defaultDrawingEngine }
             : type === CanvasNodeType.Config
                 ? { generationMode: "image", workflowProvider: selectedWorkflowProvider || "model" }
-                : undefined;
+                : type === VIDEO_REVERSE_NODE_TYPE
+                    ? { videoReverse: { activeTab: "deconstruct" } }
+                    : undefined;
+        // @opc-feature: video-reverse-default-deconstruct [end]
         const node = createCanvasNode(type, position || getCanvasCenter(), metadata);
         if (workflowTitle) node.title = workflowTitle;
         commitNodes([...nodesRef.current, node]);

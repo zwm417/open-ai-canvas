@@ -8,3 +8,4 @@ export * from "./components/director-language-duration-popover";
 export * from "./components/reference-replication-panel";
 export * from "./components/replication-prompt-review-modal";
 export * from "./hooks/use-active-video-skills";
+export * from "./stores/use-deep-replication-task-store";

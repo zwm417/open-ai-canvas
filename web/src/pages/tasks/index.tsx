@@ -96,6 +96,7 @@ export default function TasksPage() {
     const [tasks, setTasks] = useState<GenerationTask[]>([]);
     const syncedCanvasTaskIdsRef = useRef(new Set<string>());
     const tasksRef = useRef<GenerationTask[]>([]);
+    const detailTaskRef = useRef<GenerationTask | null>(null);
     const canvasById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
     const domainProjectNameById = useMemo(() => new Map(domainProjects.map((item) => [item.project.id, item.project.name])), [domainProjects]);
     const projectOptions = useMemo(() => projects.map((project) => {
@@ -252,21 +253,33 @@ export default function TasksPage() {
         }
     }, [message, syncCompletedCanvasTasks]);
 
+    const closeTaskDetail = useCallback(() => {
+        detailTaskRef.current = null;
+        setDetailTask(null);
+        setTaskLogs([]);
+        setDetailLoading(false);
+        setLogsLoading(false);
+    }, []);
+
     const openTaskDetail = useCallback(
         async (task: GenerationTask) => {
+            detailTaskRef.current = task;
             setDetailTask(task);
             setTaskLogs([]);
             setDetailLoading(true);
             setLogsLoading(true);
             try {
                 const [detail, logs] = await Promise.all([queryGenerationTask(task.id), listTaskLogs(task.id)]);
-                setDetailTask(detail);
-                setTaskLogs(logs);
+                if (detailTaskRef.current?.id === task.id) {
+                    setDetailTask(detail);
+                    setTaskLogs(logs);
+                }
+
             } catch (error) {
-                message.error(error instanceof Error ? error.message : "任务详情加载失败");
+                if (detailTaskRef.current?.id === task.id) message.error(error instanceof Error ? error.message : "任务详情加载失败");
             } finally {
-                setDetailLoading(false);
-                setLogsLoading(false);
+                if (detailTaskRef.current?.id === task.id) setDetailLoading(false);
+                if (detailTaskRef.current?.id === task.id) setLogsLoading(false);
             }
         },
         [message],
@@ -305,7 +318,8 @@ export default function TasksPage() {
 
     useEffect(() => {
         tasksRef.current = tasks;
-    }, [tasks]);
+        detailTaskRef.current = detailTask;
+    }, [tasks, detailTask]);
 
     useEffect(() => {
         let stopped = false;
@@ -335,7 +349,7 @@ export default function TasksPage() {
         setActingId(id);
         try {
             const currentTask = await queryGenerationTask(id);
-            const savingMedia = Boolean(currentTask.mediaStage);
+            const savingMedia = Boolean(currentTask.canRecoverMedia);
             const next = currentTask.status === "queued" || currentTask.status === "running" || currentTask.status === "succeeded"
                 ? currentTask
                 : savingMedia ? await recoverGenerationTaskMedia(id) : await retryGenerationTask(id);
@@ -356,16 +370,32 @@ export default function TasksPage() {
         try {
             const result = await queryFailedVideoProviderTask(task.id);
             if (!result.recovered) {
-                setTaskLogs(await listTaskLogs(task.id));
+                try {
+                    const logs = await listTaskLogs(task.id);
+                    if (detailTaskRef.current?.id === task.id) setTaskLogs(logs);
+                } catch {
+                    // 日志读取失败不阻断状态提示
+                }
                 message.info(`上游任务仍在处理中${result.providerStatus ? `（${result.providerStatus}）` : ""}`);
                 return;
             }
-            setDetailTask(result.task);
+            setDetailTask((current) => (current?.id === task.id ? result.task : current));
+            if (detailTaskRef.current?.id === task.id) detailTaskRef.current = result.task;
             setTasks((items) => items.map((item) => (item.id === task.id ? { ...item, ...result.task } : item)));
-            setTaskLogs(await listTaskLogs(task.id));
-            await syncGenerationTaskToCanvasStore(result.task);
+
+            try {
+                await syncGenerationTaskToCanvasStore(result.task);
+            } catch (syncError) {
+                console.warn("[tasks] 同步画布状态异常:", syncError);
+            }
             window.dispatchEvent(new CustomEvent("wallet:updated"));
             void loadTasks(false);
+            try {
+                const logs = await listTaskLogs(task.id);
+                if (detailTaskRef.current?.id === task.id) setTaskLogs(logs);
+            } catch {
+                // 附带日志读取失败不阻断核心状态恢复与结算提示
+            }
             if (result.billingSettled) message.success("已获取上游视频，任务已恢复并完成结算");
             else message.warning("已获取上游视频，任务已恢复，计费状态待管理员核对");
         } catch (error) {
@@ -514,7 +544,7 @@ export default function TasksPage() {
                     </Form.Item>
                 </Form>
             </Modal>
-            <Drawer className="library-drawer" title="任务详情" open={Boolean(detailTask)} onClose={() => setDetailTask(null)} size="large" destroyOnHidden>
+            <Drawer className="library-drawer" title="任务详情" open={Boolean(detailTask)} onClose={closeTaskDetail} size="large" destroyOnHidden>
                 {detailTask ? (
                     <div className="space-y-5">
                         <div className="task-detail-facts grid text-sm sm:grid-cols-2">

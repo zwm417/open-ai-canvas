@@ -1,0 +1,88 @@
+﻿{
+  "id": "brand_extension",
+  "name": "产品品牌 Campaign 系统",
+  "description": "把既有产品与品牌系统延展为跨触点 Campaign 视觉。",
+  "icon": "▣",
+  "color": "#F97316",
+  "category": "Branding",
+  "scenarios": [
+    "产品营销组图",
+    "产品营销套图",
+    "营销视觉组图",
+    "全场景营销视觉",
+    "产品品牌营销图",
+    "上传产品图 Logo 品牌名 Slogan",
+    "棚拍",
+    "生活场景",
+    "编辑海报",
+    "户外广告",
+    "product marketing set",
+    "product campaign visuals"
+  ],
+  "promptTemplate": "使用 $brand-extension 完成当前任务。先执行领域工作流和必要确认，再为每个批准的生成单元输出独立、可执行的供应商提示词。\n\n用户需求：{userInput}",
+  "negativePrompt": "watermark, low quality, blurry, distorted product, changed product design, changed logo, wrong brand name, inconsistent brand style, random typography, collage, contact sheet, grid, multi-panel in one image, unrelated product, extra product variant, messy layout",
+  "preferredModel": "gemini-3-pro-image-preview",
+  "outputType": "image",
+  "aspectRatio": "auto",
+  "analysisPrompt": "从一个明确传播命题建立可延展的 Campaign 世界，并让主视觉、社媒、广告、站内和线下触点共享同一识别资产。你负责系统一致性与触点分工，不制作互不相关的漂亮图合集。 按以下阶段执行：核验品牌与产品真相 → 提炼 Campaign 核心命题 → 建立识别母题和系统锁 → 规划触点角色与资产依赖 → 确认主视觉路线 → 逐触点生成并做系统验收。",
+  "tools": [
+    "image_generate",
+    "web_search",
+    "web_extract",
+    "fetch_url_context",
+    "search_reference_images"
+  ],
+  "displayName": "产品品牌 Campaign 系统",
+  "shortDescription": "按品牌目标、渠道版位与转化任务规划 Campaign 资产，不套固定张数模板。",
+  "skillIds": [
+    "brand_extension",
+    "brand-extension"
+  ],
+  "role": "品牌 Campaign 创意总监",
+  "agentType": "brand-campaign-director",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "guided",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "核验品牌与产品真相",
+      "提炼 Campaign 核心命题",
+      "建立识别母题和系统锁",
+      "规划触点角色与资产依赖",
+      "确认主视觉路线",
+      "逐触点生成并做系统验收"
+    ],
+    "requiredInputs": [
+      {
+        "key": "product_brand_assets",
+        "label": "产品与品牌源素材",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "image",
+          "images",
+          "text"
+        ],
+        "prompt": "请提供产品、Logo、包装和品牌规则。"
+      },
+      {
+        "key": "campaign_brief",
+        "label": "Campaign 目标、受众和投放触点",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "text"
+        ],
+        "prompt": "请说明传播目标、受众、渠道与版位。"
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "web_research",
+      "image_generation",
+      "task_status",
+      "multi_asset_planning",
+      "post_production_handoff"
+    ]
+  }
+}

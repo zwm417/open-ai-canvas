@@ -48,7 +48,7 @@ export function MediaPreview({
     }
 
     if (kind === "video") {
-        return <video src={src} width={width} height={height} muted={!controls} playsInline controls={controls} preload="metadata" className={className} onError={handleUnavailable} />;
+        return <video src={src} width={width} height={height} muted={!controls} playsInline controls={controls} preload="none" className={className} onError={handleUnavailable} />;
     }
 
     return <img src={src} alt={alt} width={width} height={height} loading={loading} className={className} onError={handleUnavailable} />;

@@ -211,7 +211,7 @@ const defaultImageSizes = [
 export function defaultImageCapabilityConfig(protocol?: ModelProtocol, model = ""): ImageCapabilityConfig {
     const image: ImageCapabilityConfig = {
         references: { promptMaxChars: 32000, maxImages: 10, maxImageBytes: 10 * 1024 * 1024, maskSupported: true },
-        size: { parameter: "size", values: [...defaultImageSizes], default: "1:1", allowCustom: true },
+        size: { parameter: "size", values: [...defaultImageSizes], default: "9:16", allowCustom: true },
         quality: { supported: true, values: ["auto", "low", "medium", "high"], default: "auto" },
         transparentBackground: { supported: true, default: false },
         responseFormat: { supported: true },
@@ -225,7 +225,7 @@ export function defaultImageCapabilityConfig(protocol?: ModelProtocol, model = "
         image.size = {
             parameter: "aspect_ratio",
             values: ["1:1", "3:4", "4:3", "9:16", "16:9", "2:3", "3:2"],
-            default: "1:1",
+            default: "9:16",
             allowCustom: false,
         };
         image.quality = { supported: true, values: ["1k", "2k"], default: "2k" };
@@ -254,7 +254,7 @@ export function defaultImageCapabilityConfig(protocol?: ModelProtocol, model = "
         image.size = {
             parameter: "aspect_ratio",
             values: ["auto", "1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"],
-            default: "1:1",
+            default: "9:16",
             allowCustom: false,
         };
         image.transparentBackground = { supported: false, default: false };
@@ -270,7 +270,7 @@ export function defaultImageCapabilityConfig(protocol?: ModelProtocol, model = "
         image.size = {
             parameter: "aspect_ratio",
             values: ["1:1", "3:4", "4:3", "16:9", "9:16", "2:3", "3:2", "21:9"],
-            default: "1:1",
+            default: "9:16",
             allowCustom: false,
         };
         // 官方档位是 1K/2K/3K/4K，统一层只提供 1k/2k/4k 三档；3K 保留在协议映射里但不在界面露出。
@@ -288,7 +288,7 @@ export function defaultImageCapabilityConfig(protocol?: ModelProtocol, model = "
         image.size = {
             parameter: "aspect_ratio",
             values: ["1:1", "3:4", "4:3", "9:16", "16:9", "2:3", "3:2"],
-            default: "1:1",
+            default: "9:16",
             allowCustom: false,
         };
         image.quality = { supported: true, values: ["1k", "2k"], default: "2k" };
@@ -323,7 +323,7 @@ export function defaultModelCapabilityConfig(protocol?: ModelProtocol, model = "
         },
         duration: { selection: "range", min: 1, max: 15, step: 1, default: 6 },
         ratios: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"],
-        defaultRatio: "16:9",
+        defaultRatio: "9:16",
         resolutions: ["480p", "720p", "1080p", "1440p", "2160p"],
         defaultResolution: "720p",
         generateAudio: { supported: false, default: false },
@@ -384,7 +384,7 @@ export function defaultModelCapabilityConfig(protocol?: ModelProtocol, model = "
         video.references.maxAudios = 3;
         video.duration = { selection: "range", min: 4, max: 12, step: 1, default: 5 };
         video.ratios = ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16"];
-        video.defaultRatio = "16:9";
+        video.defaultRatio = "9:16";
         video.resolutions = flash ? ["720P"] : ["720P", "960P", "2K"];
         video.defaultResolution = "720P";
         video.operations.push("reference_to_video", "audio_to_video");
@@ -419,7 +419,29 @@ export function modelCapabilityConfigFor(config: { channels: Array<{ id: string;
     if (!cost?.capabilityConfig) return fallback;
     const capabilityConfig = normalizeModelCapabilityConfig(cost.capabilityConfig);
     const text = capabilityConfig.text ? { ...fallback.text!, ...capabilityConfig.text, references: { ...fallback.text!.references, ...capabilityConfig.text.references } } : fallback.text;
-    const video = capabilityConfig.video ? { ...fallback.video!, ...capabilityConfig.video, references: { ...fallback.video!.references, ...capabilityConfig.video.references } } : fallback.video;
+    const video = capabilityConfig.video
+        ? (() => {
+              const configuredVideo = capabilityConfig.video!;
+              const configuredRatios = configuredVideo.ratios !== undefined ? configuredVideo.ratios : fallback.video!.ratios;
+              const configuredDefault = configuredVideo.defaultRatio ? normalizeCapabilityString(configuredVideo.defaultRatio) : undefined;
+              const defaultRatio = configuredRatios.length === 0
+                  ? ""
+                  : configuredDefault && configuredDefault !== "*" && configuredRatios.includes(configuredDefault)
+                      ? configuredDefault
+                      : configuredRatios.includes("9:16")
+                          ? "9:16"
+                          : fallback.video!.defaultRatio && configuredRatios.includes(fallback.video!.defaultRatio)
+                              ? fallback.video!.defaultRatio
+                              : configuredRatios[0] || "";
+              return {
+                  ...fallback.video!,
+                  ...configuredVideo,
+                  ratios: configuredRatios,
+                  defaultRatio,
+                  references: { ...fallback.video!.references, ...configuredVideo.references },
+              };
+          })()
+        : fallback.video;
     const configuredImage = capabilityConfig.image;
     const image = configuredImage
         ? (() => {
@@ -429,7 +451,13 @@ export function modelCapabilityConfigFor(config: { channels: Array<{ id: string;
               const concreteValues = configuredValues?.filter((value) => value !== "*") || [];
               const values = !configuredValues ? fallback.image!.size.values : concreteValues.length || !allowCustom ? concreteValues : [...STANDARD_IMAGE_SIZE_VALUES];
               const configuredDefault = configuredSize?.default ? normalizeCapabilityString(configuredSize.default) : undefined;
-              const defaultValue = configuredDefault && configuredDefault !== "*" && values.includes(configuredDefault) ? configuredDefault : values.find((value) => value !== "*") || fallback.image!.size.default;
+              const defaultValue = values.length === 0
+                  ? ""
+                  : configuredDefault && configuredDefault !== "*" && values.includes(configuredDefault)
+                      ? configuredDefault
+                      : values.includes("9:16")
+                          ? "9:16"
+                          : values.find((value) => value !== "*") || fallback.image!.size.default;
               return {
                   ...fallback.image!,
                   ...configuredImage,
@@ -718,7 +746,7 @@ export function workflowVideoCapabilityConfig(fields: readonly WorkflowVideoFiel
         // 工作流声明了比例字段时，不能继续沿用普通模型的比例列表。
         // 没有 options 时只保留该字段当前默认值（例如 `auto`）。
         profile.ratios = options.length ? options : defaultValue ? [defaultValue] : [];
-        if (profile.ratios.length) profile.defaultRatio = matchWorkflowValue(defaultValue, profile.ratios) || profile.ratios[0];
+        if (profile.ratios.length) profile.defaultRatio = matchWorkflowValue(defaultValue, profile.ratios) || (profile.ratios.includes("9:16") ? "9:16" : profile.ratios[0]);
     }
     const generateAudioField = fields.find((field) => workflowBooleanFieldMatches(field, "generateaudio"));
     const watermarkField = fields.find((field) => workflowBooleanFieldMatches(field, "watermark"));
@@ -999,7 +1027,11 @@ export function normalizeVideoValue(profile: VideoCapabilityConfig, value: { sec
 }
 
 export function resolveVideoRatioValue(profile: VideoCapabilityConfig, value: string | undefined) {
-    return profile.ratios.includes(value || "") ? value! : profile.defaultRatio || profile.ratios[0] || "";
+    return profile.ratios.includes(value || "")
+        ? value!
+        : (profile.defaultRatio && profile.ratios.includes(profile.defaultRatio))
+            ? profile.defaultRatio
+            : (profile.ratios.includes("9:16") ? "9:16" : profile.ratios[0] || "");
 }
 
 export function resolveVideoResolutionValue(profile: VideoCapabilityConfig, value: string | undefined) {

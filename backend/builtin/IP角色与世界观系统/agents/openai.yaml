@@ -1,0 +1,6 @@
+interface:
+  display_name: "IP 角色与世界观系统"
+  short_description: "建立可持续扩展的角色圣经、视觉一致性、世界观和跨媒介资产矩阵。"
+  default_prompt: "使用 $ip-character-system 按领域工作流完成当前任务；复用已确认输入，只在必要确认门暂停，并按真实任务状态交付。"
+policy:
+  allow_implicit_invocation: true

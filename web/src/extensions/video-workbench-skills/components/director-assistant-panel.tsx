@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { ArrowUp, ChevronDown, ChevronUp, Image as ImageIcon, Mic, Sparkles, BookmarkPlus, X, Maximize2, LoaderCircle, Clapperboard, Check, ClipboardPaste, FolderPlus, Square, Trash2 } from "lucide-react";
+import { ArrowUp, ChevronDown, ChevronUp, Image as ImageIcon, Mic, Sparkles, X, Maximize2, LoaderCircle, Clapperboard, Square } from "lucide-react";
 import { Button, Modal, App } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import type { VideoWorkbenchSkill } from "../types/video-skill-contract";
@@ -9,12 +9,22 @@ import type { ReferenceAudio } from "@/types/media";
 import type { VideoTextReference } from "@/stores/use-video-workbench-store";
 import { uploadImage } from "@/services/image-storage";
 import { uploadMediaFile } from "@/services/file-storage";
+import { primeResourceBlobCache } from "@/services/resource-blob-cache";
+import { peekLocalFirstMedia } from "@/services/local-first-media-resolver";
+import { resolveResourceUrl } from "@/services/api/resources";
 import { nanoid } from "nanoid";
-import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
+import { resolveModelForCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
+import { resolveChannelVideoModelMaxDuration } from "@/lib/model-capabilities";
 import { requestImageQuestion } from "@/services/api/image";
+import { HEADER_CANVAS_SYSTEM_PROMPT_ID, VAULT_PROMPT_IDS } from "@/services/api/prompt-vault";
 import { buildVideoWorkbenchPrompts } from "../services/video-workbench-prompt-assembler";
 import { CanvasPromptChipInput } from "@/components/canvas/canvas-prompt-chip-input";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import {
+    VideoWorkbenchSkillSlots,
+    type VideoWorkbenchSlotConfig,
+    type VideoWorkbenchSlotFile,
+} from "./video-workbench-skill-slots";
 
 interface DirectorAssistantPanelProps {
     skill: VideoWorkbenchSkill | null;
@@ -104,19 +114,21 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
         }
     }, [initialAudios]);
 
-    // 构建用于 @ 触发与输入框缩略图 Chip 渲染的素材引用列表
+    // 构建用于 @ 触发与输入框缩略图 Chip 渲染的素材引用列表（全面接入多级缓存）
     const directorMentionReferences = React.useMemo<CanvasResourceReference[]>(() => {
         const list: CanvasResourceReference[] = [];
 
         // 1. 参考图片
         uploadedImages.forEach((img, i) => {
+            const pUrl = img.dataUrl || img.url || (img.storageKey ? (peekLocalFirstMedia(img.storageKey) || resolveResourceUrl(img.storageKey)) : "");
             list.push({
                 id: img.id,
                 nodeId: img.id,
                 kind: "image",
                 label: `@图片${i + 1}`,
                 title: img.name || `参考图 ${i + 1}`,
-                previewUrl: img.dataUrl || img.url,
+                previewUrl: pUrl,
+                storageKey: img.storageKey,
                 active: true,
             });
         });
@@ -130,6 +142,7 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
                 label: `@音频${i + 1}`,
                 title: aud.name || `参考音频 ${i + 1}`,
                 previewUrl: aud.url,
+                storageKey: aud.storageKey,
                 active: true,
             });
         });
@@ -150,7 +163,169 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
         return list;
     }, [uploadedImages, uploadedAudios, textReferences]);
 
-    // 从剪切板粘贴图片处理
+    // 编导助手专属插槽配置（对齐【生图工作台】折叠/展开与放大标准规范）
+    const directorSlots: VideoWorkbenchSlotConfig[] = React.useMemo(
+        () => [
+            { id: "image", label: "添加图片", icon: <ImageIcon className="size-5" />, accept: "image/*", kind: "image", maxCount: 9 },
+            { id: "audio", label: "声音(可选)", icon: <Mic className="size-5" />, accept: "audio/*", kind: "audio", maxCount: 3, optional: true },
+        ],
+        [],
+    );
+
+    const slotFilesMap = React.useMemo<Record<string, VideoWorkbenchSlotFile[]>>(() => {
+        return {
+            image: uploadedImages.map((img) => ({
+                id: img.id,
+                name: img.name,
+                kind: "image",
+                url: img.url,
+                dataUrl: img.dataUrl,
+                storageKey: img.storageKey,
+            })),
+            audio: uploadedAudios.map((aud) => ({
+                id: aud.id,
+                name: aud.name,
+                kind: "audio",
+                url: aud.url,
+                storageKey: aud.storageKey,
+                durationMs: aud.durationMs,
+            })),
+        };
+    }, [uploadedImages, uploadedAudios]);
+
+    // 批量添加素材到指定插槽（多级缓存注入）
+    const handleAddSlotFiles = async (slotId: string, files: File[]) => {
+        if (!files.length) return;
+        if (slotId === "image") {
+            const added: ReferenceImage[] = [];
+            for (const file of files) {
+                const hide = message.loading(`正在上传 ${file.name}...`, 0);
+                try {
+                    const res = await uploadImage(file);
+                    if (res.storageKey) {
+                        try {
+                            await primeResourceBlobCache(res.storageKey, file);
+                        } catch {}
+                    }
+                    added.push({
+                        id: nanoid(),
+                        name: file.name,
+                        type: res.mimeType || file.type,
+                        dataUrl: res.url,
+                        storageKey: res.storageKey,
+                        bytes: res.bytes || file.size,
+                        width: res.width,
+                        height: res.height,
+                    });
+                } catch {
+                    message.error(`图片上传失败: ${file.name}`);
+                } finally {
+                    hide();
+                }
+            }
+            if (added.length) {
+                setUploadedImages((prev) => [...prev, ...added]);
+                message.success(`已添加 ${added.length} 张图片`);
+            }
+        } else {
+            const added: ReferenceAudio[] = [];
+            for (const file of files) {
+                const hide = message.loading(`正在上传音频 ${file.name}...`, 0);
+                try {
+                    const res = await uploadMediaFile(file, "audio-reference");
+                    if (res.storageKey) {
+                        try {
+                            await primeResourceBlobCache(res.storageKey, file);
+                        } catch {}
+                    }
+                    added.push({
+                        id: nanoid(),
+                        url: res.url,
+                        storageKey: res.storageKey,
+                        name: file.name,
+                        bytes: res.bytes || file.size,
+                        type: res.mimeType || file.type,
+                        durationMs: res.durationMs,
+                    });
+                } catch {
+                    message.error(`音频上传失败: ${file.name}`);
+                } finally {
+                    hide();
+                }
+            }
+            if (added.length) {
+                setUploadedAudios((prev) => [...prev, ...added]);
+                message.success(`已添加 ${added.length} 条音频`);
+            }
+        }
+    };
+
+    // 替换指定素材
+    const handleReplaceSlotFile = async (slotId: string, fileId: string, file: File) => {
+        if (slotId === "image") {
+            const hide = message.loading(`正在替换 ${file.name}...`, 0);
+            try {
+                const res = await uploadImage(file);
+                if (res.storageKey) {
+                    try {
+                        await primeResourceBlobCache(res.storageKey, file);
+                    } catch {}
+                }
+                const updated: ReferenceImage = {
+                    id: fileId,
+                    name: file.name,
+                    type: res.mimeType || file.type,
+                    dataUrl: res.url,
+                    storageKey: res.storageKey,
+                    bytes: res.bytes || file.size,
+                    width: res.width,
+                    height: res.height,
+                };
+                setUploadedImages((prev) => prev.map((item) => (item.id === fileId ? updated : item)));
+                message.success("图片已成功替换");
+            } catch {
+                message.error(`替换失败: ${file.name}`);
+            } finally {
+                hide();
+            }
+        } else {
+            const hide = message.loading(`正在替换音频 ${file.name}...`, 0);
+            try {
+                const res = await uploadMediaFile(file, "audio-reference");
+                if (res.storageKey) {
+                    try {
+                        await primeResourceBlobCache(res.storageKey, file);
+                    } catch {}
+                }
+                const updated: ReferenceAudio = {
+                    id: fileId,
+                    url: res.url,
+                    storageKey: res.storageKey,
+                    name: file.name,
+                    bytes: res.bytes || file.size,
+                    type: res.mimeType || file.type,
+                    durationMs: res.durationMs,
+                };
+                setUploadedAudios((prev) => prev.map((item) => (item.id === fileId ? updated : item)));
+                message.success("音频已成功替换");
+            } catch {
+                message.error(`替换失败: ${file.name}`);
+            } finally {
+                hide();
+            }
+        }
+    };
+
+    // 移除指定素材
+    const handleRemoveSlotFile = (slotId: string, fileId: string) => {
+        if (slotId === "image") {
+            setUploadedImages((prev) => prev.filter((item) => item.id !== fileId));
+        } else {
+            setUploadedAudios((prev) => prev.filter((item) => item.id !== fileId));
+        }
+    };
+
+    // 从剪切板粘贴图片处理（多级缓存注入）
     const handleAddFromClipboard = async () => {
         try {
             const items = await navigator.clipboard.read();
@@ -170,6 +345,11 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
                 const blob = imageBlobs[i];
                 const file = new File([blob], `clipboard-${Date.now()}-${i + 1}.png`, { type: blob.type });
                 const res = await uploadImage(file);
+                if (res.storageKey) {
+                    try {
+                        await primeResourceBlobCache(res.storageKey, blob);
+                    } catch {}
+                }
                 setUploadedImages((prev) => [
                     ...prev,
                     {
@@ -203,9 +383,6 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
     const [editorModalOpen, setEditorModalOpen] = useState(false);
     const [editingScript, setEditingScript] = useState("");
 
-    const imageInputRef = useRef<HTMLInputElement>(null);
-    const audioInputRef = useRef<HTMLInputElement>(null);
-
     const activePhrases = skill?.suggestedQuickPhrases?.length
         ? skill.suggestedQuickPhrases
         : DEFAULT_QUICK_PHRASES;
@@ -220,61 +397,6 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
         });
     };
 
-    // 上传图片处理
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || !files.length) return;
-        const file = files[0];
-        try {
-            const res = await uploadImage(file);
-            setUploadedImages((prev) => [
-                ...prev,
-                {
-                    id: nanoid(),
-                    name: file.name,
-                    type: res.mimeType || file.type,
-                    dataUrl: res.url,
-                    storageKey: res.storageKey,
-                    bytes: res.bytes || file.size,
-                    width: res.width,
-                    height: res.height,
-                },
-            ]);
-            message.success("图片已添加");
-        } catch (err) {
-            message.error("图片上传失败");
-        } finally {
-            if (imageInputRef.current) imageInputRef.current.value = "";
-        }
-    };
-
-    // 上传音频处理
-    const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || !files.length) return;
-        const file = files[0];
-        try {
-            const res = await uploadMediaFile(file, "audio-reference");
-            setUploadedAudios((prev) => [
-                ...prev,
-                {
-                    id: nanoid(),
-                    url: res.url,
-                    storageKey: res.storageKey,
-                    name: file.name,
-                    bytes: res.bytes || file.size,
-                    type: res.mimeType || file.type,
-                    durationMs: res.durationMs,
-                },
-            ]);
-            message.success("声音已添加");
-        } catch (err) {
-            message.error("声音上传失败");
-        } finally {
-            if (audioInputRef.current) audioInputRef.current.value = "";
-        }
-    };
-
     const handleAbort = () => {
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -286,11 +408,15 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
 
     // 执行生成脚本（单请求端到端直出，实时解析思考推演与分镜）
     const handleGenerate = async () => {
-        const targetModel = model || effectiveConfig.textModel || effectiveConfig.model;
-        if (!isAiConfigReady(effectiveConfig, targetModel)) {
+        // 区分文本大模型 (用于脚本生成与思考推演) 与目标视频模型 (用于单段时长上限与物理切片计算)
+        const textModel = resolveModelForCapability(effectiveConfig, effectiveConfig.textModel || effectiveConfig.model, "text");
+        if (!isAiConfigReady(effectiveConfig, textModel)) {
             message.warning("请先在全局设置中配置大模型 API Key 或模型渠道");
             return;
         }
+
+        const videoModel = resolveModelForCapability(effectiveConfig, model || effectiveConfig.videoModel || effectiveConfig.model, "video");
+        const videoModelMaxDurationSec = resolveChannelVideoModelMaxDuration(effectiveConfig, videoModel) || 10;
 
         const controller = new AbortController();
         abortControllerRef.current = controller;
@@ -310,7 +436,9 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
                 skillId: skill?.id || "custom",
                 skillName: skill?.name || "综合视频创作",
                 durationSec,
-                videoModel: targetModel,
+                videoModel,
+                videoModelMaxDurationSec,
+                config: effectiveConfig,
                 uploadedImages,
                 uploadedAudios,
                 notes,
@@ -324,7 +452,7 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
             await requestImageQuestion(
                 {
                     ...effectiveConfig,
-                    model: targetModel,
+                    model: textModel,
                     systemPrompt: promptBundle.systemPrompt,
                 },
                 [{ role: "user", content: [{ type: "text", text: promptBundle.userPrompt }] }],
@@ -356,6 +484,9 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
                     // @opc-feature: feature-credits [start]
                     scene: "video_director",
                     // @opc-feature: feature-credits [end]
+                    headers: {
+                        [HEADER_CANVAS_SYSTEM_PROMPT_ID]: VAULT_PROMPT_IDS.VIDEO_WORKBENCH,
+                    },
                 },
             );
 
@@ -385,21 +516,7 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
 
     return (
         <div className="relative flex flex-col flex-1 min-h-[560px] h-full justify-between">
-            {/* 隐藏的上传 input */}
-            <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageUpload}
-            />
-            <input
-                ref={audioInputRef}
-                type="file"
-                accept="audio/*"
-                className="hidden"
-                onChange={handleAudioUpload}
-            />
+
 
             {/* ══════════════════════════════════════════════════════════
                 中间核心动态区域：
@@ -524,128 +641,25 @@ export const DirectorAssistantPanel: React.FC<DirectorAssistantPanelProps> = ({
                 底部输入框容器 (加大输入框，包含剪贴板、创作灵感、我的资产)
                ══════════════════════════════════════════════════════════ */}
             <div className="relative rounded-2xl border border-black/[0.08] bg-white p-4 shadow-sm dark:border-white/[0.08] dark:bg-[#1e1e20] focus-within:ring-1 focus-within:ring-amber-500/30">
-                {/* 上部槽位：左侧添加图片与声音，右侧保留原有的三大操作按钮（剪切板、创作灵感、我的资产） */}
-                <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-black/[0.04] dark:border-white/[0.04]">
-                    <div className="flex items-center gap-3 overflow-x-auto thin-scrollbar">
-                        {/* 添加图片槽 */}
-                        <div className="flex items-center gap-1.5">
-                            <button
-                                type="button"
-                                onClick={() => imageInputRef.current?.click()}
-                                className="group flex size-12 flex-col items-center justify-center rounded-xl border border-dashed border-stone-300 hover:border-amber-400 bg-stone-50/60 hover:bg-amber-50/30 transition-all dark:border-stone-700 dark:bg-[#252528] cursor-pointer"
-                            >
-                                <ImageIcon className="size-4 text-stone-500 group-hover:text-amber-600 dark:text-stone-400" />
-                                <span className="mt-0.5 text-[9px] text-stone-500">添加图片</span>
-                            </button>
-                            {uploadedImages.map((img) => (
-                                <div key={img.id} className="relative size-12 rounded-xl overflow-hidden border border-black/[0.06] group">
-                                    <img src={img.dataUrl} alt={img.name} className="size-full object-cover" />
-                                    <Tooltip title="移除图片" placement="top" mouseEnterDelay={0.15}>
-                                        <button
-                                            type="button"
-                                            onClick={() => setUploadedImages((prev) => prev.filter((i) => i.id !== img.id))}
-                                            className="absolute inset-0 flex items-center justify-center bg-rose-600/80 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                            aria-label="移除图片"
-                                        >
-                                            <X className="size-3.5" />
-                                        </button>
-                                    </Tooltip>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* 添加声音槽 */}
-                        <div className="flex items-center gap-1.5">
-                            <button
-                                type="button"
-                                onClick={() => audioInputRef.current?.click()}
-                                className="group flex size-12 flex-col items-center justify-center rounded-xl border border-dashed border-stone-300 hover:border-amber-400 bg-stone-50/60 hover:bg-amber-50/30 transition-all dark:border-stone-700 dark:bg-[#252528] cursor-pointer"
-                            >
-                                <Mic className="size-4 text-stone-500 group-hover:text-amber-600 dark:text-stone-400" />
-                                <span className="mt-0.5 text-[9px] text-stone-500">声音(可选)</span>
-                            </button>
-                            {uploadedAudios.map((aud) => (
-                                <div key={aud.id} className="relative flex size-12 flex-col items-center justify-center rounded-xl bg-stone-100 dark:bg-[#2c2c2e] border border-black/[0.06] group text-[10px]">
-                                    <span className="truncate max-w-[40px] font-mono text-[9px]">{aud.name}</span>
-                                    <Tooltip title="移除音频" placement="top" mouseEnterDelay={0.15}>
-                                        <button
-                                            type="button"
-                                            onClick={() => setUploadedAudios((prev) => prev.filter((a) => a.id !== aud.id))}
-                                            className="absolute inset-0 flex items-center justify-center bg-rose-600/80 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                            aria-label="移除音频"
-                                        >
-                                            <X className="size-3.5" />
-                                        </button>
-                                    </Tooltip>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* 右侧：项目原有的四大操作入口（从剪切板粘贴、提示词模板、保存为模板、查看我的资产） */}
-                    <div className="flex items-center gap-1.5 shrink-0 self-start pt-1">
-                        <Tooltip title="从剪切板粘贴" placement="top" mouseEnterDelay={0.15}>
-                            <Button
-                                type="text"
-                                size="small"
-                                className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
-                                icon={<ClipboardPaste className="size-3.5" />}
-                                onClick={handleAddFromClipboard}
-                                aria-label="从剪切板粘贴"
-                            />
-                        </Tooltip>
-                        {onOpenPromptDialog && (
-                            <Tooltip title="提示词模板" placement="top" mouseEnterDelay={0.15}>
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
-                                    icon={<Sparkles className="size-3.5 text-amber-500" />}
-                                    onClick={onOpenPromptDialog}
-                                    aria-label="提示词模板"
-                                />
-                            </Tooltip>
-                        )}
-                        {onSavePromptDialog && (
-                            <Tooltip title="保存为模板" placement="top" mouseEnterDelay={0.15}>
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
-                                    icon={<BookmarkPlus className="size-3.5 text-amber-500" />}
-                                    onClick={onSavePromptDialog}
-                                    aria-label="保存为模板"
-                                />
-                            </Tooltip>
-                        )}
-                        {onOpenAssetPicker && (
-                            <Tooltip title="查看我的资产" placement="top" mouseEnterDelay={0.15}>
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
-                                    icon={<FolderPlus className="size-3.5" />}
-                                    onClick={onOpenAssetPicker}
-                                    aria-label="查看我的资产"
-                                />
-                            </Tooltip>
-                        )}
-                        {(uploadedImages.length > 0 || uploadedAudios.length > 0) && (
-                            <Tooltip title="清空素材" placement="top" mouseEnterDelay={0.15}>
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-red-500 dark:hover:!text-red-400"
-                                    icon={<Trash2 className="size-3.5" />}
-                                    onClick={() => {
-                                        setUploadedImages([]);
-                                        setUploadedAudios([]);
-                                    }}
-                                    aria-label="清空素材"
-                                />
-                            </Tooltip>
-                        )}
-                    </div>
+                {/* 上部槽位：完全对齐【生图工作台】折叠/展开与放大标准规范 */}
+                <div className="pb-2.5 mb-2 border-b border-black/[0.04] dark:border-white/[0.04]">
+                    <VideoWorkbenchSkillSlots
+                        slots={directorSlots}
+                        slotFilesMap={slotFilesMap}
+                        onAddSlotFiles={handleAddSlotFiles}
+                        onReplaceSlotFile={handleReplaceSlotFile}
+                        onRemoveSlotFile={handleRemoveSlotFile}
+                        onClearAllSlots={() => {
+                            setUploadedImages([]);
+                            setUploadedAudios([]);
+                        }}
+                        onPasteClipboard={handleAddFromClipboard}
+                        onOpenPromptDialog={onOpenPromptDialog}
+                        onSavePromptDialog={onSavePromptDialog}
+                        onOpenAssetPicker={onOpenAssetPicker}
+                        totalCount={uploadedImages.length + uploadedAudios.length}
+                        maxTotalCount={12}
+                    />
                 </div>
 
                 {/* 已引入的创作灵感胶囊展示（支持悬浮预览全文与一键移除） */}

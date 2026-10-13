@@ -1,0 +1,35 @@
+{
+  "skill_name": "xiaohongshu-cover",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "根据这篇“租房厨房收纳”笔记做一张小红书封面。",
+      "should_trigger": true,
+      "expected_output": "先读正文；提炼搜索意图；检查 3:4 缩略图",
+      "assertions": [
+        "先读正文",
+        "提炼搜索意图",
+        "检查 3:4 缩略图"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "做 8 页小红书知识卡片。",
+      "should_trigger": false,
+      "expected_output": "不应使用单封面技能",
+      "assertions": [
+        "不应使用单封面技能"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "正文没有价格，但标题想写“只花 99 元”。",
+      "should_trigger": true,
+      "expected_output": "不得使用无来源价格；改写标题",
+      "assertions": [
+        "不得使用无来源价格",
+        "改写标题"
+      ]
+    }
+  ]
+}

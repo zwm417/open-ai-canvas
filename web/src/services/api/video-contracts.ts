@@ -43,10 +43,11 @@ export type RequestOptions = {
     videoEditOperation?: string;
     videoStartFrameNodeId?: string;
     videoEndFrameNodeId?: string;
+    metadata?: Record<string, unknown>;
 };
 
 // @opc-feature: backend-video-task [start]
 export type VideoGenerationResult = { blob?: Blob; url?: string; mimeType?: string; storageKey?: string };
-export type VideoGenerationTask = { id: string; provider: "openai" | "agnes" | "seedance" | "video-generations" | "gemini-veo" | "novita" | "minimax" | "backend"; model: string };
+export type VideoGenerationTask = { id: string; provider: "openai" | "agnes" | "seedance" | "video-generations" | "gemini-veo" | "novita" | "minimax" | "backend"; model: string; status?: string };
 // @opc-feature: backend-video-task [end]
 export type VideoGenerationTaskState = { status: "pending" } | { status: "completed"; result: VideoGenerationResult } | { status: "failed"; error: string };

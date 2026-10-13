@@ -1,0 +1,4 @@
+interface:
+  display_name: "高留存竖屏短视频"
+  short_description: "制作首秒抓人、节奏紧凑、字幕安全且可循环的竖屏短视频"
+  default_prompt: "使用 $short-form-video，把这个主题制作成高留存竖屏短视频。"

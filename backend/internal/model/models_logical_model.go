@@ -22,8 +22,8 @@ type LogicalModel struct {
 	// RevisionSequence 记录已经分配的 revision 版本号，由数据库原子递增。
 	RevisionSequence int    `json:"-" gorm:"not null;default:0"`
 	ActiveRevisionID string `json:"activeRevisionId" gorm:"size:36;index"`
-	// SourceChannelModelID 标识这个前台目录项由哪个系统渠道模型投影而来。
-	// 管理员不再重复维护能力和价格，渠道模型保存时会创建新的前台 revision。
+	// SourceChannelModelID 标识这个前台目录项由哪个系统渠道模型投影而来（用于来源追溯与初始路由关联）。
+	// 前台逻辑模型与渠道模型在 v1.6.0 后独立维护，保存渠道模型仅使路由缓存失效，不会自动覆盖前台模型的自定义能力和定价。
 	SourceChannelModelID    string `json:"sourceChannelModelId,omitempty" gorm:"size:36;index"`
 	PricePolicy             string `json:"pricePolicy" gorm:"size:24;default:unified"`
 	BillingMode             string `json:"billingMode" gorm:"size:32"`

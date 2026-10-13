@@ -1,4 +1,6 @@
+// @opc-feature: director-language-popover-portal [start]
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Globe, Clock } from "lucide-react";
 import { InputNumber, Slider } from "antd";
 
@@ -18,10 +20,18 @@ export const DirectorLanguageDurationPopover: React.FC<DirectorLanguageDurationP
     onDurationChange,
 }) => {
     const [open, setOpen] = useState(false);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
+    const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
 
     useEffect(() => {
         if (!open) return;
+        const syncPosition = () => {
+            if (triggerRef.current) {
+                setButtonRect(triggerRef.current.getBoundingClientRect());
+            }
+        };
+
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
                 event.stopPropagation();
@@ -29,13 +39,24 @@ export const DirectorLanguageDurationPopover: React.FC<DirectorLanguageDurationP
             }
         };
         const handlePointerDown = (event: PointerEvent) => {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-                setOpen(false);
+            const target = event.target as Node | null;
+            if (
+                (triggerRef.current && triggerRef.current.contains(target)) ||
+                (panelRef.current && panelRef.current.contains(target))
+            ) {
+                return;
             }
+            setOpen(false);
         };
+
+        syncPosition();
+        window.addEventListener("resize", syncPosition);
+        window.addEventListener("scroll", syncPosition, true);
         window.addEventListener("keydown", handleKeyDown, true);
         document.addEventListener("pointerdown", handlePointerDown);
         return () => {
+            window.removeEventListener("resize", syncPosition);
+            window.removeEventListener("scroll", syncPosition, true);
             window.removeEventListener("keydown", handleKeyDown, true);
             document.removeEventListener("pointerdown", handlePointerDown);
         };
@@ -43,9 +64,12 @@ export const DirectorLanguageDurationPopover: React.FC<DirectorLanguageDurationP
 
     const langLabel = language === "zh" ? "中文" : "English";
 
+    const isTopPlacement = buttonRect ? buttonRect.top > 340 : true;
+
     return (
-        <div ref={containerRef} className="relative inline-block">
+        <>
             <button
+                ref={triggerRef}
                 type="button"
                 onClick={() => setOpen((prev) => !prev)}
                 className="flex items-center gap-1.5 rounded-lg border border-stone-200/80 bg-stone-50/80 px-2.5 py-1 text-xs font-medium text-stone-700 hover:border-amber-400 hover:bg-amber-50/50 hover:text-amber-900 dark:border-stone-700 dark:bg-[#2c2c2e] dark:text-stone-300 dark:hover:bg-[#343438] transition-all cursor-pointer"
@@ -55,8 +79,28 @@ export const DirectorLanguageDurationPopover: React.FC<DirectorLanguageDurationP
                 <ChevronDown className="size-3 text-stone-400" />
             </button>
 
-            {open && (
-                <div className="absolute left-0 bottom-full mb-2 z-50 w-72 rounded-2xl border border-black/[0.08] bg-white p-4 shadow-xl animate-in fade-in zoom-in-95 duration-150 dark:border-white/[0.08] dark:bg-[#1c1c1e] text-stone-900 dark:text-stone-100">
+            {open && buttonRect && typeof document !== "undefined" && createPortal(
+                <div
+                    ref={panelRef}
+                    role="dialog"
+                    aria-label="语言与成片时长配置"
+                    className="z-[10050] w-72 rounded-2xl border border-black/[0.08] bg-white p-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150 dark:border-white/[0.08] dark:bg-[#1c1c1e] text-stone-900 dark:text-stone-100 thin-scrollbar overflow-y-auto"
+                    style={{
+                        position: "fixed",
+                        left: Math.max(8, Math.min(window.innerWidth - 296, buttonRect.left)),
+                        ...(isTopPlacement
+                            ? {
+                                  bottom: window.innerHeight - buttonRect.top + 8,
+                                  maxHeight: Math.min(480, Math.max(220, buttonRect.top - 16)),
+                              }
+                            : {
+                                  top: buttonRect.bottom + 8,
+                                  maxHeight: Math.min(480, Math.max(220, window.innerHeight - buttonRect.bottom - 16)),
+                              }),
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                >
                     <div className="flex flex-col gap-3.5">
                         {/* 语言选择 */}
                         <div>
@@ -154,8 +198,10 @@ export const DirectorLanguageDurationPopover: React.FC<DirectorLanguageDurationP
                             </p>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
-        </div>
+        </>
     );
 };
+// @opc-feature: director-language-popover-portal [end]

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Logo 概念设计"
+  short_description: "从品牌策略与真实触点出发，建立可进入专业矢量生产的 Logo 概念系统。"
+  default_prompt: "使用 $logo-generator 按领域工作流完成当前任务；复用已确认输入，只在必要确认门暂停，并按真实任务状态交付。"
+policy:
+  allow_implicit_invocation: true

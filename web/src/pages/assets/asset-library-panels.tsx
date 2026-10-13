@@ -1,12 +1,17 @@
 // 素材库的批量操作条、空态、筛选组、详情抽屉与图片放大。
 
 import { Button, Drawer, Tag } from "antd";
-import { Box, CheckCheck, Clapperboard, Copy, Download, FileText, FileUp, Link2, Maximize2, Mic, Plus, RotateCcw, Trash2, ZoomIn, ZoomOut } from "lucide-react";
+import { Box, CheckCheck, Clapperboard, Copy, Download, ExternalLink, FileText, FileUp, Link2, Maximize2, Mic, Play, Plus, RotateCcw, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { AudioPlayButton, CharacterAssetCover } from "@/components/assets/asset-rich-cover";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { assetCategoryLabel } from "@/lib/asset-category";
 import { formatBytes } from "@/lib/image-utils";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+// @opc-feature: zero-overhead-local-cache [start]
+import { resolveMediaUrl } from "@/services/file-storage";
+import { resolveImageUrl } from "@/services/image-storage";
+import { captureVideoPoster } from "@/lib/video-poster";
+// @opc-feature: zero-overhead-local-cache [end]
 import { resourceStorageLabel, resourceStorageLocation, resourceStorageTitle } from "@/lib/canvas/resource-storage-status";
 import { type LibraryAsset, assetKindIcons } from "./asset-library-format";
 import { isKnownAssetKind } from "./asset-library-cards";
@@ -248,9 +253,7 @@ export function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Lib
                             {asset.kind === "text" ? (
                                 <div className="asset-archive-preview-note">{asset.data.content}</div>
                             ) : asset.kind === "audio" ? (
-                                <div className="asset-archive-audio">
-                                    <audio src={asset.data.url} controls />
-                                </div>
+                                <AssetAudioArchivePreview asset={asset} />
                             ) : asset.kind === "model" ? (
                                 <div className="asset-archive-preview-model">
                                     <Box />
@@ -259,7 +262,7 @@ export function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Lib
                                     </span>
                                 </div>
                             ) : asset.kind === "video" ? (
-                                <video src={asset.data.url} controls className="asset-archive-preview-media" />
+                                <AssetVideoArchivePreview asset={asset} />
                             ) : (
                                 <AssetImageZoom asset={asset} />
                             )}
@@ -317,20 +320,253 @@ export function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Lib
     );
 }
 
+// @opc-feature: zero-overhead-local-cache [start]
+function isImageLikeUrl(url?: string): boolean {
+    if (!url) return false;
+    if (url.startsWith("data:image/") || url.startsWith("blob:")) return true;
+    const cleanUrl = url.split(/[?#]/)[0].toLowerCase();
+    return !/\.(mp4|webm|mov|m4v|ogg|ogv|avi|mkv|flv|mp3|wav|m4a|aac)$/i.test(cleanUrl);
+}
+
+export function AssetVideoArchivePreview({ asset }: { asset: LibraryAsset & { kind: "video" } }) {
+    const hasStorageKey = Boolean(asset.data.storageKey);
+    const [videoSrc, setVideoSrc] = useState(hasStorageKey ? "" : asset.data.url);
+    const [videoLoaded, setVideoLoaded] = useState(false);
+    const [hasError, setHasError] = useState(false);
+    const rawPoster = asset.coverUrl && asset.coverUrl !== videoSrc ? asset.coverUrl : undefined;
+    const poster = isImageLikeUrl(rawPoster) ? rawPoster : undefined;
+    const [capturedPoster, setCapturedPoster] = useState<string | undefined>(poster);
+
+    useEffect(() => {
+        let active = true;
+        setVideoLoaded(false);
+        if (asset.data.storageKey) {
+            setHasError(false);
+            void resolveMediaUrl(asset.data.storageKey, asset.data.url, "video").then((resolved) => {
+                if (!active) return;
+                if (resolved) {
+                    setVideoSrc(resolved);
+                    setHasError(false);
+                } else if (asset.data.url) {
+                    setVideoSrc(asset.data.url);
+                } else {
+                    setHasError(true);
+                }
+            }).catch(() => {
+                if (active) {
+                    if (asset.data.url) setVideoSrc(asset.data.url);
+                    else setHasError(true);
+                }
+            });
+        } else {
+            setVideoSrc(asset.data.url);
+            setHasError(false);
+        }
+        return () => {
+            active = false;
+        };
+    }, [asset.data.storageKey, asset.data.url]);
+
+    // 若无有效海报，后台异步提取关键帧，坚决杜绝纯黑裸屏
+    useEffect(() => {
+        let active = true;
+        if (!poster && videoSrc) {
+            void captureVideoPoster(videoSrc, { maxWidth: 800 }).then((res) => {
+                if (active && res.poster) {
+                    setCapturedPoster(URL.createObjectURL(res.poster));
+                }
+            }).catch(() => {});
+        }
+        return () => {
+            active = false;
+        };
+    }, [poster, videoSrc]);
+
+    const effectivePoster = poster || capturedPoster;
+
+    const handleRetry = () => {
+        setHasError(false);
+        setVideoLoaded(false);
+        if (asset.data.storageKey) {
+            void resolveMediaUrl(asset.data.storageKey, asset.data.url, "video").then((resolved) => {
+                setVideoSrc(resolved || asset.data.url);
+                if (resolved) setHasError(false);
+            });
+        }
+    };
+
+    return (
+        <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-muted/40 dark:bg-stone-900 border border-border/40 flex items-center justify-center">
+            {/* 阶段 1：底层 0ms 瞬间秒开海报图（复用已缓存的 coverUrl 或已提取帧，杜绝纯黑框与等待） */}
+            {effectivePoster && !videoLoaded && (
+                <img
+                    src={effectivePoster}
+                    alt={asset.title}
+                    className="absolute inset-0 size-full object-contain pointer-events-none select-none"
+                />
+            )}
+
+            {/* 阶段 1 兜底占位：在视频与海报均未就绪前展示美学骨架，杜绝纯黑裸屏 */}
+            {!effectivePoster && !videoLoaded && !hasError && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 text-muted-foreground/50">
+                    <span className="grid size-12 place-items-center rounded-full bg-foreground/[.06] text-foreground/40 backdrop-blur-sm">
+                        <Play className="size-5 ml-0.5" />
+                    </span>
+                    <span className="text-xs font-medium">视频载入中...</span>
+                </div>
+            )}
+
+            {/* 阶段 2：渐进式视频层就绪后 300ms 丝滑淡入 */}
+            {!hasError ? (
+                <video
+                    src={videoSrc}
+                    poster={effectivePoster}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    onLoadedData={() => setVideoLoaded(true)}
+                    onError={() => setHasError(true)}
+                    className={`size-full object-contain transition-opacity duration-300 ${
+                        videoLoaded ? "opacity-100" : "opacity-0"
+                    }`}
+                />
+            ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-stone-900/90 p-4 text-center text-stone-300">
+                    <span className="text-xs">视频加载异常，可能因网络波动或临时链接过期导致</span>
+                    <Button size="small" icon={<RotateCcw className="size-3" />} onClick={handleRetry}>
+                        重新加载
+                    </Button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export function AssetAudioArchivePreview({ asset }: { asset: LibraryAsset & { kind: "audio" } }) {
+    const hasStorageKey = Boolean(asset.data.storageKey);
+    const [audioSrc, setAudioSrc] = useState(hasStorageKey ? "" : asset.data.url);
+    const [hasError, setHasError] = useState(false);
+
+    useEffect(() => {
+        let active = true;
+        if (asset.data.storageKey) {
+            setHasError(false);
+            void resolveMediaUrl(asset.data.storageKey, asset.data.url, "audio").then((resolved) => {
+                if (!active) return;
+                if (resolved) {
+                    setAudioSrc(resolved);
+                    setHasError(false);
+                } else if (asset.data.url) {
+                    setAudioSrc(asset.data.url);
+                } else {
+                    setHasError(true);
+                }
+            }).catch(() => {
+                if (active) {
+                    if (asset.data.url) setAudioSrc(asset.data.url);
+                    else setHasError(true);
+                }
+            });
+        } else {
+            setAudioSrc(asset.data.url);
+            setHasError(false);
+        }
+        return () => {
+            active = false;
+        };
+    }, [asset.data.storageKey, asset.data.url]);
+
+    const handleRetry = () => {
+        setHasError(false);
+        if (asset.data.storageKey) {
+            void resolveMediaUrl(asset.data.storageKey, asset.data.url, "audio").then((resolved) => {
+                setAudioSrc(resolved || asset.data.url);
+                if (resolved) setHasError(false);
+            });
+        }
+    };
+
+    if (hasError) {
+        return (
+            <div className="flex flex-col items-center justify-center gap-2 rounded-xl bg-stone-900/90 p-4 text-center text-stone-300">
+                <span className="text-xs">音频加载异常，可能因网络波动或临时链接过期导致</span>
+                <Button size="small" icon={<RotateCcw className="size-3" />} onClick={handleRetry}>
+                    重新加载
+                </Button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="asset-archive-audio">
+            <audio src={audioSrc} controls onError={() => setHasError(true)} />
+        </div>
+    );
+}
+// @opc-feature: zero-overhead-local-cache [end]
+
+// @opc-feature: assets-image-zoom-governance [start]
 export function AssetImageZoom({ asset }: { asset: LibraryAsset & { kind: "image" } }) {
     const [scale, setScale] = useState(1);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
+    const [highResSrc, setHighResSrc] = useState<string>("");
+    const [naturalRatio, setNaturalRatio] = useState<number>(2);
+    const imgRef = useRef<HTMLImageElement>(null);
     const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+
+    // 遵循商业化规范：0ms 底层缩略图秒开，后台异步获取未压缩的高清原始图，杜绝模糊缩略图当大图
+    useEffect(() => {
+        let active = true;
+        if (asset.data.storageKey) {
+            void resolveImageUrl(asset.data.storageKey, asset.data.dataUrl || asset.coverUrl).then((resolved) => {
+                if (active && resolved) {
+                    setHighResSrc(resolved);
+                }
+            });
+        }
+        return () => {
+            active = false;
+        };
+    }, [asset.data.storageKey, asset.data.dataUrl, asset.coverUrl]);
+
+    const activeSrc = highResSrc || asset.data.dataUrl || asset.coverUrl || "";
+
+    const updateNaturalRatio = (naturalWidth: number, renderedWidth: number) => {
+        if (naturalWidth > 0 && renderedWidth > 0) {
+            const ratio = naturalWidth / renderedWidth;
+            setNaturalRatio(ratio > 1 ? ratio : 1);
+        }
+    };
+
     const reset = () => {
         setScale(1);
         setOffset({ x: 0, y: 0 });
     };
+
+    const toggleNaturalScale = () => {
+        const isNearNatural = Math.abs(scale - naturalRatio) < 0.15;
+        if (isNearNatural) {
+            reset();
+        } else {
+            setScale(Math.max(1, Math.min(10, naturalRatio)));
+            setOffset({ x: 0, y: 0 });
+        }
+    };
+
+    const openOriginalInNewTab = () => {
+        if (activeSrc) {
+            window.open(activeSrc, "_blank", "noopener,noreferrer");
+        }
+    };
+
+    const is100PercentNatural = Math.abs(scale - naturalRatio) < 0.15 && naturalRatio > 1.05;
+
     return (
         <div
             className="asset-zoom-viewer"
             onWheel={(event) => {
                 event.preventDefault();
-                setScale((value) => Math.min(4, Math.max(0.25, value * (event.deltaY < 0 ? 1.12 : 0.89))));
+                setScale((value) => Math.min(10, Math.max(0.2, value * (event.deltaY < 0 ? 1.12 : 0.89))));
             }}
             onPointerDown={(event) => {
                 if (scale <= 1) return;
@@ -349,24 +585,51 @@ export function AssetImageZoom({ asset }: { asset: LibraryAsset & { kind: "image
                 dragRef.current = null;
             }}
         >
-            <img src={asset.coverUrl || asset.data.dataUrl} alt={asset.title} loading="lazy" decoding="async" className="asset-archive-preview-media asset-zoom-image" style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }} />
+            <img
+                ref={imgRef}
+                src={activeSrc}
+                alt={asset.title}
+                loading="lazy"
+                decoding="async"
+                onLoad={(e) => {
+                    const img = e.currentTarget;
+                    updateNaturalRatio(img.naturalWidth, img.clientWidth);
+                }}
+                className="asset-archive-preview-media asset-zoom-image"
+                style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
+            />
             <div className="asset-zoom-controls" data-canvas-no-zoom>
-                <button type="button" title="缩小" aria-label="缩小" onClick={() => setScale((value) => Math.max(0.25, value / 1.25))}>
+                <button type="button" title="缩小" aria-label="缩小" onClick={() => setScale((value) => Math.max(0.2, value / 1.25))}>
                     <ZoomOut className="size-4" />
                 </button>
-                <button type="button" title="恢复适应" aria-label="恢复适应" onClick={reset}>
+                <button type="button" title="恢复适应容器" aria-label="恢复适应容器" onClick={reset}>
                     {Math.round(scale * 100)}%
                 </button>
-                <button type="button" title="放大" aria-label="放大" onClick={() => setScale((value) => Math.min(4, value * 1.25))}>
+                <button type="button" title="放大" aria-label="放大" onClick={() => setScale((value) => Math.min(10, value * 1.25))}>
                     <ZoomIn className="size-4" />
                 </button>
-                <button type="button" title="查看原图尺寸" aria-label="查看原图尺寸" onClick={() => setScale(1)}>
+                <button
+                    type="button"
+                    title={is100PercentNatural ? "恢复适应容器 (当前为1:1原图尺寸)" : "查看 1:1 原图物理尺寸"}
+                    aria-label="查看原图尺寸"
+                    className={is100PercentNatural ? "!bg-primary/20 !text-primary" : ""}
+                    onClick={toggleNaturalScale}
+                >
                     <Maximize2 className="size-4" />
+                </button>
+                <button
+                    type="button"
+                    title="在独立窗口中打开原始大图"
+                    aria-label="打开原始大图"
+                    onClick={openOriginalInNewTab}
+                >
+                    <ExternalLink className="size-4" />
                 </button>
             </div>
         </div>
     );
 }
+// @opc-feature: assets-image-zoom-governance [end]
 
 export function assetArchiveFacts(asset: LibraryAsset) {
     const facts: Array<{ label: string; value: string }> = [

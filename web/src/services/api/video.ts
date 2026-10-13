@@ -55,6 +55,7 @@ export async function createVideoGenerationTask(config: AiConfig, prompt: string
             metadata: {
                 source: "video-workbench",
                 videoEditOperation: options?.videoEditOperation,
+                ...(options?.metadata || {}),
             },
         });
         return { id: backendTask.id, provider: "backend", model: selectedModel };
@@ -132,9 +133,20 @@ export async function storeGeneratedVideo(result: VideoGenerationResult): Promis
                     durationMs: resource.durationMs,
                 };
             } catch (err) {
-                console.warn("远程视频导入后端持久化存储失败，尝试拉取为本地Blob再直传:", err);
+                console.warn("远程视频导入后端持久化存储失败，尝试检查尺寸并直传:", err);
                 try {
-                    const blob = await (await fetch(result.url)).blob();
+                    const response = await fetch(result.url);
+                    const contentLength = Number(response.headers.get("Content-Length") || "0");
+                    const MAX_FALLBACK_VIDEO_BYTES = 100 * 1024 * 1024; // 100MB 尺寸安全上限，杜绝内存耗尽与阻塞
+                    if (contentLength > MAX_FALLBACK_VIDEO_BYTES) {
+                        console.warn(`远程视频体积超过上限 (${contentLength} > ${MAX_FALLBACK_VIDEO_BYTES})，跳过全量拉取，保留原始地址`);
+                        return { url: result.url, storageKey: "", bytes: contentLength, mimeType: result.mimeType || "video/mp4" };
+                    }
+                    const blob = await response.blob();
+                    if (blob.size > MAX_FALLBACK_VIDEO_BYTES) {
+                        console.warn(`拉取视频实际体积超过上限 (${blob.size} > ${MAX_FALLBACK_VIDEO_BYTES})，保留原始地址`);
+                        return { url: result.url, storageKey: "", bytes: blob.size, mimeType: result.mimeType || "video/mp4" };
+                    }
                     return await uploadMediaFile(blob, "video");
                 } catch (fetchErr) {
                     console.warn("拉取并直传视频失败，保留原始地址:", fetchErr);

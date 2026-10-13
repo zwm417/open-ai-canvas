@@ -1,0 +1,79 @@
+﻿{
+  "id": "ad_creative",
+  "name": "广告创意",
+  "description": "规划和生成付费广告视觉、静态广告概念与测试变体。",
+  "icon": "◈",
+  "color": "#FF5A1F",
+  "category": "Social Media",
+  "scenarios": [
+    "广告创意",
+    "社媒广告",
+    "ad creative",
+    "campaign visual",
+    "效果广告视觉"
+  ],
+  "promptTemplate": "使用 $ad-creative 完成当前任务。先执行领域工作流和必要确认，再为每个批准的生成单元输出独立、可执行的供应商提示词。\n\n用户需求：{userInput}",
+  "negativePrompt": "misleading claim, fake UI, fake notification, text wall, clutter, illegible text, collage, grid, distorted product, wrong logo, watermark, low quality",
+  "preferredModel": "gemini-3-pro-image-preview",
+  "outputType": "image",
+  "aspectRatio": "auto",
+  "analysisPrompt": "把真实产品、受众张力、可验证证据和投放版位转化为可测试的广告创意。你负责创意假设、信息层级、视觉钩子、证明方式和供应商执行稿，不把审美变化冒充测试策略。 按以下阶段执行：核验广告目标与证据 → 建立受众张力和单一主张 → 设计可检验的创意角度 → 确认测试矩阵与版位 → 逐项生成广告资产 → 按表现信号形成下一轮迭代。",
+  "displayName": "广告创意",
+  "shortDescription": "按漏斗目标、受众、版位与证据规划可测试的跨平台广告视觉。",
+  "skillIds": [
+    "ad_creative",
+    "ad-creative"
+  ],
+  "role": "效果广告创意策略师",
+  "agentType": "performance-creative-strategist",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "guided",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "核验广告目标与证据",
+      "建立受众张力和单一主张",
+      "设计可检验的创意角度",
+      "确认测试矩阵与版位",
+      "逐项生成广告资产",
+      "按表现信号形成下一轮迭代"
+    ],
+    "requiredInputs": [
+      {
+        "key": "campaign_objective",
+        "label": "广告目标与转化动作",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "text"
+        ],
+        "prompt": "请说明广告目标、目标受众和投放平台。"
+      },
+      {
+        "key": "offer_and_evidence",
+        "label": "商品/服务事实、优惠与可用证据",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "text",
+          "images"
+        ],
+        "prompt": "请提供可验证的卖点、价格优惠和证明素材。"
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "web_research",
+      "image_generation",
+      "task_status",
+      "post_production_handoff"
+    ]
+  },
+  "tools": [
+    "image_generate",
+    "web_search",
+    "web_extract",
+    "fetch_url_context",
+    "search_reference_images"
+  ]
+}

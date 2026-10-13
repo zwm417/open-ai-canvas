@@ -100,6 +100,13 @@ export function getIsolatedAdminAntTheme(dark: boolean, skinID: unknown = "class
                 optionPadding: "7px 10px",
                 optionSelectedBg: surfaceMuted,
                 optionActiveBg: surfaceMuted,
+                // @opc-feature: admin-ant-select-dark-surface [start]
+                selectorBg: surface,
+                clearBg: surface,
+                // @opc-feature: admin-ant-select-dark-surface [end]
+                // @opc-feature: admin-ant-dropdown-popover-zindex [start]
+                zIndexPopup: 10050,
+                // @opc-feature: admin-ant-dropdown-popover-zindex [end]
             },
             DatePicker: {
                 activeShadow: "none",

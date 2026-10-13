@@ -45,10 +45,18 @@ func (s *Service) SkillPackageFile(userID string, skillID string, filePath strin
 }
 
 func (s *Service) SkillPackageRawFile(userID string, skillID string, filePath string) ([]byte, string, string, error) {
-	_, file, content, err := s.readSkillPackageSnapshotFile(userID, skillID, filePath)
+	snapshot, file, content, err := s.readSkillPackageSnapshotFile(userID, skillID, filePath)
 	if err != nil {
 		return nil, "", "", err
 	}
+	// @opc-adapter: skill-bundle-protection [start]
+	// 针对内置技能与他人非公开/受保护技能，raw 下载仅允许媒体资产文件，禁止直接以 raw 流形式批量下载 Markdown/提示词源码
+	if snapshot.skill.SourceType == "builtin" || (snapshot.skill.IsPrivate && snapshot.skill.OwnerID != userID) {
+		if isPreviewText(file.MimeType, file.Path) {
+			return nil, "", "", kernel.Forbidden("受保护技能的文本/脚本资产不开放原始文件直接下载")
+		}
+	}
+	// @opc-adapter: skill-bundle-protection [end]
 	return content, file.MimeType, path.Base(file.Path), nil
 }
 
@@ -57,6 +65,12 @@ func (s *Service) SkillPackageBundle(userID string, skillID string) (*SkillPacka
 	if err != nil {
 		return nil, err
 	}
+	// @opc-adapter: skill-bundle-protection [start]
+	// 商业防拖库治理：官方内置技能与非本人拥有的技能禁止整包导出
+	if snapshot.skill.SourceType == "builtin" || snapshot.skill.OwnerID != userID {
+		return nil, kernel.Forbidden("官方内置技能与受保护技能不支持整包导出")
+	}
+	// @opc-adapter: skill-bundle-protection [end]
 	bundle := &SkillPackageBundle{SkillID: snapshot.skill.ID, Name: snapshot.skill.Name, Description: snapshot.skill.Description, VersionID: snapshot.version.ID, Version: snapshot.version.VersionLabel, ContentHash: snapshot.version.ContentHash, Files: make([]SkillPackageBundleFile, 0, len(snapshot.files))}
 	for _, file := range snapshot.files {
 		content, err := s.readSkillPackageSnapshotEntry(snapshot, file.Path)

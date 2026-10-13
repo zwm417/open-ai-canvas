@@ -109,6 +109,34 @@ export type CreationAssistantDraft = {
     reverseFrameCount: number;
     reverseSubmittedGridCount: number;
     reverseOmittedGridCount: number;
+    // 双轨独立隔离状态 (Dual-track Isolation for Classic & Deconstruct)
+    reverseActiveMode?: "classic" | "deconstruct";
+    classicStatus?: CreationAssistantReverseStatus;
+    classicError?: string;
+    classicPrompt?: string;
+    classicNotes?: string[];
+    classicDurationSec?: number;
+    classicFrameCount?: number;
+    classicGridSize?: ReverseGridSize;
+    classicSamplingMode?: VideoSamplingMode;
+    classicSamplingFps?: number;
+    classicIncludeMiddleFrames?: boolean;
+    classicSceneThreshold?: number;
+    classicMinSceneGapSec?: number;
+    classicCustomRules?: string;
+    deconstructStatus?: CreationAssistantReverseStatus;
+    deconstructError?: string;
+    deconstructPrompt?: string;
+    deconstructNotes?: string[];
+    deconstructDurationSec?: number;
+    deconstructFrameCount?: number;
+    deconstructGridSize?: ReverseGridSize;
+    deconstructSceneThreshold?: number;
+    deconstructMinSceneGapSec?: number;
+    deconstructWordLevelAudio?: boolean;
+    deconstructLocalAsrEnabled?: boolean;
+    deconstructCustomRules?: string;
+    deconstructShotManifest?: any[];
     script: string;
     /**
      * The user-approved, editable reference script. Keep this separate from
@@ -183,6 +211,33 @@ export const defaultCreationAssistantDraft: CreationAssistantDraft = {
     reverseFrameCount: 0,
     reverseSubmittedGridCount: 0,
     reverseOmittedGridCount: 0,
+    reverseActiveMode: "classic",
+    classicStatus: "idle",
+    classicError: "",
+    classicPrompt: "",
+    classicNotes: [],
+    classicDurationSec: 0,
+    classicFrameCount: 0,
+    classicGridSize: "auto",
+    classicSamplingMode: "seconds_and_scene",
+    classicSamplingFps: 1,
+    classicIncludeMiddleFrames: true,
+    classicSceneThreshold: 0.20,
+    classicMinSceneGapSec: 0.3,
+    classicCustomRules: "",
+    deconstructStatus: "idle",
+    deconstructError: "",
+    deconstructPrompt: "",
+    deconstructNotes: [],
+    deconstructDurationSec: 0,
+    deconstructFrameCount: 0,
+    deconstructGridSize: "auto",
+    deconstructSceneThreshold: 0.15,
+    deconstructMinSceneGapSec: 0.25,
+    deconstructWordLevelAudio: true,
+    deconstructLocalAsrEnabled: true,
+    deconstructCustomRules: "",
+    deconstructShotManifest: [],
     script: "",
     referenceScript: "",
     referenceScriptDurationSec: 0,
@@ -259,7 +314,18 @@ export const useCreationAssistantStore = create<CreationAssistantStore>()(
             name: CREATION_ASSISTANT_STORE_KEY,
             storage: creationAssistantStorage,
             partialize: (state) => ({ draft: state.draft }) as StorageValue<CreationAssistantStore>["state"],
-            onRehydrateStorage: () => () => useCreationAssistantStore.setState({ hydrated: true }),
+            onRehydrateStorage: () => (state) => {
+                if (!state?.draft) {
+                    useCreationAssistantStore.setState({
+                        hydrated: true,
+                        draft: defaultCreationAssistantDraft,
+                        past: [],
+                        future: [],
+                    });
+                    return;
+                }
+                useCreationAssistantStore.setState({ hydrated: true });
+            },
         },
     ),
 );

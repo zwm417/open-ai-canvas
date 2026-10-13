@@ -356,9 +356,9 @@ export function mergedImageCapabilityConfig(config: AiConfig, selected: string):
 // 切换模型后初始化图片参数为该模型能力默认值，避免旧参数在目标模型族不兼容导致无法切换。
 export function defaultImageParamsForModel(config: AiConfig, model: string): Pick<AiConfig, "size" | "quality" | "transparentBackground"> {
     const image = modelCapabilityConfigFor(config, model).image;
-    if (!image) return { size: "1:1", quality: "auto", transparentBackground: "false" };
+    if (!image) return { size: "9:16", quality: "auto", transparentBackground: "false" };
     const sizeValues = image.size.values.filter((value) => value !== "*");
-    const sizeDefault = image.size.default !== "*" && image.size.default ? image.size.default : sizeValues[0] || "1:1";
+    const sizeDefault = image.size.default !== "*" && image.size.default ? image.size.default : sizeValues.includes("9:16") ? "9:16" : sizeValues[0] || "9:16";
     return {
         size: sizeDefault,
         quality: image.quality.default || "auto",

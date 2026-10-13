@@ -5,7 +5,7 @@ export type CanvasAppearance = {
     welcomeTitle: string;
     welcomeDescription: string;
     inputPlaceholder: string;
-    avatarType: "orb" | "live2d";
+    avatarType: "orb" | "live2d" | "pixiu";
     live2dResourceId: string;
     live2dEntry: string;
     avatarHeight: number;

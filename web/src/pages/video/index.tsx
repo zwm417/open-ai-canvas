@@ -5,15 +5,17 @@ import {
     DirectorAssistantPanel,
     ReferenceReplicationPanel,
     useActiveVideoSkills,
+    useDeepReplicationTaskStore,
 } from "@/extensions/video-workbench-skills";
-import { AlertCircle, BookOpen, BookmarkPlus, Check, CheckSquare, ChevronDown, ClipboardPaste, Download, FileText, Film, FolderPlus, History, ImagePlus, List, LoaderCircle, Music2, Play, Plus, RefreshCw, RotateCcw, Send, SlidersHorizontal, Sparkles, Trash2, Video as VideoIcon, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { AlertCircle, BookOpen, BookmarkPlus, Check, CheckSquare, ChevronDown, ClipboardPaste, Download, FileText, Film, FolderPlus, History, ImagePlus, List, LoaderCircle, Music2, Play, Plus, RefreshCw, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Video as VideoIcon, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, memo, type DragEvent, type ReactNode } from "react";
 import { App, Button, Checkbox, Drawer, Input, Modal, Tag, Typography } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { EmptyState } from "@/components/ui/product/empty-state";
 import localforage from "localforage";
 import { nanoid } from "nanoid";
 import { saveAs } from "file-saver";
+import { downloadMediaWithSaveDialog } from "@/extensions/workbench-save-dialog/save-as-dialog";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 
 import { AssetPickerModal, type InsertAssetPayload } from "@/components/canvas/asset-picker-modal";
@@ -32,6 +34,7 @@ import { getActiveUserScope, USER_SCOPE_CHANGED_EVENT } from "@/lib/user-scope";
 import { collectMediaStorageKeys, deleteStoredMedia, resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
 import { resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { resolveResourceUrl } from "@/services/api/resources";
+import { peekLocalFirstMedia } from "@/services/local-first-media-resolver";
 import { CachedResourceImage } from "@/components/cached-resource-image";
 import { primeResourceBlobCache } from "@/services/resource-blob-cache";
 import { captureVideoPoster } from "@/lib/video-poster";
@@ -40,6 +43,7 @@ import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo
 import { recoverGenerationTaskMedia, refreshGenerationTaskStatus } from "@/services/api/task-center";
 import { getTieredPollingIntervalMs, runVideoSegmentBatch, VIDEO_SEGMENT_HARD_TIMEOUT_MS, VIDEO_SEGMENT_SOFT_TIMEOUT_MS, type VideoSegmentBatchResult, type VideoSegmentRunnerTaskEvent, type VideoSegmentTaskCheckpoint } from "@/services/video-segment-runner";
 import { useAssetStore } from "@/stores/use-asset-store";
+import { registerActiveWorkbenchTask } from "@/services/global-task-guardian";
 import { useVideoWorkbenchStore, type VideoTextReference, type VideoWorkbenchDraft } from "@/stores/use-video-workbench-store";
 import { defaultCreationAssistantDraft, useCreationAssistantStore } from "@/stores/use-creation-assistant-store";
 import type { CreationAssistantDraft } from "@/stores/use-creation-assistant-store";
@@ -49,15 +53,13 @@ import { listRemoteGenerationLogs } from "@/services/api/user-data";
 import { ModelPicker } from "@/components/model-picker";
 import { modelRequestOptions, resolveCompatibleModel, type ModelRequirements } from "@/lib/model-selection";
 import { mergeVideos } from "@/lib/canvas/canvas-video-merge";
-import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
-import { CanvasNodeType } from "@/types/canvas";
-import { clampDurationToChannelVideoModel, modelCapabilityConfigFor, resolveChannelVideoModelDurationBounds, resolveChannelVideoModelMaxDuration, videoDurationOptions } from "@/lib/model-capabilities";
+import { clampDurationToChannelVideoModel, modelCapabilityConfigFor, resolveChannelVideoModelDurationBounds, resolveChannelVideoModelMaxDuration, resolveVideoRatioValue, resolveVideoResolutionValue, videoDurationOptions } from "@/lib/model-capabilities";
 import { refreshSystemChannels } from "@/lib/user-session";
 import { modelDisplayName, modelOptionLabel, modelOptionName, resolveModelForCapability, selectableModelsByCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 import type { CreationOutputRecord, CreationRunRecord } from "@/lib/creation-session";
-import { buildVideoCreationPlan, extractScriptShotBlocks, hashCreationScript, type VideoCreationPlan, type VideoSegmentHandoff, type VideoSegmentOutput } from "@/lib/video-segment-contract";
+import { buildVideoCreationPlan, extractScriptShotBlocks, hashCreationScript, validateVideoCreationPlanForGeneration, type VideoCreationPlan, type VideoSegmentHandoff, type VideoSegmentOutput } from "@/lib/video-segment-contract";
 
 type GeneratedVideo = {
     id: string;
@@ -69,16 +71,118 @@ type GeneratedVideo = {
     bytes: number;
     mimeType: string;
     label?: string;
+    posterUrl?: string;
+    posterStorageKey?: string;
 };
 
-type GenerationResult = {
+export type GenerationResult = {
     id: string;
+    batchId?: string;
     status: "draft" | "pending" | "success" | "failed";
     video?: GeneratedVideo;
     error?: string;
     task?: VideoGenerationTask;
     failureCount?: number;
+    segmentIndex?: number;
+    segmentId?: string;
+    title?: string;
+    slotId?: string;
+    createdAt?: number;
 };
+
+export function getGenerationCardSlotId(batchId: string, segmentIndex?: number): string {
+    if (typeof segmentIndex === "number" && segmentIndex > 0) {
+        return `${batchId}:slot:${segmentIndex}`;
+    }
+    return `${batchId}:master`;
+}
+
+export function isSameGenerationResult(a: GenerationResult, b: GenerationResult): boolean {
+    if (a.id && b.id && a.id === b.id) return true;
+    if (a.slotId && b.slotId && a.slotId === b.slotId) return true;
+    if (a.video?.id && b.video?.id && a.video.id === b.video.id) return true;
+    if (a.task?.id && b.task?.id && a.task.id === b.task.id) return true;
+    const aBatch = a.batchId;
+    const bBatch = b.batchId;
+    if (aBatch && bBatch && aBatch === bBatch) {
+        if (typeof a.segmentIndex === "number" && typeof b.segmentIndex === "number") {
+            return a.segmentIndex === b.segmentIndex;
+        }
+        if (typeof a.segmentIndex !== "number" && typeof b.segmentIndex !== "number") {
+            if (a.id?.endsWith("-failed") || b.id?.endsWith("-failed")) {
+                return Boolean(a.id?.endsWith("-failed") && b.id?.endsWith("-failed"));
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+export function reconcileGenerationResults(
+    prev: GenerationResult[],
+    incoming: GenerationResult[],
+    strategy: "merge-update" | "prepend-or-update" = "prepend-or-update"
+): GenerationResult[] {
+    let next = [...prev];
+    let changed = false;
+
+    const unhandledNewItems: GenerationResult[] = [];
+    for (const item of incoming) {
+        const existingIdx = next.findIndex((r) => isSameGenerationResult(r, item));
+        if (existingIdx >= 0) {
+            const current = next[existingIdx];
+            const updated: GenerationResult = {
+                ...current,
+                ...item,
+                video: item.video || current.video,
+                task: item.task || current.task,
+                error: item.status === "failed" ? item.error || current.error : undefined,
+                status: item.status,
+                createdAt: item.createdAt || current.createdAt,
+            };
+            if (
+                current.status !== updated.status ||
+                current.video?.url !== updated.video?.url ||
+                current.error !== updated.error ||
+                current.id !== updated.id ||
+                current.slotId !== updated.slotId ||
+                current.createdAt !== updated.createdAt
+            ) {
+                next[existingIdx] = updated;
+                changed = true;
+            }
+        } else {
+            unhandledNewItems.push(item);
+        }
+    }
+
+    if (unhandledNewItems.length > 0) {
+        if (strategy === "prepend-or-update") {
+            next = [...unhandledNewItems, ...next];
+        } else {
+            next = [...next, ...unhandledNewItems];
+        }
+        changed = true;
+    }
+
+    const incomingBatchesWithSegments = new Set(
+        incoming.filter((it) => it.batchId && typeof it.segmentIndex === "number").map((it) => it.batchId!)
+    );
+    if (incomingBatchesWithSegments.size > 0) {
+        const cleaned = next.filter((r) => {
+            if (r.batchId && incomingBatchesWithSegments.has(r.batchId) && typeof r.segmentIndex !== "number" && r.status === "pending") {
+                changed = true;
+                return false;
+            }
+            return true;
+        });
+        if (cleaned.length !== next.length) {
+            next = cleaned;
+        }
+    }
+
+    return changed ? next : prev;
+}
 
 type SegmentBatchLog = {
     batchId: string;
@@ -115,6 +219,7 @@ type GenerationLog = {
     creationAssistant?: CreationAssistantDraft | null;
     creationPlan?: VideoCreationPlan;
     segmentBatch?: SegmentBatchLog;
+    batchId?: string;
     runs: CreationRunRecord[];
     runId?: string;
     error?: string;
@@ -251,6 +356,44 @@ const LOG_STORE_KEY = "infinite-canvas:video_generation_logs";
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "video_generation_logs" });
 const generationLogWriteQueue = createKeyedAsyncQueue();
 
+function isImageLikeUrl(url?: string): boolean {
+    if (!url) return false;
+    if (url.startsWith("data:image/") || url.startsWith("blob:")) return true;
+    const cleanUrl = url.split(/[?#]/)[0].toLowerCase();
+    return !/\.(mp4|webm|mov|m4v|ogg|ogv|avi|mkv|flv|mp3|wav|m4a|aac)$/i.test(cleanUrl);
+}
+
+export function formatBatchDisplayTime(timestamp: number): string {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const timeStr = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+    // 同一天：直接显示时间
+    if (date.toDateString() === now.toDateString()) {
+        return timeStr;
+    }
+
+    // 昨天
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) {
+        return `昨天 ${timeStr}`;
+    }
+
+    // 同一年跨天
+    if (date.getFullYear() === now.getFullYear()) {
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${month}-${day} ${timeStr}`;
+    }
+
+    // 跨年
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day} ${timeStr}`;
+}
+
 export default function VideoPage() {
     const { message, modal } = App.useApp();
     const navigate = useNavigate();
@@ -276,6 +419,7 @@ export default function VideoPage() {
     } = useActiveVideoSkills();
     const [videoSkillPickerOpen, setVideoSkillPickerOpen] = useState(false);
     const prevVideoSkillIdRef = useRef<string | null | undefined>(activeSkillId ? undefined : null);
+    const currentSessionIdRef = useRef<string>(draft.sessionId || "");
     useEffect(() => {
         if (activeSkillId !== prevVideoSkillIdRef.current) {
             const wasInitial = prevVideoSkillIdRef.current === undefined;
@@ -364,6 +508,68 @@ export default function VideoPage() {
     const [logs, setLogs] = useState<GenerationLog[]>([]);
     const [submitting, setSubmitting] = useState(false);
     const isCurrentSessionPending = useMemo(() => results.some((r) => r.status === "pending"), [results]);
+    const batchGroups = useMemo(() => {
+        if (!results.length) return [];
+        const groupsMap = new Map<string, {
+            batchId: string;
+            createdAt?: number;
+            displayTime: string;
+            prompt?: string;
+            model?: string;
+            modelLabel: string;
+            items: GenerationResult[];
+            log?: GenerationLog;
+        }>();
+
+        // 1. 按批次聚合卡片
+        results.forEach((item) => {
+            const bId = item.batchId || item.id;
+            if (!groupsMap.has(bId)) {
+                const matchedLog = logs.find((l) => l.id === bId || l.batchId === bId);
+                const createdTime = matchedLog?.createdAt || item.createdAt || Date.now();
+                const displayTime = formatBatchDisplayTime(createdTime);
+                const modelName = matchedLog?.model || item.task?.model || draft.model;
+                groupsMap.set(bId, {
+                    batchId: bId,
+                    createdAt: createdTime,
+                    displayTime,
+                    prompt: matchedLog?.prompt,
+                    model: modelName,
+                    modelLabel: modelOptionLabel(effectiveConfig, modelName) || modelOptionName(modelName) || modelName,
+                    items: [],
+                    log: matchedLog,
+                });
+            }
+            groupsMap.get(bId)!.items.push(item);
+        });
+
+        // 2. 导出批次流并计算综合状态
+        const groups: Array<{
+            batchId: string;
+            createdAt?: number;
+            displayTime: string;
+            prompt?: string;
+            model?: string;
+            modelLabel: string;
+            status: "pending" | "success" | "failed" | "partial";
+            items: GenerationResult[];
+            log?: GenerationLog;
+        }> = [];
+
+        groupsMap.forEach((group) => {
+            const hasPending = group.items.some((i) => i.status === "pending" || i.status === "draft");
+            const allSuccess = group.items.every((i) => i.status === "success");
+            const allFailed = group.items.every((i) => i.status === "failed");
+            const status = hasPending ? "pending" : allSuccess ? "success" : allFailed ? "failed" : "partial";
+            groups.push({
+                ...group,
+                status,
+            });
+        });
+
+        // 商业级铁律：必须按真实物理时间严格倒序（最新的批次永远在最顶层），彻底消除乱序
+        return groups.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    }, [results, logs, effectiveConfig, draft.model]);
     const [logsOpen, setLogsOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [promptDialogOpen, setPromptDialogOpen] = useState(false);
@@ -383,14 +589,68 @@ export default function VideoPage() {
     const preparationVersionRef = useRef(0);
     const generationAbortControllerRef = useRef<AbortController | null>(null);
     const activeSegmentLogRef = useRef<GenerationLog | null>(null);
+    const activeSegmentRunsMapRef = useRef<Map<string, GenerationLog>>(new Map());
     const activeSegmentBatchIdsRef = useRef<Set<string>>(new Set());
     const sessionExplicitlyResetRef = useRef(false);
     const isReconcilingLogsRef = useRef(false);
+    const lastRemoteSyncAtRef = useRef<number>(0);
+    const resultsRef = useRef(results);
+    resultsRef.current = results;
+    const logsRef = useRef(logs);
+    logsRef.current = logs;
 
-    // 快捷键支持 (AGENTS.md Section 5.2/5.3 规范)
+    // 快捷键支持 (AGENTS.md Section 5.1/5.2/5.3 规范)
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.isComposing) return;
+
+            // Esc 键：弹出页面 / 浮层取消与退出 (AGENTS.md Section 5.1 LIFO 栈式关闭与防穿透)
+            if (event.key === "Escape") {
+                if (deleteConfirmOpen) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setDeleteConfirmOpen(false);
+                    return;
+                }
+                if (previewReferenceId) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setPreviewReferenceId(null);
+                    return;
+                }
+                if (assetPickerOpen) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setAssetPickerOpen(false);
+                    return;
+                }
+                if (promptDialogOpen) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setPromptDialogOpen(false);
+                    return;
+                }
+                if (videoSkillPickerOpen) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setVideoSkillPickerOpen(false);
+                    return;
+                }
+                if (settingsOpen) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setSettingsOpen(false);
+                    return;
+                }
+                if (logsOpen) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setLogsOpen(false);
+                    return;
+                }
+                return;
+            }
+
             const isUndo = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z" && !event.shiftKey;
             const isRedo = (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "y" || (event.key.toLowerCase() === "z" && event.shiftKey));
             if (!isUndo && !isRedo) return;
@@ -406,7 +666,17 @@ export default function VideoPage() {
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [undoDraft, redoDraft]);
+    }, [
+        undoDraft,
+        redoDraft,
+        deleteConfirmOpen,
+        previewReferenceId,
+        assetPickerOpen,
+        promptDialogOpen,
+        videoSkillPickerOpen,
+        settingsOpen,
+        logsOpen,
+    ]);
 
     const videoCommand = useWorkbenchAgentStore((state) => state.videoCommand);
     const clearVideoCommand = useWorkbenchAgentStore((state) => state.clearVideoCommand);
@@ -438,6 +708,33 @@ export default function VideoPage() {
     const model = resolveCompatibleModel(effectiveConfig, preferredModel, modelRequirements) || preferredModel;
     const videoFeatureCredit = useFeatureCredit("video_workbench", model);
 
+    const handleModelChange = useCallback((value: string) => {
+        updateConfig("videoModel", value);
+        const profile = modelCapabilityConfigFor(effectiveConfig, value).video;
+        updateDraft({
+            model: value,
+            aspectRatio: profile ? resolveVideoRatioValue(profile, draft.aspectRatio) : (draft.aspectRatio || "9:16"),
+            resolution: profile ? resolveVideoResolutionValue(profile, draft.resolution) : (draft.resolution || "720p"),
+            durationSec: clampDurationToChannelVideoModel(effectiveConfig, value, draft.durationSec),
+        });
+    }, [effectiveConfig, draft.aspectRatio, draft.resolution, draft.durationSec, updateConfig, updateDraft]);
+
+    const handleAspectRatioChange = useCallback((value: string) => {
+        updateDraft({ aspectRatio: value as any });
+    }, [updateDraft]);
+
+    const handleResolutionChange = useCallback((value: string) => {
+        updateDraft({ resolution: value as any });
+    }, [updateDraft]);
+
+    const handleDurationChange = useCallback((value: number) => {
+        updateDraft({ durationSec: value });
+    }, [updateDraft]);
+
+    const handleConfigChange = useCallback((key: keyof AiConfig, value: string) => {
+        updateConfig(key, value);
+    }, [updateConfig]);
+
     interface VideoChargedCreditRecord {
         runId: string;
         amount: number;
@@ -452,7 +749,7 @@ export default function VideoPage() {
     // 用户切换监听与隔离刷新
     const [userScope, setUserScope] = useState(getActiveUserScope());
     useEffect(() => {
-        const checkScope = () => {
+        const checkScope = async () => {
             const currentScope = getActiveUserScope();
             if (currentScope !== userScope) {
                 generationAbortControllerRef.current?.abort();
@@ -462,8 +759,30 @@ export default function VideoPage() {
                     }
                 }
                 activeChargedCreditsMapRef.current.clear();
+                activeSegmentRunsMapRef.current.clear();
+                activeSegmentBatchIdsRef.current.clear();
+                activeLogIdsRef.current.clear();
+                activeSegmentLogRef.current = null;
+                isReconcilingLogsRef.current = false;
+                savedDraftSignatureRef.current = null;
+                preparationVersionRef.current = 0;
+                agentTaskIdRef.current = undefined;
+
                 setUserScope(currentScope);
-                void createSession(false);
+                // 仅重置会话临时交互状态，严禁调用 createSession() 或 resetDraft() 写入空草稿覆写新账号持久化数据
+                sessionExplicitlyResetRef.current = true;
+                setPreviewReferenceId(null);
+                setResults([]);
+                setElapsedMs(0);
+                setStartedAt(0);
+                setSelectedLogIds([]);
+                setPreviewLog(null);
+                setSegmentProgress(null);
+                useDeepReplicationTaskStore.getState().resetTask();
+                await Promise.all([
+                    useVideoWorkbenchStore.persist?.rehydrate?.(),
+                    useCreationAssistantStore.persist?.rehydrate?.(),
+                ]);
                 void refreshLogs(true, true);
             }
         };
@@ -474,6 +793,78 @@ export default function VideoPage() {
             window.removeEventListener(USER_SCOPE_CHANGED_EVENT, checkScope);
         };
     }, [userScope, videoFeatureCredit]);
+
+    // [session_workspace_registry] [start]
+    const saveCurrentVideoWorkspaceSnapshot = (targetSessionId: string) => {
+        if (!targetSessionId) return;
+        const currentDraft = useVideoWorkbenchStore.getState().draft;
+        const assistantDraft = useCreationAssistantStore.getState().draft;
+        useVideoWorkbenchStore.getState().saveSessionSnapshot(targetSessionId, {
+            skillId: activeSkillId || null,
+            isDirectorMode: Boolean(isDirectorMode),
+            prompt: currentDraft.prompt || prompt,
+            references: currentDraft.references || references,
+            videoReferences: currentDraft.videoReferences || videoReferences,
+            audioReferences: currentDraft.audioReferences || audioReferences,
+            textReferences: currentDraft.textReferences || textReferences,
+            referenceOrder: currentDraft.referenceOrder || referenceOrder,
+            model: currentDraft.model || effectiveConfig.videoModel || effectiveConfig.model,
+            aspectRatio: currentDraft.aspectRatio || effectiveConfig.size,
+            resolution: currentDraft.resolution || effectiveConfig.vquality,
+            durationSec: currentDraft.durationSec,
+            videoSeconds: effectiveConfig.videoSeconds,
+            videoGenerateAudio: effectiveConfig.videoGenerateAudio,
+            videoWatermark: effectiveConfig.videoWatermark,
+            creationPlan: currentDraft.creationPlan,
+            creationAssistant: structuredClone(assistantDraft),
+        });
+    };
+
+    const restoreTargetVideoWorkspaceSnapshot = (log: GenerationLog) => {
+        const targetSessionId = log.sessionId || log.id;
+        const cachedSnapshot = useVideoWorkbenchStore.getState().getSessionSnapshot(targetSessionId) || useVideoWorkbenchStore.getState().getSessionSnapshot(log.id);
+        if (cachedSnapshot) {
+            prevVideoSkillIdRef.current = cachedSnapshot.skillId || null;
+            if (cachedSnapshot.skillId) {
+                selectSkill(cachedSnapshot.skillId);
+            } else {
+                selectSkill(null);
+            }
+            if (cachedSnapshot.isDirectorMode) {
+                enterDirectorMode();
+            } else {
+                exitDirectorMode();
+            }
+            const restoredModel = resolveModelForCapability(effectiveConfig, cachedSnapshot.model || log.config?.videoModel || log.model || draft.model, "video");
+            updateDraft({
+                sessionId: targetSessionId,
+                prompt: cachedSnapshot.prompt,
+                references: cachedSnapshot.references || [],
+                videoReferences: cachedSnapshot.videoReferences || [],
+                audioReferences: cachedSnapshot.audioReferences || [],
+                textReferences: cachedSnapshot.textReferences || [],
+                referenceOrder: cachedSnapshot.referenceOrder || [],
+                model: restoredModel,
+                aspectRatio: cachedSnapshot.aspectRatio || log.config?.size || draft.aspectRatio,
+                resolution: cachedSnapshot.resolution || log.config?.vquality || draft.resolution,
+                durationSec: cachedSnapshot.durationSec || log.creationPlan?.targetDurationSec || Number(log.config?.videoSeconds || draft.durationSec) || draft.durationSec,
+                creationPlan: cachedSnapshot.creationPlan,
+            });
+            updateConfig("videoModel", restoredModel);
+            if (cachedSnapshot.aspectRatio) updateConfig("size", cachedSnapshot.aspectRatio);
+            if (cachedSnapshot.resolution) updateConfig("vquality", cachedSnapshot.resolution);
+            if (cachedSnapshot.durationSec) updateConfig("videoSeconds", String(cachedSnapshot.durationSec));
+            if (cachedSnapshot.videoGenerateAudio !== undefined) updateConfig("videoGenerateAudio", String(cachedSnapshot.videoGenerateAudio));
+            if (cachedSnapshot.videoWatermark !== undefined) updateConfig("videoWatermark", String(cachedSnapshot.videoWatermark));
+            if (cachedSnapshot.creationAssistant) {
+                useCreationAssistantStore.getState().replaceDraft(cachedSnapshot.creationAssistant);
+            } else {
+                useCreationAssistantStore.getState().reset();
+            }
+        }
+    };
+    // [session_workspace_registry] [end]
+
     const isUploading = useMemo(
         () => references.some((r) => r.uploading) || videoReferences.some((v) => v.uploading) || audioReferences.some((a) => a.uploading),
         [references, videoReferences, audioReferences],
@@ -494,8 +885,8 @@ export default function VideoPage() {
             const profile = modelCapabilityConfigFor(effectiveConfig, model).video;
             updateDraft({
                 model,
-                aspectRatio: profile?.ratios?.[0] || draft.aspectRatio || "9:16",
-                resolution: profile?.resolutions?.[0] || draft.resolution || "720p",
+                aspectRatio: profile ? resolveVideoRatioValue(profile, draft.aspectRatio) : (draft.aspectRatio || "9:16"),
+                resolution: profile ? resolveVideoResolutionValue(profile, draft.resolution) : (draft.resolution || "720p"),
                 durationSec: clampDurationToChannelVideoModel(effectiveConfig, model, draft.durationSec),
             });
         }
@@ -546,14 +937,14 @@ export default function VideoPage() {
             referenceOrder.flatMap((entry): ReferencePreviewItem[] => {
                 if (entry.kind === "image") {
                     const item = references.find((reference) => reference.id === entry.id);
-                    return item ? [{ ...entry, name: item.name, type: item.type, url: item.dataUrl, dataUrl: item.dataUrl, storageKey: item.storageKey, uploading: item.uploading, progress: item.progress, error: item.error }] : [];
+                    return item ? [{ ...entry, name: item.name, type: item.type, url: item.dataUrl || item.url || (item.storageKey ? (peekLocalFirstMedia(item.storageKey) || resolveResourceUrl(item.storageKey)) : ""), dataUrl: item.dataUrl || item.url || (item.storageKey ? (peekLocalFirstMedia(item.storageKey) || resolveResourceUrl(item.storageKey)) : ""), storageKey: item.storageKey, uploading: item.uploading, progress: item.progress, error: item.error }] : [];
                 }
                 if (entry.kind === "video") {
                     const item = videoReferences.find((reference) => reference.id === entry.id);
-                    return item ? [{ ...entry, name: item.name, type: item.type, url: item.url, storageKey: item.storageKey, posterUrl: item.posterUrl, posterStorageKey: item.posterStorageKey, bytes: item.bytes, width: item.width, height: item.height, durationMs: item.durationMs, uploading: item.uploading, progress: item.progress, error: item.error }] : [];
+                    return item ? [{ ...entry, name: item.name, type: item.type, url: item.url || (item.storageKey ? (peekLocalFirstMedia(item.storageKey) || resolveResourceUrl(item.storageKey)) : ""), storageKey: item.storageKey, posterUrl: item.posterUrl || (item.posterStorageKey ? (peekLocalFirstMedia(item.posterStorageKey) || resolveResourceUrl(item.posterStorageKey)) : ""), posterStorageKey: item.posterStorageKey, bytes: item.bytes, width: item.width, height: item.height, durationMs: item.durationMs, uploading: item.uploading, progress: item.progress, error: item.error }] : [];
                 }
                 const item = audioReferences.find((reference) => reference.id === entry.id);
-                return item ? [{ ...entry, name: item.name, type: item.type, url: item.url, storageKey: item.storageKey, durationMs: item.durationMs, uploading: item.uploading, progress: item.progress, error: item.error }] : [];
+                return item ? [{ ...entry, name: item.name, type: item.type, url: item.url || (item.storageKey ? (peekLocalFirstMedia(item.storageKey) || resolveResourceUrl(item.storageKey)) : ""), storageKey: item.storageKey, durationMs: item.durationMs, uploading: item.uploading, progress: item.progress, error: item.error }] : [];
             }),
         [audioReferences, referenceOrder, references, videoReferences],
     );
@@ -582,10 +973,14 @@ export default function VideoPage() {
         let visibilityDebounceTimer: ReturnType<typeof setTimeout> | undefined;
         const handleVisibilityChange = () => {
             if (document.visibilityState === "visible") {
-                if (visibilityDebounceTimer) clearTimeout(visibilityDebounceTimer);
-                visibilityDebounceTimer = setTimeout(() => {
-                    void refreshLogs(true, true);
-                }, 300);
+                const now = Date.now();
+                // 流量熔断节流阀：最小 60 秒冷却门阀，切屏防抖，彻底消除并发与带宽浪费
+                if (now - lastRemoteSyncAtRef.current >= 60_000) {
+                    if (visibilityDebounceTimer) clearTimeout(visibilityDebounceTimer);
+                    visibilityDebounceTimer = setTimeout(() => {
+                        void refreshLogs(true, true);
+                    }, 500);
+                }
             }
         };
         document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -596,6 +991,94 @@ export default function VideoPage() {
         // [silent-reconciliation] [end]
     }, []);
 
+    // [sub-feature: background_video_task_reconciler_daemon] [start]
+    // 后台长效视频任务自动对账守护器：
+    // 当存在未决（pending）、超时或可恢复的视频任务时，
+    // 后台每 5 秒自动增量对账轮询（空闲时 0 轮询 0 负载）；
+    // 一旦上游任务生成完毕落库，自动静默提取产物并双向回填至结果卡片与持久化历史记录，
+    // 保证在发起大模型请求后随意切换页面、点击任何内容、路由跳转或刷新均能自动实现任务守护与回填。
+    const reconciledVideoTasksRef = useRef<Set<string>>(new Set());
+    useEffect(() => {
+        let isReconciling = false;
+        const intervalId = window.setInterval(async () => {
+            if (isReconciling) return;
+            isReconciling = true;
+            try {
+                const candidates: Array<{ taskId: string; logId: string; segmentIndex?: number }> = [];
+                const seenTasks = new Set<string>();
+
+                // 1. 扫描当前结果卡片 resultsRef.current
+                for (const r of resultsRef.current) {
+                    const taskId = r.task?.id;
+                    if (taskId && !reconciledVideoTasksRef.current.has(taskId) && !seenTasks.has(taskId)) {
+                        if (r.status === "pending" || (r.status === "failed" && /超时|稍后重试/i.test(r.error || ""))) {
+                            candidates.push({ taskId, logId: r.batchId || r.id, segmentIndex: r.segmentIndex });
+                            seenTasks.add(taskId);
+                        }
+                    }
+                }
+
+                // 2. 扫描 logsRef.current 中处于 pending 或超时待自愈的任务
+                for (const log of logsRef.current) {
+                    const isPendingOrRecoverable = log.status === "pending" || (log.status === "failed" && /超时|稍后重试/i.test(log.error || ""));
+                    if (isPendingOrRecoverable) {
+                        if (log.task?.id && !reconciledVideoTasksRef.current.has(log.task.id) && !seenTasks.has(log.task.id)) {
+                            candidates.push({ taskId: log.task.id, logId: log.id });
+                            seenTasks.add(log.task.id);
+                        }
+                        if (log.runs?.length) {
+                            for (const run of log.runs) {
+                                if (run.task?.id && !reconciledVideoTasksRef.current.has(run.task.id) && !seenTasks.has(run.task.id)) {
+                                    candidates.push({ taskId: run.task.id, logId: log.id });
+                                    seenTasks.add(run.task.id);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (candidates.length === 0) return;
+
+                for (const item of candidates) {
+                    try {
+                        const taskInfo = await refreshGenerationTaskStatus(item.taskId);
+                        if (taskInfo.status === "succeeded") {
+                            reconciledVideoTasksRef.current.add(item.taskId);
+                            const targetLog = logsRef.current.find((l) => l.id === item.logId);
+                            if (targetLog) {
+                                void pollGenerationLog(targetLog);
+                            }
+                        } else if (taskInfo.status === "failed" || taskInfo.status === "cancelled") {
+                            if (taskInfo.canRecoverMedia) {
+                                try {
+                                    await recoverGenerationTaskMedia(item.taskId);
+                                } catch {}
+                            } else {
+                                reconciledVideoTasksRef.current.add(item.taskId);
+                            }
+                        }
+                    } catch {}
+                }
+            } finally {
+                isReconciling = false;
+            }
+        }, 5000);
+
+        return () => window.clearInterval(intervalId);
+    }, []);
+    // [sub-feature: background_video_task_reconciler_daemon] [end]
+
+    useEffect(() => {
+        const handleSettled = (e: Event) => {
+            const detail = (e as CustomEvent).detail;
+            if (detail?.type === "video") {
+                void refreshLogs();
+            }
+        };
+        window.addEventListener("workbench:task-settled", handleSettled);
+        return () => window.removeEventListener("workbench:task-settled", handleSettled);
+    }, []);
+
     // 状态生命周期守卫：同步生成记录与右侧结果面板（页面加载、刷新、路由切回、后台轮询完成均自动保活）
     // [workbench-lifecycle-guard] [start]
     useEffect(() => {
@@ -603,22 +1086,40 @@ export default function VideoPage() {
         if (sessionExplicitlyResetRef.current) return;
         if (!hydratedDraft || logs.length === 0) return;
 
-        // 分支 1：当前已存在活跃预览记录 previewLog，响应后台更新（如轮询/远程同步）
-        if (previewLog) {
-            const updatedLog = logs.find((l) => l.id === previewLog.id);
-            if (updatedLog && (updatedLog.updatedAt !== previewLog.updatedAt || updatedLog.status !== previewLog.status)) {
-                setPreviewLog(updatedLog);
-                const derived = deriveGenerationResultsFromLog(updatedLog);
-                setResults((prev) => {
-                    if (prev.length <= 1) return derived;
-                    const targetIds = new Set([
-                        updatedLog.id,
-                        updatedLog.video?.id,
-                        ...(updatedLog.runs?.flatMap((r) => r.outputs?.map((o) => o.outputId)) || []),
-                    ].filter(Boolean));
-                    const remaining = prev.filter((r) => !targetIds.has(r.id) && (!r.task?.id || r.task.id !== updatedLog.task?.id));
-                    return [...derived, ...remaining];
+        // 分支 1：响应当前会话内所有日志的并发更新（包括后台落库/分段推进/轮询同步），使用强幂等融合
+        const currentSessionId = draft.sessionId;
+        const sessionOrActiveLogs = logs.filter(
+            (l) => (currentSessionId && l.sessionId === currentSessionId) || activeSegmentRunsMapRef.current.has(l.id) || activeLogIdsRef.current.has(l.id)
+        );
+
+        if (sessionOrActiveLogs.length > 0 && !isCurrentSessionPending) {
+            setResults((prev) => {
+                let next = prev;
+                // 若当前激活了特定历史日志预览，严格单批物理隔离，保留正在运行的任务
+                if (previewLog) {
+                    const activeLogToSync = sessionOrActiveLogs.find((l) => l.id === previewLog.id) || previewLog;
+                    const previewResults = deriveGenerationResultsFromLog(activeLogToSync);
+                    const runningSlots = prev.filter((r) => r.status === "pending" && (activeSegmentBatchIdsRef.current.has(r.batchId || "") || activeLogIdsRef.current.has(r.batchId || "")));
+                    return reconcileGenerationResults(runningSlots, previewResults, "merge-update");
+                }
+                const sortedLogs = [...sessionOrActiveLogs].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+                sortedLogs.forEach((logItem) => {
+                    const derived = deriveGenerationResultsFromLog(logItem);
+                    next = reconcileGenerationResults(next, derived, "prepend-or-update");
                 });
+                return next;
+            });
+            if (previewLog) {
+                const refreshed = logs.find((l) => l.id === previewLog.id);
+                if (refreshed && (refreshed.updatedAt !== previewLog.updatedAt || refreshed.status !== previewLog.status)) {
+                    setPreviewLog(refreshed);
+                }
+            } else {
+                // 页面挂载或路由切入时若已有会话记录但 previewLog 为空，激活首要记录确保左侧卡片高亮清晰可见
+                const primaryLog = sessionOrActiveLogs[0] || logs[0];
+                if (primaryLog) {
+                    setPreviewLog(primaryLog);
+                }
             }
             return;
         }
@@ -636,9 +1137,8 @@ export default function VideoPage() {
 
         if (targetLog) {
             setPreviewLog(targetLog);
-            const sessionLogs = draft.sessionId ? logs.filter((l) => (l.sessionId && l.sessionId === draft.sessionId) || l.id === draft.sessionId) : [targetLog];
-            const allSessionResults = sessionLogs.flatMap(deriveGenerationResultsFromLog);
-            setResults(allSessionResults.length ? allSessionResults : deriveGenerationResultsFromLog(targetLog));
+            const targetResults = deriveGenerationResultsFromLog(targetLog);
+            setResults(targetResults);
             if (!draft.sessionId) {
                 const targetSessionId = targetLog.sessionId || targetLog.id;
                 updateDraft({ sessionId: targetSessionId });
@@ -675,6 +1175,10 @@ export default function VideoPage() {
                 remainingImages -= 1;
                 candidates.push({ file, kind: "image", id: nanoid(), previewUrl: URL.createObjectURL(file) });
             } else if (isVideo) {
+                if (activeSkill && activeSkill.id !== "reference-replication") {
+                    message.warning("当前工作流仅支持上传图片与音频素材，视频参考请使用【深度复刻】工作流");
+                    continue;
+                }
                 if (file.size > SEEDANCE_REFERENCE_LIMITS.videoMaxBytes) {
                     skippedVideoSize = true;
                     continue;
@@ -754,7 +1258,7 @@ export default function VideoPage() {
                 try {
                     if (kind === "image") {
                         const uploaded = await uploadImage(file, (uploadedBytes, totalBytes) => {
-                            const pct = totalBytes > 0 ? Math.round((uploadedBytes / totalBytes) * 100) : 0;
+                            const pct = totalBytes > 0 ? Math.min(99, Math.round((uploadedBytes / totalBytes) * 100)) : 0;
                             setReferences((prev) => prev.map((r) => (r.id === id ? { ...r, progress: pct } : r)));
                         });
                         if (uploaded.storageKey) {
@@ -767,6 +1271,7 @@ export default function VideoPage() {
                                 r.id === id
                                     ? {
                                           ...r,
+                                          url: uploaded.url,
                                           dataUrl: uploaded.url,
                                           storageKey: uploaded.storageKey,
                                           bytes: uploaded.bytes || file.size,
@@ -807,9 +1312,15 @@ export default function VideoPage() {
                         }
 
                         const uploaded = await uploadMediaFile(file, "video-reference", (uploadedBytes, totalBytes) => {
-                            const pct = totalBytes > 0 ? Math.round((uploadedBytes / totalBytes) * 100) : 0;
+                            const pct = totalBytes > 0 ? Math.min(99, Math.round((uploadedBytes / totalBytes) * 100)) : 0;
                             setVideoReferences((prev) => prev.map((v) => (v.id === id ? { ...v, progress: pct } : v)));
                         });
+                        if (uploaded.remoteUploadError) {
+                            throw new Error(uploaded.remoteUploadError);
+                        }
+                        if (!uploaded.url && !uploaded.storageKey) {
+                            throw new Error("视频素材上传未返回有效资源地址");
+                        }
                         if (uploaded.storageKey) {
                             try {
                                 await primeResourceBlobCache(uploaded.storageKey, file);
@@ -838,9 +1349,12 @@ export default function VideoPage() {
                         completedCount += 1;
                     } else {
                         const uploaded = await uploadMediaFile(file, "audio-reference", (uploadedBytes, totalBytes) => {
-                            const pct = totalBytes > 0 ? Math.round((uploadedBytes / totalBytes) * 100) : 0;
+                            const pct = totalBytes > 0 ? Math.min(99, Math.round((uploadedBytes / totalBytes) * 100)) : 0;
                             setAudioReferences((prev) => prev.map((a) => (a.id === id ? { ...a, progress: pct } : a)));
                         });
+                        if (uploaded.remoteUploadError) {
+                            throw new Error(uploaded.remoteUploadError);
+                        }
                         if (uploaded.storageKey) {
                             try {
                                 await primeResourceBlobCache(uploaded.storageKey, file);
@@ -868,11 +1382,11 @@ export default function VideoPage() {
                     failedCount += 1;
                     const errorMsg = err instanceof Error ? err.message : "上传失败";
                     if (kind === "image") {
-                        setReferences((prev) => prev.map((r) => (r.id === id ? { ...r, uploading: false, error: errorMsg } : r)));
+                        setReferences((prev) => prev.map((r) => (r.id === id ? { ...r, uploading: false, progress: undefined, error: errorMsg } : r)));
                     } else if (kind === "video") {
-                        setVideoReferences((prev) => prev.map((v) => (v.id === id ? { ...v, uploading: false, error: errorMsg } : v)));
+                        setVideoReferences((prev) => prev.map((v) => (v.id === id ? { ...v, uploading: false, progress: undefined, error: errorMsg } : v)));
                     } else {
-                        setAudioReferences((prev) => prev.map((a) => (a.id === id ? { ...a, uploading: false, error: errorMsg } : a)));
+                        setAudioReferences((prev) => prev.map((a) => (a.id === id ? { ...a, uploading: false, progress: undefined, error: errorMsg } : a)));
                     }
                 }
             }),
@@ -931,7 +1445,7 @@ export default function VideoPage() {
             setReferences((value) => value.map((item) => (item.id === target.id ? { ...item, name: file.name, type: file.type, dataUrl: previewUrl, uploading: true, progress: 0, error: undefined } : item)));
             try {
                 const image = await uploadImage(file, (uploadedBytes, totalBytes) => {
-                    const pct = totalBytes > 0 ? Math.round((uploadedBytes / totalBytes) * 100) : 0;
+                    const pct = totalBytes > 0 ? Math.min(99, Math.round((uploadedBytes / totalBytes) * 100)) : 0;
                     setReferences((value) => value.map((item) => (item.id === target.id ? { ...item, progress: pct } : item)));
                 });
                 if (image.storageKey) {
@@ -939,11 +1453,11 @@ export default function VideoPage() {
                         await primeResourceBlobCache(image.storageKey, file);
                     } catch {}
                 }
-                setReferences((value) => value.map((item) => (item.id === target.id ? { ...item, name: file.name, type: image.mimeType, dataUrl: image.url, storageKey: image.storageKey, uploading: false, progress: 100, error: undefined } : item)));
+                setReferences((value) => value.map((item) => (item.id === target.id ? { ...item, name: file.name, type: image.mimeType, url: image.url, dataUrl: image.url, storageKey: image.storageKey, uploading: false, progress: 100, error: undefined } : item)));
                 message.success("参考图已替换就绪");
             } catch (err) {
                 const errMsg = err instanceof Error ? err.message : "替换失败";
-                setReferences((value) => value.map((item) => (item.id === target.id ? { ...item, uploading: false, error: errMsg } : item)));
+                setReferences((value) => value.map((item) => (item.id === target.id ? { ...item, uploading: false, progress: undefined, error: errMsg } : item)));
                 message.error(`替换参考图失败: ${errMsg}`);
             }
             resetCreationAssistantForSources(useVideoWorkbenchStore.getState().draft);
@@ -970,9 +1484,15 @@ export default function VideoPage() {
                 }
 
                 const video = await uploadMediaFile(file, "video-reference", (uploadedBytes, totalBytes) => {
-                    const pct = totalBytes > 0 ? Math.round((uploadedBytes / totalBytes) * 100) : 0;
+                    const pct = totalBytes > 0 ? Math.min(99, Math.round((uploadedBytes / totalBytes) * 100)) : 0;
                     setVideoReferences((value) => value.map((item) => (item.id === target.id ? { ...item, progress: pct } : item)));
                 });
+                if (video.remoteUploadError) {
+                    throw new Error(video.remoteUploadError);
+                }
+                if (!video.url && !video.storageKey) {
+                    throw new Error("替换视频未返回有效资源地址");
+                }
                 if (video.storageKey) {
                     try {
                         await primeResourceBlobCache(video.storageKey, file);
@@ -1003,7 +1523,7 @@ export default function VideoPage() {
                 message.success("视频素材已替换就绪");
             } catch (err) {
                 const errMsg = err instanceof Error ? err.message : "替换失败";
-                setVideoReferences((value) => value.map((item) => (item.id === target.id ? { ...item, uploading: false, error: errMsg } : item)));
+                setVideoReferences((value) => value.map((item) => (item.id === target.id ? { ...item, uploading: false, progress: undefined, error: errMsg } : item)));
                 message.error(`替换视频失败: ${errMsg}`);
             }
             resetCreationAssistantForSources(useVideoWorkbenchStore.getState().draft);
@@ -1017,9 +1537,12 @@ export default function VideoPage() {
         setAudioReferences((value) => value.map((item) => (item.id === target.id ? { ...item, name: file.name, type: file.type, url: previewUrl, uploading: true, progress: 0, error: undefined } : item)));
         try {
             const audio = await uploadMediaFile(file, "audio-reference", (uploadedBytes, totalBytes) => {
-                const pct = totalBytes > 0 ? Math.round((uploadedBytes / totalBytes) * 100) : 0;
+                const pct = totalBytes > 0 ? Math.min(99, Math.round((uploadedBytes / totalBytes) * 100)) : 0;
                 setAudioReferences((value) => value.map((item) => (item.id === target.id ? { ...item, progress: pct } : item)));
             });
+            if (audio.remoteUploadError) {
+                throw new Error(audio.remoteUploadError);
+            }
             if (audio.storageKey) {
                 try {
                     await primeResourceBlobCache(audio.storageKey, file);
@@ -1047,7 +1570,7 @@ export default function VideoPage() {
             }
         } catch (err) {
             const errMsg = err instanceof Error ? err.message : "替换失败";
-            setAudioReferences((value) => value.map((item) => (item.id === target.id ? { ...item, uploading: false, error: errMsg } : item)));
+            setAudioReferences((value) => value.map((item) => (item.id === target.id ? { ...item, uploading: false, progress: undefined, error: errMsg } : item)));
             message.error(`替换音频失败: ${errMsg}`);
         }
         resetCreationAssistantForSources(useVideoWorkbenchStore.getState().draft);
@@ -1109,15 +1632,13 @@ export default function VideoPage() {
             const bounds = resolveChannelVideoModelDurationBounds(effectiveConfig, snapshot.model);
             const channelMaxDuration = bounds.max;
             const fixedSegmentDurationSec = bounds.min === bounds.max ? bounds.max : undefined;
-            const extracted = extractScriptShotBlocks(snapshot.text);
-            const scriptDuration = extracted.blocks.reduce((max, b) => Math.max(max, b.endSec), 0);
-            const effectiveDurationSec = Math.max(snapshot.durationSec, scriptDuration);
-            // 物理视频分段严格以模型单段上限（channelMaxDuration）为基准划分，只有总时长超过上限时才进行多视频段生成
-            if (effectiveDurationSec > channelMaxDuration) {
+            const targetDurationSec = snapshot.durationSec;
+            // 物理视频分段严格以模型单段上限（channelMaxDuration）为基准划分，坚决不做提示词意图猜测，只有目标总时长超过上限时才进行多视频段生成
+            if (targetDurationSec > channelMaxDuration) {
                 creationPlan = buildVideoCreationPlan({
                     source: "config",
                     script: snapshot.text,
-                    targetDurationSec: effectiveDurationSec,
+                    targetDurationSec,
                     model: snapshot.model,
                     aspectRatio: snapshot.aspectRatio,
                     resolution: snapshot.resolution,
@@ -1138,6 +1659,10 @@ export default function VideoPage() {
         if (!snapshot.sessionId) {
             updateDraft({ sessionId: activeSessionId });
         }
+        currentSessionIdRef.current = activeSessionId;
+        // [session_workspace_registry] [start]
+        saveCurrentVideoWorkspaceSnapshot(activeSessionId);
+        // [session_workspace_registry] [end]
         const isCurrentSession = () => !activeSessionId || !useVideoWorkbenchStore.getState().draft.sessionId || activeSessionId === useVideoWorkbenchStore.getState().draft.sessionId;
 
         const initialUserScope = getActiveUserScope();
@@ -1146,6 +1671,18 @@ export default function VideoPage() {
 
         const deductKey = `deduct:video_workbench:${runId}`;
         const refundKey = `refund:video_workbench:${runId}`;
+
+        // 商业级防高昂模型浪费铁律：若需分段生成，扣款前必须严格断言提示词已成功解析出完整非空的分段结构！
+        if (isMultiSegment && creationPlan) {
+            const validation = validateVideoCreationPlanForGeneration(creationPlan);
+            if (!validation.valid) {
+                const errMsg = validation.error || "分段生成校验失败，已拦截提交以防产生非预期扣费";
+                message.error(errMsg);
+                if (agentTaskId) updateAgentTask(agentTaskId, { status: "failed", error: errMsg });
+                setSubmitting(false);
+                return;
+            }
+        }
 
         setSubmitting(true);
         let chargedMicrocredits = 0;
@@ -1176,6 +1713,7 @@ export default function VideoPage() {
             const resumeTasks = resumeLog?.segmentBatch?.tasks || [];
             const resumeOutputs = resumeLog?.segmentBatch?.handoff.segments || [];
             let batchLog = buildLog({
+                logId: batchId,
                 sessionId: activeSessionId,
                 creationAssistant: snapshot.creationAssistant,
                 creationPlan,
@@ -1190,7 +1728,7 @@ export default function VideoPage() {
                 referenceOrder: snapshot.referenceOrder,
                 durationMs: 0,
                 status: "pending",
-                runId,
+                runId: batchId,
                 run: initialRun,
                 successCount: resumeOutputs.length,
                 failCount: 0,
@@ -1198,12 +1736,47 @@ export default function VideoPage() {
                 chargedMicrocredits,
             });
             await saveLog(batchLog, false);
+            activeSegmentRunsMapRef.current.set(batchId, batchLog);
             activeSegmentLogRef.current = batchLog;
 
             if (isCurrentSession()) {
                 setPreviewLog(batchLog);
-                const batchPendingCard: GenerationResult = { id: batchId, status: "pending" };
-                setResults((prev) => [batchPendingCard, ...prev.filter((r) => r.id !== batchId)]);
+                const initialSlotCards: GenerationResult[] = creationPlan.segments.map((seg) => {
+                    const finishedOutput = resumeOutputs.find((o) => o.index === seg.index);
+                    if (finishedOutput) {
+                        return {
+                            id: finishedOutput.segmentId || getGenerationCardSlotId(batchId, seg.index),
+                            slotId: getGenerationCardSlotId(batchId, seg.index),
+                            batchId,
+                            segmentIndex: seg.index,
+                            segmentId: seg.segmentId,
+                            title: `第 ${seg.index} 段 (${seg.startSec}-${seg.endSec}秒)`,
+                            status: "success" as const,
+                            createdAt: batchStartedAt,
+                            video: {
+                                id: finishedOutput.segmentId,
+                                url: finishedOutput.url,
+                                storageKey: finishedOutput.storageKey,
+                                durationMs: (seg.endSec - seg.startSec) * 1000,
+                                width: 0,
+                                height: 0,
+                                bytes: 0,
+                                mimeType: "video/mp4",
+                            },
+                        };
+                    }
+                    return {
+                        id: getGenerationCardSlotId(batchId, seg.index),
+                        slotId: getGenerationCardSlotId(batchId, seg.index),
+                        batchId,
+                        segmentIndex: seg.index,
+                        segmentId: seg.segmentId,
+                        title: `第 ${seg.index} 段 (${seg.startSec}-${seg.endSec}秒)`,
+                        status: "pending" as const,
+                        createdAt: batchStartedAt,
+                    };
+                });
+                setResults((prev) => reconcileGenerationResults(prev, initialSlotCards, "prepend-or-update"));
                 setSegmentProgress({ completedCount: resumeOutputs.length, totalCount: creationPlan.segments.length, message: `准备生成 ${creationPlan.segments.length} 段视频` });
                 setElapsedMs(0);
                 setStartedAt(batchStartedAt);
@@ -1232,8 +1805,18 @@ export default function VideoPage() {
                             }
                         },
                         onTask: async (event) => {
+                            if (event.task?.id) {
+                                registerActiveWorkbenchTask({
+                                    type: "video",
+                                    taskId: event.task.id,
+                                    logId: batchId,
+                                    batchId,
+                                });
+                            }
                             const tasks = upsertSegmentTask(batchLog.segmentBatch?.tasks || [], event);
                             batchLog = { ...batchLog, updatedAt: Date.now(), segmentBatch: { ...(batchLog.segmentBatch || { batchId, status: "pending", handoff: emptySegmentHandoff(creationPlan, batchId) }), status: "pending", tasks } };
+                            activeSegmentRunsMapRef.current.set(batchId, batchLog);
+                            activeSegmentLogRef.current = batchLog;
                             await saveLog(batchLog, false);
                         },
                         onOutput: async ({ output, outputs }) => {
@@ -1248,21 +1831,23 @@ export default function VideoPage() {
                                 failCount: 0,
                                 itemCount: creationPlan.segments.length,
                             };
+                            activeSegmentRunsMapRef.current.set(batchId, batchLog);
                             activeSegmentLogRef.current = batchLog;
                             await saveLog(batchLog, false);
                             if (isCurrentSession()) {
-                                const segmentResults = outputRecords.map(outputToGenerationResult).filter((item): item is GenerationResult => Boolean(item));
-                                setResults((prev) => {
-                                    const otherCards = prev.filter((r) => r.id !== batchId && !outputRecords.some((out) => out.outputId === r.id));
-                                    return [...segmentResults, ...otherCards];
-                                });
+                                const segmentResults = outputRecords.map(outputToGenerationResult).filter((item): item is GenerationResult => Boolean(item)).map((item) => ({
+                                    ...item,
+                                    batchId,
+                                    slotId: typeof item.segmentIndex === "number" ? getGenerationCardSlotId(batchId, item.segmentIndex) : item.id,
+                                }));
+                                setResults((prev) => reconcileGenerationResults(prev, segmentResults, "merge-update"));
                                 setSegmentProgress({ completedCount: outputs.length, totalCount: creationPlan.segments.length, message: `第 ${output.index} 段生成完成` });
                             }
                         },
                     });
 
                     if (controller.signal.aborted) {
-                        const completedOutputsCount = activeSegmentLogRef.current?.runs?.[0]?.outputs?.length || 0;
+                        const completedOutputsCount = (activeSegmentRunsMapRef.current.get(batchId) || activeSegmentLogRef.current)?.runs?.[0]?.outputs?.length || 0;
                         if (completedOutputsCount === 0 && chargedMicrocredits > 0) {
                             void videoFeatureCredit.refund(chargedMicrocredits, snapshot.model, "视频分段任务中断退款", refundKey, deductKey);
                         }
@@ -1296,6 +1881,9 @@ export default function VideoPage() {
                             });
                             const stored = await uploadMediaFile(mergedBlob, "video");
                             const totalDurationMs = outputRecords.reduce((sum, item) => sum + (item.durationMs || 0), 0);
+                            const firstBatchImage = snapshot.references?.[0] || batchLog.references?.[0];
+                            const batchPosterUrl = isImageLikeUrl(firstBatchImage?.dataUrl) ? firstBatchImage?.dataUrl : undefined;
+                            const batchPosterStorageKey = firstBatchImage?.storageKey;
                             mergedVideo = {
                                 id: nanoid(),
                                 url: stored.url,
@@ -1306,6 +1894,8 @@ export default function VideoPage() {
                                 bytes: stored.bytes || mergedBlob.size,
                                 mimeType: stored.mimeType || "video/mp4",
                                 label: `完整成片 (${Math.round(totalDurationMs / 1000)}s · ${outputRecords.length}段)`,
+                                posterUrl: batchPosterUrl,
+                                posterStorageKey: batchPosterStorageKey,
                             };
                         } catch (mergeErr) {
                             console.warn("视频客户端合并失败，保留各分段视频:", mergeErr);
@@ -1315,6 +1905,9 @@ export default function VideoPage() {
                         }
                     }
 
+                    const firstBatchImage = snapshot.references?.[0] || batchLog.references?.[0];
+                    const batchPosterUrl = isImageLikeUrl(firstBatchImage?.dataUrl) ? firstBatchImage?.dataUrl : undefined;
+                    const batchPosterStorageKey = firstBatchImage?.storageKey;
                     const finalRun = { ...(batchLog.runs[0] || initialRun), status: finalStatus, updatedAt: Date.now(), outputs: outputRecords, error: batchResult.error } satisfies CreationRunRecord;
                     const finalLog: GenerationLog = {
                         ...batchLog,
@@ -1330,6 +1923,8 @@ export default function VideoPage() {
                             bytes: outputRecords[0].bytes || 0,
                             mimeType: outputRecords[0].mimeType || "video/mp4",
                             label: outputRecords[0].segmentIndex ? `第 ${outputRecords[0].segmentIndex} 段` : undefined,
+                            posterUrl: batchPosterUrl,
+                            posterStorageKey: batchPosterStorageKey,
                         } : undefined),
                         segmentBatch: {
                             batchId: batchResult.batchId,
@@ -1346,7 +1941,9 @@ export default function VideoPage() {
                         error: batchResult.error,
                     };
                     activeSegmentLogRef.current = finalLog;
+                    activeSegmentRunsMapRef.current.set(batchId, finalLog);
                     await saveLog(finalLog, false);
+                    setLogs((prev) => prev.map((l) => (l.id === batchId || l.runId === batchId ? finalLog : l)));
                     if (agentTaskId) updateAgentTask(agentTaskId, { status: finalStatus === "success" ? "succeeded" : "failed", successCount: finalStatus === "success" ? outputRecords.length : 0, failCount: finalStatus === "success" ? 0 : 1, error: batchResult.error });
 
                     // 资金与积分安全：严格对齐“产出有效视频即扣积分，不设补偿免单”规则，仅在 0 视频产出时全额退款
@@ -1360,13 +1957,7 @@ export default function VideoPage() {
                     if (isCurrentSession()) {
                         setPreviewLog(finalLog);
                         const derived = deriveGenerationResultsFromLog(finalLog);
-                        const segmentResults = outputRecords.map(outputToGenerationResult).filter((item): item is GenerationResult => Boolean(item));
-                        const allResults = mergedVideo ? [{ id: mergedVideo.id, status: "success" as const, video: mergedVideo }, ...segmentResults] : segmentResults;
-                        const finalCards = derived.length ? derived : (allResults.length ? allResults : [{ id: batchId, status: "failed" as const, error: batchResult.error || t("videoWorkbench.generationFailed") }]);
-                        setResults((prev) => {
-                            const otherCards = prev.filter((r) => r.id !== batchId && !allResults.some((ar) => ar.id === r.id));
-                            return [...finalCards, ...otherCards];
-                        });
+                        setResults((prev) => reconcileGenerationResults(prev, derived, "prepend-or-update"));
                         if (finalStatus === "success") {
                             if (mergedVideo) message.success(`已完成 ${outputRecords.length} 段视频生成并无损拼接为完整成片！`);
                             else message.success(`已完成 ${outputRecords.length} 段视频生成`);
@@ -1379,7 +1970,8 @@ export default function VideoPage() {
                 } catch (batchErr) {
                     console.error("分段任务后台执行异常:", batchErr);
                     const isAborted = controller.signal.aborted || (batchErr instanceof DOMException && batchErr.name === "AbortError");
-                    const completedOutputsCount = activeSegmentLogRef.current?.runs?.[0]?.outputs?.length || 0;
+                    const targetLog = activeSegmentRunsMapRef.current.get(batchId) || activeSegmentLogRef.current;
+                    const completedOutputsCount = targetLog?.runs?.[0]?.outputs?.length || 0;
                     const charged = activeChargedCreditsMapRef.current.get(runId);
                     if (completedOutputsCount === 0) {
                         if (charged && charged.amount > 0) {
@@ -1392,21 +1984,24 @@ export default function VideoPage() {
                         activeChargedCreditsMapRef.current.delete(runId);
                     }
                     const errMsg = isAborted ? "任务执行中断" : (batchErr instanceof Error ? batchErr.message : "分段生成异常");
-                    if (activeSegmentLogRef.current) {
+                    if (targetLog) {
                         const failedSegmentLog: GenerationLog = {
-                            ...activeSegmentLogRef.current,
+                            ...targetLog,
                             status: "failed",
                             error: errMsg,
                             chargedMicrocredits: 0,
                             updatedAt: Date.now(),
                         };
-                        activeSegmentLogRef.current = failedSegmentLog;
+                        activeSegmentRunsMapRef.current.set(batchId, failedSegmentLog);
+                        if (activeSegmentLogRef.current?.id === batchId) {
+                            activeSegmentLogRef.current = failedSegmentLog;
+                        }
                         void saveLog(failedSegmentLog, false);
                         setLogs((prev) => prev.map((l) => (l.id === batchId || l.runId === batchId ? failedSegmentLog : l)));
                     }
                     if (isCurrentSession()) {
                         message.error(errMsg);
-                        const failedCard: GenerationResult = { id: batchId, status: "failed", error: errMsg };
+                        const failedCard: GenerationResult = { id: batchId, status: "failed", error: errMsg, batchId };
                         setResults((prev) => {
                             const existingIdx = prev.findIndex((r) => r.id === batchId);
                             if (existingIdx >= 0) {
@@ -1420,13 +2015,19 @@ export default function VideoPage() {
                     }
                 } finally {
                     activeSegmentBatchIdsRef.current.delete(batchId);
+                    activeSegmentRunsMapRef.current.delete(batchId);
+                    if (activeSegmentLogRef.current?.id === batchId) {
+                        activeSegmentLogRef.current = null;
+                    }
                     activeChargedCreditsMapRef.current.delete(runId);
                 }
             })();
             return;
         }
 
-        activeSegmentLogRef.current = null;
+        if (activeSegmentRunsMapRef.current.size === 0) {
+            activeSegmentLogRef.current = null;
+        }
         const requestSignature = computeVideoRequestSignature(snapshot);
         const matchingFailedLog = resumeLog || logs.find((l) => l.status === "failed" && l.requestSignature === requestSignature);
         const targetLogId = matchingFailedLog?.id || nanoid();
@@ -1442,6 +2043,14 @@ export default function VideoPage() {
                 snapshot.audioReferences,
                 { signal: controller.signal },
             );
+
+            if (task?.id) {
+                registerActiveWorkbenchTask({
+                    type: "video",
+                    taskId: task.id,
+                    logId: targetLogId,
+                });
+            }
 
             const log = buildLog({
                 logId: targetLogId,
@@ -1471,8 +2080,15 @@ export default function VideoPage() {
 
             if (isCurrentSession()) {
                 setPreviewLog(log);
-                const pendingCard: GenerationResult = { id: targetLogId, status: "pending", task };
-                setResults((prev) => [pendingCard, ...prev.filter((r) => r.id !== targetLogId)]);
+                const pendingCard: GenerationResult = {
+                    id: targetLogId,
+                    slotId: getGenerationCardSlotId(targetLogId),
+                    status: "pending",
+                    task,
+                    batchId: targetLogId,
+                    createdAt: batchStartedAt,
+                };
+                setResults((prev) => reconcileGenerationResults(prev, [pendingCard], "prepend-or-update"));
                 setElapsedMs(0);
                 setStartedAt(batchStartedAt);
             }
@@ -1492,16 +2108,15 @@ export default function VideoPage() {
             }
             activeChargedCreditsMapRef.current.delete(runId);
             if (isCurrentSession()) {
-                const submitFailedCard: GenerationResult = { id: targetLogId, status: "failed", error: errorMessage };
-                setResults((prev) => {
-                    const existingIndex = prev.findIndex((r) => r.id === targetLogId);
-                    if (existingIndex >= 0) {
-                        const next = [...prev];
-                        next[existingIndex] = submitFailedCard;
-                        return next;
-                    }
-                    return [submitFailedCard, ...prev];
-                });
+                const submitFailedCard: GenerationResult = {
+                    id: targetLogId,
+                    slotId: getGenerationCardSlotId(targetLogId),
+                    status: "failed",
+                    error: errorMessage,
+                    batchId: targetLogId,
+                    createdAt: batchStartedAt,
+                };
+                setResults((prev) => reconcileGenerationResults(prev, [submitFailedCard], "prepend-or-update"));
                 message.error(errorMessage);
                 setSegmentProgress(null);
             }
@@ -1522,7 +2137,7 @@ export default function VideoPage() {
         // [tiered-video-polling] [start]
         if (isLongRunningProvider) {
             const initialElapsed = Date.now() - startedAt;
-            if (initialElapsed < 60_000) {
+            if (initialElapsed < 60_000 && log.task?.status !== "succeeded") {
                 await delay(60_000 - initialElapsed, signal);
             }
         }
@@ -1539,6 +2154,9 @@ export default function VideoPage() {
                     }
                     activeChargedCreditsMapRef.current.delete(log.runId || log.id);
                     const stored = await storeGeneratedVideo(state.result);
+                    const firstRefImage = log.references?.[0];
+                    const posterUrl = isImageLikeUrl(firstRefImage?.dataUrl) ? firstRefImage?.dataUrl : undefined;
+                    const posterStorageKey = firstRefImage?.storageKey;
                     const nextVideo: GeneratedVideo = {
                         id: nanoid(),
                         url: stored.url,
@@ -1548,6 +2166,8 @@ export default function VideoPage() {
                         height: stored.height || 720,
                         bytes: stored.bytes,
                         mimeType: stored.mimeType,
+                        posterUrl,
+                        posterStorageKey,
                     };
                     const output = buildOutputRecord(nextVideo, "final");
                     const updatedRuns = (log.runs || []).map((run) => (run.runId === log.runId ? { ...run, status: "success" as const, outputs: upsertOutput(run.outputs || [], output) } : run));
@@ -1568,18 +2188,14 @@ export default function VideoPage() {
                         setPreviewLog(savedSuccessLog);
                         const successCard: GenerationResult = {
                             id: nextVideo.id,
+                            slotId: getGenerationCardSlotId(log.id),
                             status: "success",
                             video: nextVideo,
+                            batchId: log.id,
+                            task: log.task,
+                            createdAt: log.createdAt,
                         };
-                        setResults((prev) => {
-                            const existingIndex = prev.findIndex((r) => r.id === log.id || (r.task?.id && r.task.id === log.task?.id) || r.id === nextVideo.id);
-                            if (existingIndex >= 0) {
-                                const next = [...prev];
-                                next[existingIndex] = successCard;
-                                return next;
-                            }
-                            return [successCard, ...prev];
-                        });
+                        setResults((prev) => reconcileGenerationResults(prev, [successCard], "merge-update"));
                         message.success(t("videoWorkbench.generated"));
                     } else {
                         // [workbench-cross-session-notify] [start]
@@ -1661,20 +2277,15 @@ export default function VideoPage() {
                 setPreviewLog(savedFailedLog);
                 const failedCard: GenerationResult = {
                     id: log.id,
+                    slotId: getGenerationCardSlotId(log.id),
                     status: "failed",
                     error: errorMessage,
                     task: log.task,
                     failureCount: nextFailureCount,
+                    batchId: log.id,
+                    createdAt: log.createdAt,
                 };
-                setResults((prev) => {
-                    const existingIndex = prev.findIndex((r) => r.id === log.id || (r.task?.id && r.task.id === log.task?.id));
-                    if (existingIndex >= 0) {
-                        const next = [...prev];
-                        next[existingIndex] = failedCard;
-                        return next;
-                    }
-                    return [failedCard, ...prev];
-                });
+                setResults((prev) => reconcileGenerationResults(prev, [failedCard], "merge-update"));
                 message.error(errorMessage);
             } else {
                 // [workbench-cross-session-notify] [start]
@@ -1725,7 +2336,7 @@ export default function VideoPage() {
                     batchId,
                     schemaVersion: "video-segment-handoff-v1" as const,
                     targetDurationSec: 0,
-                    aspectRatio: "16:9",
+                    aspectRatio: draft.aspectRatio || "9:16",
                     resolution: "720p",
                     segments: [],
                 });
@@ -2004,6 +2615,9 @@ export default function VideoPage() {
             const state = await pollVideoGenerationTask(taskConfig, activeTask);
             if (state.status === "completed") {
                 const stored = await storeGeneratedVideo(state.result);
+                const firstRefImage = logToUpdate?.references?.[0];
+                const posterUrl = isImageLikeUrl(firstRefImage?.dataUrl) ? firstRefImage?.dataUrl : undefined;
+                const posterStorageKey = firstRefImage?.storageKey;
                 const nextVideo: GeneratedVideo = {
                     id: nanoid(),
                     url: stored.url,
@@ -2013,6 +2627,8 @@ export default function VideoPage() {
                     height: stored.height || 720,
                     bytes: stored.bytes,
                     mimeType: stored.mimeType,
+                    posterUrl,
+                    posterStorageKey,
                 };
                 if (logToUpdate) {
                     const output = buildOutputRecord(nextVideo, "final");
@@ -2074,15 +2690,36 @@ export default function VideoPage() {
         }
     };
 
-    const downloadVideo = (video: GeneratedVideo) => {
-        saveAs(video.url, `video-${Date.now()}.mp4`);
+    const downloadVideo = async (video: GeneratedVideo) => {
+        try {
+            const ext = video.mimeType ? (video.mimeType.split("/")[1] || "mp4") : "mp4";
+            const fileName = `video-${Date.now()}.${ext}`;
+            await downloadMediaWithSaveDialog({
+                fileName,
+                url: video.url,
+                storageKey: video.storageKey,
+                mediaType: "video",
+            });
+        } catch (err: unknown) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            message.error(errMsg || "下载视频失败");
+        }
     };
 
     const saveResultToAssets = async (video: GeneratedVideo) => {
+        let posterUrl = video.posterUrl || "";
+        if (!posterUrl && video.url) {
+            try {
+                const captured = await captureVideoPoster(video.url, { maxWidth: 480 });
+                if (captured?.poster) {
+                    posterUrl = URL.createObjectURL(captured.poster);
+                }
+            } catch {}
+        }
         const payload = {
             kind: "video" as const,
             title: `视频作品 #${Date.now().toString().slice(-4)}`,
-            coverUrl: video.url,
+            coverUrl: posterUrl,
             tags: [],
             source: t("videoWorkbench.source"),
             data: { url: video.url, storageKey: video.storageKey, width: video.width, height: video.height, bytes: video.bytes, mimeType: video.mimeType },
@@ -2130,6 +2767,10 @@ export default function VideoPage() {
                     changed = true;
                 }
             } else if (payload.kind === "video") {
+                if (activeSkill && activeSkill.id !== "reference-replication") {
+                    message.warning("当前工作流仅支持插入图片与音频素材，视频参考请使用【深度复刻】工作流");
+                    continue;
+                }
                 const id = nanoid();
                 if (useVideoWorkbenchStore.getState().draft.videoReferences.length < SEEDANCE_REFERENCE_LIMITS.videos) {
                     updateDraft((value) => ({
@@ -2169,13 +2810,28 @@ export default function VideoPage() {
     };
 
     const saveLog = async (log: GenerationLog, resumePending = true) => {
-        const userLog = { ...log, userId: getActiveUserScope() };
+        const initialUserId = log.userId || getActiveUserScope();
+        const currentScope = getActiveUserScope();
+        const userLog = { ...log, userId: initialUserId };
         const serialized = serializeLog(userLog);
+        if (initialUserId === currentScope) {
+            setLogs((prev) => {
+                const idx = prev.findIndex((l) => l.id === userLog.id);
+                if (idx >= 0) {
+                    const next = [...prev];
+                    next[idx] = userLog;
+                    return next;
+                }
+                return [userLog, ...prev];
+            });
+        }
         await generationLogWriteQueue(userLog.id, async () => {
             await logStore.setItem(userLog.id, serialized);
         });
-        void syncGenerationLogToRemote(serialized, "video");
-        await refreshLogs(resumePending);
+        if (initialUserId === currentScope) {
+            void syncGenerationLogToRemote(serialized, "video");
+            await refreshLogs(resumePending);
+        }
     };
 
     const refreshLogs = async (resumePending = true, fetchRemote = false) => {
@@ -2187,19 +2843,34 @@ export default function VideoPage() {
             setLogs(nextLogs);
 
             if (fetchRemote) {
+                lastRemoteSyncAtRef.current = Date.now();
                 try {
                     const res = await listRemoteGenerationLogs("video");
-                    if (res?.logs?.length) {
+                    if (res?.logs) {
                         const localMap = new Map(nextLogs.map((item) => [item.id, item]));
+                        const remoteIds = new Set<string>();
                         let hasNewRemote = false;
                         for (const raw of res.logs) {
                             const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
                             if (parsed && typeof parsed === "object" && "id" in parsed) {
                                 const remoteLog = parsed as GenerationLog;
+                                remoteIds.add(remoteLog.id);
                                 const local = localMap.get(remoteLog.id);
                                 if (!local || (remoteLog.updatedAt || 0) > (local.updatedAt || 0)) {
                                     await logStore.setItem(remoteLog.id, remoteLog);
                                     hasNewRemote = true;
+                                }
+                            }
+                        }
+                        if (scope !== "guest") {
+                            const now = Date.now();
+                            for (const local of nextLogs) {
+                                if (local.userId === scope && !remoteIds.has(local.id)) {
+                                    const ageMs = now - (local.createdAt || 0);
+                                    if (ageMs > 90_000) {
+                                        await logStore.removeItem(local.id);
+                                        hasNewRemote = true;
+                                    }
                                 }
                             }
                         }
@@ -2214,7 +2885,16 @@ export default function VideoPage() {
             }
 
             if (resumePending) {
-                const pendingLogs = nextLogs.filter((log) => log.status === "pending" && (log.userId === scope || (!log.userId && scope === "guest")));
+                const now = Date.now();
+                const pendingLogs = nextLogs.filter((log) => {
+                    if (log.userId !== scope && (log.userId || scope !== "guest")) return false;
+                    if (log.status === "pending") return true;
+                    const isRecent = now - (log.updatedAt || log.createdAt || 0) < 60 * 60 * 1000;
+                    if (isRecent && (log.task || log.segmentBatch) && log.status === "failed" && /超时|稍后重试/i.test(log.error || "")) {
+                        return true;
+                    }
+                    return false;
+                });
                 for (const log of pendingLogs) {
                     if (log.task || log.segmentBatch) {
                         if (!activeLogIdsRef.current.has(log.id)) {
@@ -2231,10 +2911,12 @@ export default function VideoPage() {
                         if (hasOutputs) {
                             const healed: GenerationLog = { ...log, status: "success", updatedAt: Date.now() };
                             void logStore.setItem(healed.id, healed);
+                            void syncGenerationLogToRemote(serializeLog(healed), "video");
                             setLogs((prev) => prev.map((l) => (l.id === healed.id ? healed : l)));
                         } else {
                             const healed: GenerationLog = { ...log, status: "failed", error: "任务执行中断", updatedAt: Date.now() };
                             void logStore.setItem(healed.id, healed);
+                            void syncGenerationLogToRemote(serializeLog(healed), "video");
                             setLogs((prev) => prev.map((l) => (l.id === healed.id ? healed : l)));
                             const charged = log.chargedMicrocredits || 0;
                             if (charged > 0) {
@@ -2302,6 +2984,12 @@ export default function VideoPage() {
     };
 
     const createSession = async (saveCurrentDraft = true) => {
+        // [session_workspace_registry] [start]
+        const prevSessionId = currentSessionIdRef.current || previewLog?.id || draft.sessionId;
+        if (prevSessionId && (draft.prompt.trim() || draft.references.length || draft.videoReferences.length || draft.audioReferences.length || activeSkillId || isDirectorMode)) {
+            saveCurrentVideoWorkspaceSnapshot(prevSessionId);
+        }
+        // [session_workspace_registry] [end]
         // 不要粗暴掐断后台正在执行的任务，保持后台自持执行与结果落库
         if (saveCurrentDraft) {
             const assistantDraft = useCreationAssistantStore.getState().draft;
@@ -2338,8 +3026,14 @@ export default function VideoPage() {
         }
 
         sessionExplicitlyResetRef.current = true;
+        const newSessionId = nanoid();
+        currentSessionIdRef.current = newSessionId;
         resetDraft();
+        selectSkill(null);
+        exitDirectorMode();
+        prevVideoSkillIdRef.current = null;
         useCreationAssistantStore.getState().reset();
+        useDeepReplicationTaskStore.getState().resetTask();
         setPreviewReferenceId(null);
         setResults([]);
         setElapsedMs(0);
@@ -2364,49 +3058,90 @@ export default function VideoPage() {
             await refreshLogs();
         });
         void batchDeleteGenerationLogsFromRemote(idsToDelete);
-        if (previewLog && selectedLogIds.includes(previewLog.id)) {
-            setPreviewLog(null);
-            setResults([]);
+
+        const deletedSet = new Set(selectedLogIds);
+        selectedLogIds.forEach((id) => {
+            activeSegmentBatchIdsRef.current.delete(id);
+            activeSegmentRunsMapRef.current.delete(id);
+            activeLogIdsRef.current.delete(id);
+        });
+        if (activeSegmentLogRef.current && deletedSet.has(activeSegmentLogRef.current.id)) {
+            activeSegmentLogRef.current = null;
         }
+        if (previewLog && deletedSet.has(previewLog.id)) {
+            setPreviewLog(null);
+        }
+        setResults((prev) => prev.filter((r) => !r.batchId || !deletedSet.has(r.batchId)));
+
         setSelectedLogIds([]);
         setDeleteConfirmOpen(false);
     };
 
     const previewGenerationLog = async (log: GenerationLog) => {
+        // [session_workspace_registry] [start]
+        // 1. 切出封存现场：以当前活跃会话 ID 封存全部编辑状态
+        const prevSessionId = currentSessionIdRef.current || previewLog?.id || draft.sessionId;
+        if (prevSessionId) {
+            saveCurrentVideoWorkspaceSnapshot(prevSessionId);
+        }
+        // [session_workspace_registry] [end]
         sessionExplicitlyResetRef.current = false;
         // 不要粗暴掐断后台正在执行的任务，保持后台自持执行与结果落库
         setPreviewLog(log);
-        activeSegmentLogRef.current = log;
+        if (log.status === "pending" || log.segmentBatch?.status === "pending") {
+            activeSegmentLogRef.current = log;
+        }
         setLogsOpen(false);
-        // 回到最终提示词输入状态页面，退出当前工作流卡片模式与编导模式
-        selectSkill(null);
-        exitDirectorMode();
-        prevVideoSkillIdRef.current = null;
-        const restoredModel = resolveModelForCapability(effectiveConfig, log.config.videoModel || log.model || draft.model, "video");
-        updateDraft({
-            sessionId: log.sessionId || log.id,
-            prompt: log.prompt,
-            references: log.references || [],
-            videoReferences: log.videoReferences || [],
-            audioReferences: log.audioReferences || [],
-            textReferences: log.textReferences || [],
-            referenceOrder: log.referenceOrder || [],
-            model: restoredModel,
-            aspectRatio: log.config.size || draft.aspectRatio,
-            resolution: log.config.vquality || draft.resolution,
-            durationSec: log.creationPlan?.targetDurationSec || Number(log.config.videoSeconds || draft.durationSec) || draft.durationSec,
-            creationPlan: log.creationPlan,
-        });
-        updateConfig("videoModel", restoredModel);
-        if (log.config.size) updateConfig("size", log.config.size);
-        if (log.config.vquality) updateConfig("vquality", log.config.vquality);
-        if (log.config.videoSeconds) updateConfig("videoSeconds", log.config.videoSeconds);
-        if (log.config.videoGenerateAudio) updateConfig("videoGenerateAudio", log.config.videoGenerateAudio);
-        if (log.config.videoWatermark) updateConfig("videoWatermark", log.config.videoWatermark);
-        if (log.creationAssistant) useCreationAssistantStore.getState().replaceDraft(log.creationAssistant);
-        else useCreationAssistantStore.getState().replaceDraft({ ...defaultCreationAssistantDraft, sourceFileIds: buildSourceFileSignatures({ ...draft, references: log.references || [], videoReferences: log.videoReferences || [], audioReferences: log.audioReferences || [], referenceOrder: log.referenceOrder || [] }) });
+        const targetSessionId = log.sessionId || log.id;
+        currentSessionIdRef.current = log.id;
+        if (log.sessionId) currentSessionIdRef.current = log.sessionId;
+        const cachedSnapshot = useVideoWorkbenchStore.getState().getSessionSnapshot(targetSessionId) || useVideoWorkbenchStore.getState().getSessionSnapshot(log.id);
+
+        if (cachedSnapshot) {
+            // [session_workspace_registry] [start]
+            // 2. 切入还原现场：优先从快照注册表毫秒级还原离开那一刻的编辑状态
+            restoreTargetVideoWorkspaceSnapshot(log);
+            // [session_workspace_registry] [end]
+        } else {
+            // 回到最终提示词输入状态页面，退出当前工作流卡片模式与编导模式
+            selectSkill(null);
+            exitDirectorMode();
+            prevVideoSkillIdRef.current = null;
+            const restoredModel = resolveModelForCapability(effectiveConfig, log.config.videoModel || log.model || draft.model, "video");
+            updateDraft({
+                sessionId: log.sessionId || log.id,
+                prompt: log.prompt,
+                references: log.references || [],
+                videoReferences: log.videoReferences || [],
+                audioReferences: log.audioReferences || [],
+                textReferences: log.textReferences || [],
+                referenceOrder: log.referenceOrder || [],
+                model: restoredModel,
+                aspectRatio: log.config.size || draft.aspectRatio,
+                resolution: log.config.vquality || draft.resolution,
+                durationSec: log.creationPlan?.targetDurationSec || Number(log.config.videoSeconds || draft.durationSec) || draft.durationSec,
+                creationPlan: log.creationPlan,
+            });
+            updateConfig("videoModel", restoredModel);
+            if (log.config.size) updateConfig("size", log.config.size);
+            if (log.config.vquality) updateConfig("vquality", log.config.vquality);
+            if (log.config.videoSeconds) updateConfig("videoSeconds", log.config.videoSeconds);
+            if (log.config.videoGenerateAudio) updateConfig("videoGenerateAudio", log.config.videoGenerateAudio);
+            if (log.config.videoWatermark) updateConfig("videoWatermark", log.config.videoWatermark);
+            if (log.creationAssistant) useCreationAssistantStore.getState().replaceDraft(log.creationAssistant);
+            else useCreationAssistantStore.getState().replaceDraft({ ...defaultCreationAssistantDraft, sourceFileIds: buildSourceFileSignatures({ ...draft, references: log.references || [], videoReferences: log.videoReferences || [], audioReferences: log.audioReferences || [], referenceOrder: log.referenceOrder || [] }) });
+        }
+
         const displayResults = deriveGenerationResultsFromLog(log);
-        setResults(displayResults);
+        setResults((prev) => reconcileGenerationResults(prev, displayResults, "prepend-or-update"));
+        setTimeout(() => {
+            const el = document.getElementById(`batch-group-${log.id}`);
+            if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "start" });
+                el.classList.add("ring-2", "ring-amber-500/50", "shadow-lg");
+                setTimeout(() => el.classList.remove("ring-2", "ring-amber-500/50", "shadow-lg"), 1500);
+            }
+        }, 100);
     };
 
     const buildRequestSnapshot = () => {
@@ -2444,20 +3179,35 @@ export default function VideoPage() {
         };
     };
 
-    const retryResult = async () => {
-        const resumeLog = (activeSegmentLogRef.current && ["failed", "cancelled"].includes(activeSegmentLogRef.current.segmentBatch?.status || ""))
-            ? activeSegmentLogRef.current
-            : (previewLog && ["failed", "cancelled"].includes(previewLog.segmentBatch?.status || ""))
-            ? previewLog
-            : undefined;
+    const retryResult = async (itemOrBatchId?: string) => {
+        let resumeLog: GenerationLog | undefined;
+        if (itemOrBatchId) {
+            const rawId = itemOrBatchId.trim();
+            const normalizedBatchId = rawId.split(":")[0]?.replace(/-failed$/, "") || rawId;
+            resumeLog = logs.find(
+                (l) =>
+                    (l.id === rawId || l.id === normalizedBatchId || l.batchId === rawId || l.batchId === normalizedBatchId || l.runs?.some((r) => r.outputs?.some((o) => o.outputId === rawId))) &&
+                    ["failed", "cancelled"].includes(l.status || l.segmentBatch?.status || ""),
+            );
+        }
+        if (!resumeLog) {
+            resumeLog = (activeSegmentLogRef.current && ["failed", "cancelled"].includes(activeSegmentLogRef.current.segmentBatch?.status || ""))
+                ? activeSegmentLogRef.current
+                : (previewLog && ["failed", "cancelled"].includes(previewLog.segmentBatch?.status || ""))
+                ? previewLog
+                : undefined;
+        }
         await generate(resumeLog || undefined);
     };
 
-    const retrySegment = async (segmentId: string) => {
-        const currentLog = activeSegmentLogRef.current || previewLog;
+    const retrySegment = async (segmentId: string, targetBatchId?: string) => {
+        const currentLog = (targetBatchId ? logs.find((l) => l.id === targetBatchId || l.batchId === targetBatchId || l.segmentBatch?.batchId === targetBatchId) : undefined)
+            || (targetBatchId ? activeSegmentRunsMapRef.current.get(targetBatchId) : undefined)
+            || activeSegmentLogRef.current
+            || previewLog;
         if (!currentLog?.segmentBatch || !currentLog.creationPlan) return;
         const nextOutputs = (currentLog.segmentBatch.handoff.segments || []).filter((s) => s.segmentId !== segmentId);
-        const nextTasks = (currentLog.segmentBatch.tasks || []).filter((t) => t.segmentId !== segmentId);
+        const nextTasks = (currentLog.segmentBatch.tasks || []).filter((t) => t.segmentId !== segmentId && t.task?.id !== segmentId);
         const resumeLog: GenerationLog = {
             ...currentLog,
             status: "pending",
@@ -2474,57 +3224,10 @@ export default function VideoPage() {
         await generate(resumeLog);
     };
 
-    const sendVideoToCanvas = async (video: GeneratedVideo) => {
-        try {
-            addAsset({
-                kind: "video",
-                title: video.label || `视频作品 #${Date.now().toString().slice(-4)}`,
-                coverUrl: video.url,
-                tags: [],
-                source: t("videoWorkbench.source"),
-                data: { url: video.url, storageKey: video.storageKey, width: video.width, height: video.height, bytes: video.bytes, mimeType: video.mimeType },
-                metadata: { source: "video-page", prompt },
-            });
-            const canvasStore = useCanvasStore.getState();
-            let activeProject = canvasStore.projects[0];
-            if (!activeProject) {
-                const newId = canvasStore.createProject("生视频作品");
-                activeProject = canvasStore.projects.find((p) => p.id === newId) || canvasStore.projects[0];
-            }
-            if (activeProject) {
-                const videoNodeId = nanoid();
-                const existingNodes = activeProject.nodes || [];
-                const maxX = existingNodes.reduce((max, n) => Math.max(max, n.position.x + n.width), 0);
-                const newNode = {
-                    id: videoNodeId,
-                    type: CanvasNodeType.Video,
-                    title: video.label || "生成视频",
-                    position: { x: maxX ? maxX + 60 : 100, y: 100 },
-                    width: Math.min(video.width || 720, 720),
-                    height: Math.min(video.height || 405, 405),
-                    status: "success" as const,
-                    metadata: {
-                        content: video.url,
-                        storageKey: video.storageKey,
-                        prompt,
-                        durationMs: video.durationMs,
-                    },
-                };
-                canvasStore.updateProject(activeProject.id, {
-                    nodes: [...existingNodes, newNode as any],
-                });
-            }
-            message.success("已成功载入画布！可在无限画布中自由排布与连接编导");
-        } catch (err) {
-            console.error("载入画布失败:", err);
-            message.error("载入画布失败，请重试");
-        }
-    };
-
     const resolveRecheckContext = (result: GenerationResult) => {
-        const targetLog = previewLog?.id === result.id || `${previewLog?.id}-failed` === result.id
+        const targetLog = previewLog?.id === result.id || `${previewLog?.id}-failed` === result.id || previewLog?.id === result.batchId
             ? previewLog
-            : logs.find((l) => l.id === result.id || `${l.id}-failed` === result.id) || previewLog;
+            : logs.find((l) => l.id === result.id || `${l.id}-failed` === result.id || (result.batchId && l.id === result.batchId)) || previewLog;
         const task = result.task || targetLog?.task || targetLog?.segmentBatch?.tasks?.find((t) => t.task && t.status !== "success")?.task || targetLog?.segmentBatch?.tasks?.find((t) => t.task)?.task;
         const canRecheck = Boolean(
             task ||
@@ -2536,6 +3239,7 @@ export default function VideoPage() {
                 recheckingLogId === result.id ||
                 recheckingLogId === targetLog?.id ||
                 `${recheckingLogId}-failed` === result.id ||
+                (result.batchId && recheckingLogId === result.batchId) ||
                 (task && recheckingLogId === task.id)
             )
         );
@@ -2545,13 +3249,13 @@ export default function VideoPage() {
 
     return (
         <div className="flex h-full flex-col overflow-hidden bg-[#f5f5f7] text-stone-900 dark:bg-[#000000] dark:text-stone-100">
-            <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[300px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[320px_minmax(0,1fr)]">
+            <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[280px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[300px_minmax(0,1fr)]">
                 <aside className="thin-scrollbar hidden min-h-0 overflow-y-auto rounded-2xl border border-black/[0.06] bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] dark:border-white/[0.08] dark:bg-[#1c1c1e] lg:block">
                     <LogPanel logs={logs} selectedLogIds={selectedLogIds} activeLogId={previewLog?.id} recheckingLogId={recheckingLogId} onSelectedLogIdsChange={setSelectedLogIds} onCreateSession={() => void createSession()} onDeleteSelected={() => setDeleteConfirmOpen(true)} onPreviewLog={previewGenerationLog} onRecheckLog={(log) => void handleRecheck(log.task || log.segmentBatch?.tasks?.find((t) => t.task)?.task, log)} />
                 </aside>
 
-                <section className="grid gap-3 lg:min-h-0 lg:overflow-hidden lg:grid-cols-[minmax(480px,680px)_minmax(0,1fr)] xl:grid-cols-[720px_minmax(0,1fr)] 2xl:grid-cols-[760px_minmax(0,1fr)]">
-                    <div className="thin-scrollbar flex flex-col rounded-2xl border border-black/[0.06] bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] dark:border-white/[0.08] dark:bg-[#1c1c1e] lg:min-h-0 lg:overflow-y-auto">
+                <section className="grid gap-3 lg:min-h-0 lg:overflow-hidden lg:grid-cols-[minmax(400px,580px)_minmax(300px,1fr)] xl:grid-cols-[minmax(440px,640px)_minmax(340px,1fr)] 2xl:grid-cols-[minmax(480px,700px)_minmax(380px,1fr)]">
+                    <div className="thin-scrollbar flex min-w-0 flex-col rounded-2xl border border-black/[0.06] bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] dark:border-white/[0.08] dark:bg-[#1c1c1e] lg:min-h-0 lg:overflow-y-auto">
                         <div className="relative">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0 flex-1">
@@ -2629,12 +3333,13 @@ export default function VideoPage() {
                                         const rawVideos = meta?.videos || [];
                                         const nextAudios = meta?.audios || [];
 
-                                        // 防御性契约：Seedance-2.0 限制单个参考视频需在 2-15s 之间
-                                        // 若视频时长大于 15s，提示用户并做平滑降级（不强塞入 videoReferences 避免 400 校验阻断）
+                                        // 防御性契约：限制单个参考视频需在模型最大允许秒数内
+                                        // 若视频时长大于模型上限，提示用户并做平滑降级（不强塞入 videoReferences 避免 400 校验阻断）
+                                        const modelMaxDurationSec = resolveChannelVideoModelMaxDuration(effectiveConfig, model) || 15;
                                         const validVideos: ReferenceVideo[] = [];
                                         let hasOverlongVideo = false;
                                         for (const v of rawVideos) {
-                                            if (v.durationMs && v.durationMs > 15000) {
+                                            if (v.durationMs && v.durationMs > modelMaxDurationSec * 1000) {
                                                 hasOverlongVideo = true;
                                             } else {
                                                 validVideos.push(v);
@@ -2644,7 +3349,7 @@ export default function VideoPage() {
                                         let finalPrompt = appliedPrompt;
                                         if (hasOverlongVideo && validVideos.length === 0) {
                                             finalPrompt = finalPrompt.replace(/【基于@视频1参考复刻与映射】/g, "【基于参考分镜复刻与映射】").replace(/@视频1/g, "原片参考分镜");
-                                            message.warning("参考视频时长大于 15 秒（超出 Seedance 动作参考上限），已自动转换为高质量分镜提示词引导");
+                                            message.warning(`参考视频时长大于 ${modelMaxDurationSec} 秒（超出当前模型动作参考上限），已自动转换为高质量分镜提示词引导`);
                                         }
 
                                         const newOrders: ReferenceOrderItem[] = [
@@ -2928,20 +3633,11 @@ export default function VideoPage() {
                                     aspectRatio={draft.aspectRatio}
                                     resolution={draft.resolution}
                                     durationSec={draft.durationSec}
-                                    onModelChange={(value) => {
-                                        updateConfig("videoModel", value);
-                                        const profile = modelCapabilityConfigFor(effectiveConfig, value).video;
-                                        updateDraft({
-                                            model: value,
-                                            aspectRatio: profile?.ratios?.[0] || draft.aspectRatio || "9:16",
-                                            resolution: profile?.resolutions?.[0] || draft.resolution || "720p",
-                                            durationSec: clampDurationToChannelVideoModel(effectiveConfig, value, draft.durationSec),
-                                        });
-                                    }}
-                                    onAspectRatioChange={(value) => updateDraft({ aspectRatio: value as any })}
-                                    onResolutionChange={(value) => updateDraft({ resolution: value as any })}
-                                    onDurationChange={(value) => updateDraft({ durationSec: value })}
-                                    onConfigChange={(key, value) => updateConfig(key, value)}
+                                    onModelChange={handleModelChange}
+                                    onAspectRatioChange={handleAspectRatioChange}
+                                    onResolutionChange={handleResolutionChange}
+                                    onDurationChange={handleDurationChange}
+                                    onConfigChange={handleConfigChange}
                                 />
                             </div>
 
@@ -2979,7 +3675,7 @@ export default function VideoPage() {
                         )}
                     </div>
 
-                    <div className="thin-scrollbar rounded-2xl border border-black/[0.06] bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] dark:border-white/[0.08] dark:bg-[#1c1c1e] lg:min-h-0 lg:overflow-y-auto lg:p-5">
+                    <div className="thin-scrollbar min-w-0 rounded-2xl border border-black/[0.06] bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] dark:border-white/[0.08] dark:bg-[#1c1c1e] lg:min-h-0 lg:overflow-y-auto lg:p-5">
                         <div className="mb-4 flex items-center justify-between gap-3">
                             <h2 className="text-xl font-semibold">{t("workbench.results")}</h2>
                             {isCurrentSessionPending ? <Tag className="m-0 px-2 py-1">{t("workbench.waiting", { time: formatDuration(elapsedMs) })}</Tag> : null}
@@ -2991,34 +3687,80 @@ export default function VideoPage() {
                             </div>
                         ) : null}
                         {results.length ? (
-                            <div className="grid gap-4">
-                                {results.map((result) => (
-                                    result.status === "success" && result.video ? (
-                                        <ResultVideoCard
-                                            key={result.id}
-                                            video={result.video}
-                                            onDownload={downloadVideo}
-                                            onSaveAsset={saveResultToAssets}
-                                            onSendToCanvas={sendVideoToCanvas}
-                                            onRetrySegment={retrySegment}
-                                            segmentId={result.id.startsWith("segment-") ? result.id : undefined}
-                                        />
-                                    ) : result.status === "failed" ? (
-                                        <FailedVideoCard
-                                            key={result.id}
-                                            error={result.error || t("workbench.generationFailed")}
-                                            onRetry={retryResult}
-                                            canRecheck={resolveRecheckContext(result).canRecheck}
-                                            onRecheck={() => {
-                                                const { task, targetLog } = resolveRecheckContext(result);
-                                                void handleRecheck(task, targetLog);
-                                            }}
-                                            isRechecking={resolveRecheckContext(result).isRechecking}
-                                            failureCount={resolveRecheckContext(result).failureCount}
-                                        />
-                                    ) : (
-                                        <PendingVideoCard key={result.id} />
-                                    )
+                            <div className="flex flex-col gap-5">
+                                {batchGroups.map((group, groupIndex) => (
+                                    <div
+                                        key={group.batchId}
+                                        id={`batch-group-${group.batchId}`}
+                                        className={`flex flex-col gap-3 rounded-2xl border p-4 transition-all ${
+                                            previewLog?.id === group.batchId || previewLog?.batchId === group.batchId
+                                                ? "border-amber-500/50 bg-amber-500/[0.03] shadow-md ring-1 ring-amber-500/30 dark:border-amber-400/50 dark:bg-amber-500/[0.05]"
+                                                : "border-black/[0.06] bg-stone-50/50 dark:border-white/[0.08] dark:bg-[#232326]"
+                                        }`}
+                                    >
+                                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/[0.04] pb-2.5 dark:border-white/[0.04]">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-semibold text-stone-800 dark:text-stone-200">
+                                                    批次 · {group.displayTime}
+                                                </span>
+                                                {group.modelLabel && (
+                                                    <Tag className="m-0 text-[10px] px-1.5 py-0 rounded border-stone-200 bg-stone-100/60 text-stone-600 dark:border-stone-700 dark:bg-stone-800/60 dark:text-stone-300">
+                                                        {group.modelLabel}
+                                                    </Tag>
+                                                )}
+                                                <Tag
+                                                    color={group.status === "success" ? "green" : group.status === "pending" ? "processing" : group.status === "failed" ? "error" : "warning"}
+                                                    className="m-0 text-[11px] px-1.5 py-0"
+                                                >
+                                                    {group.status === "success" ? "全部完成" : group.status === "pending" ? "生成中" : group.status === "failed" ? "生成失败" : "部分完成"}
+                                                </Tag>
+                                                <span className="text-[11px] text-stone-400">
+                                                    {group.items.length} 个视频
+                                                </span>
+                                            </div>
+                                            {group.prompt && (
+                                                <Tooltip title={group.prompt} placement="top">
+                                                    <span className="max-w-[260px] truncate text-[11px] text-stone-400 cursor-help">
+                                                        {group.prompt}
+                                                    </span>
+                                                </Tooltip>
+                                            )}
+                                        </div>
+                                        <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
+                                            {group.items.map((result) => {
+                                                const isMerged = Boolean(result.video?.label?.includes("完整成片") || result.id === result.batchId || result.slotId?.endsWith(":master"));
+                                                const resolvedSegmentId = !isMerged
+                                                    ? (result.segmentId || (result.id.startsWith("segment-") ? result.id : (typeof result.segmentIndex === "number" ? `segment-${result.segmentIndex}` : undefined)))
+                                                    : undefined;
+
+                                                return result.status === "success" && result.video ? (
+                                                    <ResultVideoCard
+                                                        key={result.id}
+                                                        video={result.video}
+                                                        onDownload={downloadVideo}
+                                                        onSaveAsset={saveResultToAssets}
+                                                        onRetrySegment={(segId) => retrySegment(segId, result.batchId)}
+                                                        segmentId={resolvedSegmentId}
+                                                    />
+                                                ) : result.status === "failed" ? (
+                                                    <FailedVideoCard
+                                                        key={result.id}
+                                                        error={result.error || t("workbench.generationFailed")}
+                                                        onRetry={() => retryResult(result.batchId || result.id)}
+                                                        canRecheck={resolveRecheckContext(result).canRecheck}
+                                                        onRecheck={() => {
+                                                            const { task, targetLog } = resolveRecheckContext(result);
+                                                            void handleRecheck(task, targetLog);
+                                                        }}
+                                                        isRechecking={resolveRecheckContext(result).isRechecking}
+                                                        failureCount={resolveRecheckContext(result).failureCount}
+                                                    />
+                                                ) : (
+                                                    <PendingVideoCard key={result.id} title={result.title} />
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
                         ) : (
@@ -3033,6 +3775,7 @@ export default function VideoPage() {
                 ref={fileInputRef}
                 type="file"
                 multiple
+                accept={activeSkill ? "image/*,audio/*" : "image/*,video/*,audio/*"}
                 className="hidden"
                 onChange={(event) => {
                     const replaceTarget = replaceTargetRef.current;
@@ -3045,7 +3788,7 @@ export default function VideoPage() {
             <Drawer title={t("workbench.logs")} placement="bottom" size="large" open={logsOpen} onClose={() => setLogsOpen(false)}>
                 <LogPanel logs={logs} selectedLogIds={selectedLogIds} activeLogId={previewLog?.id} recheckingLogId={recheckingLogId} onSelectedLogIdsChange={setSelectedLogIds} onCreateSession={() => void createSession()} onDeleteSelected={() => setDeleteConfirmOpen(true)} onPreviewLog={previewGenerationLog} onRecheckLog={(log) => void handleRecheck(log.task, log)} />
             </Drawer>
-            <Drawer title={t("workbench.settings")} placement="bottom" size="large" open={settingsOpen} onClose={() => setSettingsOpen(false)}>
+            <Drawer title={t("workbench.settings")} placement="bottom" size="large" open={settingsOpen} onClose={() => setSettingsOpen(false)} destroyOnClose>
                 <div className="flex flex-col gap-3 pb-4">
                     <GenerationSettings
                         config={effectiveConfig}
@@ -3054,20 +3797,11 @@ export default function VideoPage() {
                         aspectRatio={draft.aspectRatio}
                         resolution={draft.resolution}
                         durationSec={draft.durationSec}
-                        onModelChange={(value) => {
-                            updateConfig("videoModel", value);
-                            const profile = modelCapabilityConfigFor(effectiveConfig, value).video;
-                            updateDraft({
-                                model: value,
-                                aspectRatio: profile?.ratios?.[0] || draft.aspectRatio || "9:16",
-                                resolution: profile?.resolutions?.[0] || draft.resolution || "720p",
-                                durationSec: clampDurationToChannelVideoModel(effectiveConfig, value, draft.durationSec),
-                            });
-                        }}
-                        onAspectRatioChange={(value) => updateDraft({ aspectRatio: value as any })}
-                        onResolutionChange={(value) => updateDraft({ resolution: value as any })}
-                        onDurationChange={(value) => updateDraft({ durationSec: value })}
-                        onConfigChange={(key, value) => updateConfig(key, value)}
+                        onModelChange={handleModelChange}
+                        onAspectRatioChange={handleAspectRatioChange}
+                        onResolutionChange={handleResolutionChange}
+                        onDurationChange={handleDurationChange}
+                        onConfigChange={handleConfigChange}
                     />
                 </div>
             </Drawer>
@@ -3188,7 +3922,7 @@ function ReferenceTile({
             </span>
 
             {item.uploading && (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-black/65 backdrop-blur-[1px] text-white">
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-black/65 backdrop-blur-[1px] text-white pointer-events-none">
                     <LoaderCircle className="size-4 animate-spin text-amber-400" />
                     <span className="mt-1 text-[10px] font-medium leading-none text-white/90">
                         {item.progress !== undefined ? `${item.progress}%` : "上传中"}
@@ -3198,20 +3932,20 @@ function ReferenceTile({
 
             {item.error && (
                 <div
-                    className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-red-950/85 p-1 text-center text-white backdrop-blur-[1px] cursor-pointer hover:bg-red-900/90 transition-colors"
+                    className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-red-950/85 p-1 text-center text-white backdrop-blur-[1px] pointer-events-none"
                     title={item.error}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onReplace();
-                    }}
                 >
                     <AlertCircle className="size-3.5 text-red-300 mb-0.5" />
                     <span className="text-[10px] text-red-200 leading-tight">上传失败</span>
-                    <span className="text-[9px] text-red-300/80 underline mt-0.5">点击重试</span>
+                    <span className="text-[9px] text-red-300/80 mt-0.5">悬停操作</span>
                 </div>
             )}
 
-            <div className={`absolute inset-0 z-20 hidden items-center justify-center gap-1 rounded-xl bg-black/45 ${item.uploading ? "" : "group-hover:flex group-focus:flex"}`}>
+            <div
+                className={`absolute inset-0 z-20 items-center justify-center gap-1 rounded-xl bg-black/55 backdrop-blur-[1px] transition-opacity ${
+                    active ? "flex" : "hidden group-hover:flex group-focus:flex"
+                }`}
+            >
                 <Tooltip title={replaceLabel} placement="top" mouseEnterDelay={0.15}>
                     <button
                         type="button"
@@ -3248,6 +3982,11 @@ function VideoSlotThumbnail({ item }: { item: ReferencePreviewItem }) {
 
     useEffect(() => {
         if (item.posterUrl || item.posterStorageKey || !item.url) return;
+        // 铁律：首屏 0 KB 远程视频流量。远程未提供海报的视频，不在缩略图槽位挂载 captureVideoPoster 拉取远程视频
+        // 仅对本地已有的 Blob / ObjectURL 执行即时轻量抽帧
+        const isLocalSource = item.url.startsWith("blob:") || item.url.startsWith("data:");
+        if (!isLocalSource) return;
+
         let cancelled = false;
         let createdUrl = "";
         void captureVideoPoster(item.url)
@@ -3267,6 +4006,20 @@ function VideoSlotThumbnail({ item }: { item: ReferencePreviewItem }) {
     }, [item.posterStorageKey, item.posterUrl, item.url]);
 
     const posterSrc = item.posterUrl || localPoster || (item.url?.startsWith("data:image") ? item.url : undefined);
+
+    if (!posterSrc && !item.posterStorageKey) {
+        return (
+            <div className="relative size-full overflow-hidden rounded-xl bg-stone-800 flex flex-col items-center justify-center text-stone-400 p-1">
+                <Film className="size-5 text-stone-400 mb-0.5" />
+                <span className="text-[9px] text-stone-300 font-medium truncate max-w-full px-1">{item.name || "视频"}</span>
+                {item.durationMs ? (
+                    <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-0.2 text-[9px] font-mono text-white/90 pointer-events-none">
+                        {formatDuration(item.durationMs)}
+                    </span>
+                ) : null}
+            </div>
+        );
+    }
 
     return (
         <div className="relative size-full overflow-hidden rounded-xl bg-stone-900">
@@ -3297,56 +4050,84 @@ function VideoSlotThumbnail({ item }: { item: ReferencePreviewItem }) {
 }
 
 function ReferencePreview({ item }: { item: ReferencePreviewItem }) {
-    const directImageUrl = item.dataUrl || item.url || (item.storageKey ? resolveResourceUrl(item.storageKey) : "");
-    const directVideoUrl = item.url || (item.storageKey ? resolveResourceUrl(item.storageKey) : "");
-    const videoPosterUrl = item.posterUrl || (item.posterStorageKey ? resolveResourceUrl(item.posterStorageKey) : undefined);
+    const [mediaUrl, setMediaUrl] = useState(item.dataUrl || item.url || "");
+    const [videoPoster, setVideoPoster] = useState(item.posterUrl || "");
+    const [videoError, setVideoError] = useState(false);
+
+    useEffect(() => {
+        setVideoError(false);
+        let active = true;
+        if (item.kind === "image") {
+            if (item.storageKey) {
+                void resolveImageUrl(item.storageKey, item.dataUrl || item.url).then((resolved) => {
+                    if (active && resolved) setMediaUrl(resolved);
+                });
+            } else {
+                setMediaUrl(item.dataUrl || item.url || "");
+            }
+        } else if (item.kind === "video") {
+            if (item.storageKey) {
+                void resolveMediaUrl(item.storageKey, item.url).then((resolved) => {
+                    if (active && resolved) setMediaUrl(resolved);
+                });
+            } else {
+                setMediaUrl(item.url || "");
+            }
+            if (item.posterStorageKey) {
+                void resolveImageUrl(item.posterStorageKey, item.posterUrl).then((resolved) => {
+                    if (active && resolved) setVideoPoster(resolved);
+                });
+            } else {
+                setVideoPoster(item.posterUrl || "");
+            }
+        }
+        return () => {
+            active = false;
+        };
+    }, [item]);
+
     return (
-        <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-max max-w-[min(90vw,36rem)] -translate-x-1/2 overflow-hidden rounded-2xl border border-black/[0.08] bg-white/95 p-2 shadow-2xl backdrop-blur-xl dark:border-white/[0.1] dark:bg-[#1c1c1e]/95">
+        <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-max max-w-[min(90vw,14rem)] -translate-x-1/2 overflow-hidden rounded-2xl border border-black/[0.08] bg-white/95 p-2 shadow-2xl backdrop-blur-xl dark:border-white/[0.1] dark:bg-[#1c1c1e]/95 animate-in fade-in duration-150">
             {item.kind === "image" ? (
-                <img
-                    src={directImageUrl}
+                <CachedResourceImage
+                    storageKey={item.storageKey}
+                    src={mediaUrl || item.dataUrl || item.url}
                     alt={item.name}
-                    className="block h-auto w-auto max-h-[min(70vh,36rem)] max-w-[min(90vw,36rem)] rounded-md object-contain"
-                    onError={(e) => {
-                        if (item.storageKey) {
-                            const fallback = resolveResourceUrl(item.storageKey);
-                            if (fallback && e.currentTarget.src !== fallback) {
-                                e.currentTarget.src = fallback;
-                                return;
-                            }
-                        }
-                        e.currentTarget.style.display = "none";
-                    }}
+                    eager
+                    className="block h-auto w-auto max-h-52 max-w-52 rounded-md object-contain"
+                    loadingFallback={<div className="h-40 w-40 animate-pulse rounded-md bg-stone-200 dark:bg-stone-800" />}
+                    fallback={<div className="grid h-32 w-32 place-items-center rounded-md bg-stone-100 text-xs text-stone-400 dark:bg-stone-800">图片预览失败</div>}
                 />
             ) : item.kind === "video" ? (
-                <video
-                    src={directVideoUrl}
-                    poster={videoPosterUrl}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    className="block h-auto w-auto max-h-[min(70vh,36rem)] max-w-[min(90vw,36rem)] rounded-md bg-stone-950 object-contain shadow-sm"
-                    onError={(e) => {
-                        if (item.storageKey) {
-                            const fallback = resolveResourceUrl(item.storageKey);
-                            if (fallback && e.currentTarget.src !== fallback) {
-                                e.currentTarget.src = fallback;
-                            }
-                        }
-                    }}
-                />
+                videoError ? (
+                    <div className="flex h-36 w-44 flex-col items-center justify-center rounded-md bg-stone-900 text-stone-400 p-2 text-center">
+                        <Film className="size-6 text-stone-500 mb-1" />
+                        <span className="text-xs text-stone-300 truncate max-w-full">{item.name}</span>
+                        <span className="text-[10px] text-amber-400/90 mt-1">视频暂无法直接解码预览</span>
+                    </div>
+                ) : (
+                    <video
+                        src={mediaUrl}
+                        poster={videoPoster || undefined}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        onError={() => setVideoError(true)}
+                        className="block h-auto w-auto max-h-52 max-w-52 rounded-md bg-stone-950 object-contain shadow-sm"
+                    />
+                )
             ) : (
                 <div className="flex flex-col items-center gap-3 px-3 py-5">
                     <Music2 className="size-8 text-stone-400" />
-                    <audio src={item.url} controls className="w-[min(28rem,80vw)]" />
+                    <audio src={item.url} controls className="w-[min(18rem,80vw)]" />
                 </div>
             )}
         </div>
     );
 }
 
-function GenerationSettings({
+const GenerationSettings = memo(function GenerationSettings({
     config,
     model,
     requirements,
@@ -3380,12 +4161,12 @@ function GenerationSettings({
         videoSeconds: String(durationSec || config.videoSeconds),
     }), [config, model, aspectRatio, resolution, durationSec]);
 
-    const handleVideoSettingChange = (key: keyof AiConfig, value: string) => {
+    const handleVideoSettingChange = useCallback((key: keyof AiConfig, value: string) => {
         if (key === "size") onAspectRatioChange(value);
         if (key === "vquality") onResolutionChange(value);
         if (key === "videoSeconds") onDurationChange(Number(value));
         onConfigChange?.(key, value);
-    };
+    }, [onAspectRatioChange, onResolutionChange, onDurationChange, onConfigChange]);
 
     return (
         <div className="relative w-full min-w-0">
@@ -3395,9 +4176,7 @@ function GenerationSettings({
                     <ModelPicker
                         config={config}
                         value={model}
-                        onChange={(nextModel) => {
-                            onModelChange(nextModel);
-                        }}
+                        onChange={onModelChange}
                         capability="video"
                         requirements={requirements}
                         fullWidth
@@ -3418,7 +4197,7 @@ function GenerationSettings({
             </div>
         </div>
     );
-}
+});
 
 function getConfiguredVideoModelOptions(config: AiConfig) {
     const selectable = selectableModelsByCapability(config, "video").filter(Boolean);
@@ -3501,29 +4280,50 @@ function ResultVideoCard({
     video,
     onDownload,
     onSaveAsset,
-    onSendToCanvas,
     onRetrySegment,
     segmentId,
 }: {
     video: GeneratedVideo;
     onDownload: (video: GeneratedVideo) => void;
     onSaveAsset: (video: GeneratedVideo) => void;
-    onSendToCanvas?: (video: GeneratedVideo) => void;
     onRetrySegment?: (segmentId: string) => void;
     segmentId?: string;
 }) {
     const isMerged = video.label?.includes("完整成片");
     const initialSrc = video.url || (video.storageKey ? resolveResourceUrl(video.storageKey) : "");
     const [videoSrc, setVideoSrc] = useState(initialSrc);
+    const [posterSrc, setPosterSrc] = useState(video.posterUrl || "");
+    const [videoLoaded, setVideoLoaded] = useState(false);
     const [loadFailed, setLoadFailed] = useState(false);
     const [triedFallback, setTriedFallback] = useState(false);
+    const effectivePoster = isImageLikeUrl(posterSrc) ? posterSrc : undefined;
 
     useEffect(() => {
-        const nextSrc = video.url || (video.storageKey ? resolveResourceUrl(video.storageKey) : "");
-        setVideoSrc(nextSrc);
+        let active = true;
+        setVideoLoaded(false);
         setLoadFailed(false);
         setTriedFallback(false);
-    }, [video.url, video.storageKey]);
+
+        if (video.storageKey) {
+            void resolveMediaUrl(video.storageKey, video.url).then((resolved) => {
+                if (active && resolved) setVideoSrc(resolved);
+            });
+        } else {
+            setVideoSrc(video.url || "");
+        }
+
+        if (video.posterStorageKey) {
+            void resolveImageUrl(video.posterStorageKey, video.posterUrl || "").then((resolved) => {
+                if (active && resolved) setPosterSrc(resolved);
+            });
+        } else {
+            setPosterSrc(video.posterUrl || "");
+        }
+
+        return () => {
+            active = false;
+        };
+    }, [video.url, video.storageKey, video.posterUrl, video.posterStorageKey]);
 
     const handleVideoError = () => {
         if (!triedFallback && video.storageKey) {
@@ -3537,6 +4337,19 @@ function ResultVideoCard({
         setLoadFailed(true);
     };
 
+    const handleRetry = () => {
+        setLoadFailed(false);
+        setTriedFallback(false);
+        setVideoLoaded(false);
+        if (video.storageKey) {
+            void resolveMediaUrl(video.storageKey, video.url).then((url) => {
+                setVideoSrc(url || video.url);
+            });
+        } else {
+            setVideoSrc(video.url || "");
+        }
+    };
+
     return (
         <div
             className={`overflow-hidden rounded-2xl border transition ${
@@ -3545,26 +4358,41 @@ function ResultVideoCard({
                     : "border-black/[0.06] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)] dark:border-white/[0.08] dark:bg-[#1c1c1e]"
             }`}
         >
-            <div className="relative">
+            <div className="relative aspect-video w-full overflow-hidden bg-black flex items-center justify-center">
+                {/* 阶段 1：底层 0ms 秒开海报（若有视频封面或首帧，杜绝纯黑框与等待） */}
+                {effectivePoster && !videoLoaded && (
+                    <img
+                        src={effectivePoster}
+                        alt={video.label || "视频预览"}
+                        className="absolute inset-0 size-full object-contain pointer-events-none select-none"
+                    />
+                )}
+
                 {loadFailed ? (
-                    <div className="aspect-video w-full flex flex-col items-center justify-center gap-2 bg-stone-900 text-stone-400 p-4 text-center">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-stone-900/90 text-stone-400 p-4 text-center">
                         <AlertCircle className="size-8 text-amber-500/80" />
                         <span className="text-xs">视频加载异常，可能因网络波动或临时链接过期导致</span>
                         <Button
                             size="small"
                             icon={<RefreshCw className="size-3" />}
-                            onClick={() => {
-                                setLoadFailed(false);
-                                setTriedFallback(false);
-                                const retryUrl = video.storageKey ? resolveResourceUrl(video.storageKey) : video.url;
-                                setVideoSrc(retryUrl);
-                            }}
+                            onClick={handleRetry}
                         >
                             重新加载
                         </Button>
                     </div>
                 ) : (
-                    <video src={videoSrc} controls preload="none" onError={handleVideoError} className="aspect-video w-full bg-black object-contain" />
+                    <video
+                        src={videoSrc}
+                        poster={effectivePoster}
+                        controls
+                        preload="none"
+                        playsInline
+                        onLoadedData={() => setVideoLoaded(true)}
+                        onError={handleVideoError}
+                        className={`size-full bg-black object-contain transition-opacity duration-300 ${
+                            videoLoaded ? "opacity-100" : effectivePoster ? "opacity-0" : "opacity-100"
+                        }`}
+                    />
                 )}
                 {isMerged ? (
                     <span className="absolute left-2.5 top-2.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 px-2.5 py-0.5 text-xs font-semibold text-white shadow-md">
@@ -3572,44 +4400,65 @@ function ResultVideoCard({
                     </span>
                 ) : null}
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-stone-200 px-3 py-2.5 dark:border-stone-800">
-                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
-                    {video.label ? <span className="font-medium text-stone-700 dark:text-stone-200">{video.label}</span> : null}
-                    <span>
-                        {video.width}x{video.height}
-                    </span>
+            <div className="flex items-center justify-between border-t border-black/[0.04] px-2.5 py-1.5 dark:border-white/[0.06]">
+                <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-stone-400 dark:text-stone-500">
+                    {video.label ? <span className="font-medium text-stone-700 dark:text-stone-300">{video.label}</span> : null}
+                    {video.label ? <span>·</span> : null}
+                    <span>{video.width}×{video.height}</span>
+                    <span>·</span>
                     <span>{formatBytes(video.bytes)}</span>
-                    <span>{formatDuration(video.durationMs)}</span>
+                    {video.durationMs ? (
+                        <>
+                            <span>·</span>
+                            <span>{formatDuration(video.durationMs)}</span>
+                        </>
+                    ) : null}
                 </div>
-                <div className="flex shrink-0 flex-wrap gap-1">
-                    {onSendToCanvas ? (
-                        <Button size="small" icon={<Send className="size-3.5" />} onClick={() => onSendToCanvas(video)}>
-                            载入画布
-                        </Button>
-                    ) : null}
+                <div className="flex shrink-0 items-center gap-0.5">
                     {segmentId && onRetrySegment ? (
-                        <Button size="small" icon={<RotateCcw className="size-3.5" />} onClick={() => onRetrySegment(segmentId)}>
-                            重生成此段
-                        </Button>
+                        <Tooltip title="重生成此分段" placement="top">
+                            <button
+                                type="button"
+                                aria-label="重生成此分段"
+                                className="flex size-7 items-center justify-center rounded-lg text-amber-600 transition hover:bg-amber-50 active:scale-95 dark:text-amber-400 dark:hover:bg-amber-950/40"
+                                onClick={() => onRetrySegment(segmentId)}
+                            >
+                                <RotateCcw className="size-3.5" />
+                            </button>
+                        </Tooltip>
                     ) : null}
-                    <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => onSaveAsset(video)}>
-                        {t("common.addToAssets")}
-                    </Button>
-                    <Button size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(video)}>
-                        {t("common.download")}
-                    </Button>
+                    <Tooltip title={t("common.addToAssets")} placement="top">
+                        <button
+                            type="button"
+                            aria-label={t("common.addToAssets")}
+                            className="flex size-7 items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 active:scale-95 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+                            onClick={() => onSaveAsset(video)}
+                        >
+                            <FolderPlus className="size-3.5" />
+                        </button>
+                    </Tooltip>
+                    <Tooltip title={t("common.download")} placement="top">
+                        <button
+                            type="button"
+                            aria-label={t("common.download")}
+                            className="flex size-7 items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 active:scale-95 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+                            onClick={() => onDownload(video)}
+                        >
+                            <Download className="size-3.5" />
+                        </button>
+                    </Tooltip>
                 </div>
             </div>
         </div>
     );
 }
 
-function PendingVideoCard() {
+function PendingVideoCard({ title }: { title?: string }) {
     return (
         <div className="relative aspect-video overflow-hidden rounded-2xl border border-dashed border-stone-200 bg-stone-50/50 dark:border-stone-800 dark:bg-[#1c1c1e]">
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-stone-500 dark:text-stone-400">
                 <LoaderCircle className="size-6 animate-spin text-amber-500" />
-                <span>{t("workbench.generating")}</span>
+                <span>{title || t("workbench.generating")}</span>
             </div>
         </div>
     );
@@ -3760,37 +4609,33 @@ function LogCard({
             <div className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-start gap-2">
                 <Checkbox className="mt-0.5" checked={selected} onClick={(event) => event.stopPropagation()} onChange={(event) => onSelectedChange(event.target.checked)} />
                 <div className="relative size-14 overflow-hidden rounded-md bg-stone-100 dark:bg-stone-800 flex items-center justify-center">
-                    {imageThumb ? (
-                        <img
+                    {imageThumb || firstImage?.storageKey ? (
+                        <CachedResourceImage
+                            storageKey={firstImage?.storageKey}
                             src={imageThumb}
                             alt=""
+                            loading="lazy"
+                            decoding="async"
                             className="size-full object-cover"
-                            onError={(e) => {
-                                if (firstImage?.storageKey) {
-                                    const fallback = resolveResourceUrl(firstImage.storageKey);
-                                    if (fallback && e.currentTarget.src !== fallback) {
-                                        e.currentTarget.src = fallback;
-                                        return;
-                                    }
-                                }
-                                e.currentTarget.style.display = "none";
-                            }}
+                            fallback={
+                                <div className="size-full flex flex-col items-center justify-center bg-stone-900/10 dark:bg-stone-800/80 text-amber-600 dark:text-amber-400">
+                                    <Film className="size-5 opacity-80" />
+                                </div>
+                            }
                         />
-                    ) : videoPoster ? (
-                        <img
+                    ) : videoPoster || firstVideo?.posterStorageKey ? (
+                        <CachedResourceImage
+                            storageKey={firstVideo?.posterStorageKey}
                             src={videoPoster}
                             alt=""
+                            loading="lazy"
+                            decoding="async"
                             className="size-full object-cover"
-                            onError={(e) => {
-                                if (firstVideo?.posterStorageKey) {
-                                    const fallback = resolveResourceUrl(firstVideo.posterStorageKey);
-                                    if (fallback && e.currentTarget.src !== fallback) {
-                                        e.currentTarget.src = fallback;
-                                        return;
-                                    }
-                                }
-                                e.currentTarget.style.display = "none";
-                            }}
+                            fallback={
+                                <div className="size-full flex flex-col items-center justify-center bg-stone-900/10 dark:bg-stone-800/80 text-amber-600 dark:text-amber-400">
+                                    <Film className="size-5 opacity-80" />
+                                </div>
+                            }
                         />
                     ) : (generatedVideoUrl || firstVideo) ? (
                         <div className="size-full flex flex-col items-center justify-center bg-stone-900/10 dark:bg-stone-800/80 text-amber-600 dark:text-amber-400">
@@ -3806,43 +4651,52 @@ function LogCard({
                     ) : null}
                 </div>
                 <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold leading-5">{log.title}</div>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                        {isSegmented && segmentCount > 1 ? (
-                            <Tag color="purple" className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">
-                                {segmentCount}段 · {log.creationPlan?.targetDurationSec || log.seconds}s
-                            </Tag>
-                        ) : null}
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{log.size}</Tag>
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{log.resolution}p</Tag>
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{log.seconds}s</Tag>
-                        {outputCount ? <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{outputCount} 个结果</Tag> : null}
+                    <div className="truncate text-xs font-semibold leading-snug text-stone-800 dark:text-stone-200">{log.title}</div>
+                    <div className="mt-1 flex items-center gap-1 text-[11px] text-stone-400 dark:text-stone-500">
+                        <span className="truncate">
+                            {[
+                                isSegmented && segmentCount > 1 ? `${segmentCount}段` : null,
+                                log.resolution ? `${log.resolution}p` : null,
+                                log.seconds ? `${log.seconds}s` : null,
+                                log.size,
+                                outputCount ? `${outputCount}个结果` : null,
+                            ].filter(Boolean).join(" · ")}
+                        </span>
                     </div>
                 </div>
-                <div className="grid justify-items-end gap-2">
-                    <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color={log.status === "success" ? "blue" : log.status === "pending" ? "processing" : log.status === "draft" ? "default" : "red"}>
+                <div className="flex flex-col items-end gap-1">
+                    <span
+                        className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-none ${
+                            log.status === "success"
+                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                : log.status === "pending"
+                                  ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                                  : log.status === "draft"
+                                    ? "bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400"
+                                    : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                        }`}
+                    >
                         {log.status === "draft" ? "草稿" : t(`workbench.${log.status === "success" ? "success" : log.status === "pending" ? "generating" : "failed"}`)}
                         {log.status === "failed" && log.failureCount && log.failureCount > 1 ? ` (${log.failureCount}次)` : ""}
-                    </Tag>
+                    </span>
                     {log.status === "failed" && log.task && onRecheck ? (
-                        <Button
-                            size="small"
-                            type="link"
-                            className="!p-0 !h-auto text-xs text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
-                            loading={isRechecking}
+                        <button
+                            type="button"
+                            className="inline-flex items-center gap-1 text-[10px] text-amber-600 hover:underline dark:text-amber-400"
+                            disabled={isRechecking}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onRecheck();
                             }}
                         >
-                            <RefreshCw className={`size-3 ${isRechecking ? "animate-spin" : ""}`} />
+                            <RefreshCw className={`size-2.5 ${isRechecking ? "animate-spin" : ""}`} />
                             {isRechecking ? t("videoWorkbench.rechecking") : t("videoWorkbench.recheck")}
-                        </Button>
-                    ) : (
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="green">
+                        </button>
+                    ) : log.durationMs ? (
+                        <span className="text-[10px] text-stone-400 dark:text-stone-500">
                             {formatDuration(log.durationMs)}
-                        </Tag>
-                    )}
+                        </span>
+                    ) : null}
                 </div>
             </div>
         </button>
@@ -4192,13 +5046,16 @@ function upsertOutput(outputs: CreationOutputRecord[], next: CreationOutputRecor
     return index < 0 ? [...outputs, next] : outputs.map((item, itemIndex) => (itemIndex === index ? next : item));
 }
 
-function outputToGenerationResult(output: CreationOutputRecord): GenerationResult | null {
+function outputToGenerationResult(output: CreationOutputRecord, fallbackCreatedAt?: number): GenerationResult | null {
     if (output.mediaType !== "video" || output.status !== "success") return null;
     const effectiveUrl = output.url || (output.storageKey ? resolveResourceUrl(output.storageKey) : "");
     if (!effectiveUrl) return null;
     return {
         id: output.outputId,
         status: "success",
+        segmentIndex: output.segmentIndex,
+        segmentId: output.role === "segment" ? (output.outputId.startsWith("segment-") ? output.outputId : (typeof output.segmentIndex === "number" ? `segment-${output.segmentIndex}` : undefined)) : undefined,
+        createdAt: fallbackCreatedAt,
         video: {
             id: output.outputId,
             url: effectiveUrl,
@@ -4214,33 +5071,66 @@ function outputToGenerationResult(output: CreationOutputRecord): GenerationResul
 }
 
 export function deriveGenerationResultsFromLog(log: GenerationLog): GenerationResult[] {
+    const attachBatch = (items: GenerationResult[]): GenerationResult[] =>
+        items.map((it) => ({
+            ...it,
+            batchId: it.batchId || log.id,
+            slotId: it.slotId || (typeof it.segmentIndex === "number" ? getGenerationCardSlotId(log.id, it.segmentIndex) : getGenerationCardSlotId(log.id)),
+            segmentId: it.segmentId || (typeof it.segmentIndex === "number" ? (log.creationPlan?.segments?.find((s) => s.index === it.segmentIndex)?.segmentId || `segment-${it.segmentIndex}`) : undefined),
+            createdAt: it.createdAt || log.createdAt,
+        }));
+
     const outputResults = (log.runs || [])
-        .flatMap((run) => (run.outputs || []).map((output) => outputToGenerationResult(output)))
+        .flatMap((run) => (run.outputs || []).map((output) => outputToGenerationResult(output, log.createdAt)))
         .filter((item): item is GenerationResult => Boolean(item));
-    const mergedResult = log.video ? [{ id: log.video.id, status: "success" as const, video: { ...log.video, url: log.video.url || (log.video.storageKey ? resolveResourceUrl(log.video.storageKey) : "") } }] : [];
+    const mergedResult = log.video ? [{ id: log.video.id, slotId: getGenerationCardSlotId(log.id), status: "success" as const, createdAt: log.createdAt, video: { ...log.video, url: log.video.url || (log.video.storageKey ? resolveResourceUrl(log.video.storageKey) : "") } }] : [];
     const representativeTask = log.task || log.segmentBatch?.tasks?.find((t) => t.task && t.status !== "success")?.task || log.segmentBatch?.tasks?.find((t) => t.task)?.task;
+    const checkpointError = log.segmentBatch?.tasks?.find((t) => t.error)?.error;
+    const resolvedError = log.error || log.segmentBatch?.error || checkpointError || t("workbench.generationFailed");
     const failedResult =
         log.status === "failed" && log.segmentBatch
-            ? [{ id: `${log.id}-failed`, status: "failed" as const, error: log.error || t("workbench.generationFailed"), task: representativeTask, failureCount: log.failureCount }]
+            ? [{ id: `${log.id}-failed`, slotId: `${log.id}:failed`, status: "failed" as const, error: resolvedError, task: representativeTask, failureCount: log.failureCount, createdAt: log.createdAt }]
             : [];
 
-    if (log.status === "pending") {
-        return [{ id: log.id, status: "pending", task: representativeTask }];
+    const isStalled = Date.now() - (log.updatedAt || log.createdAt || 0) > 15 * 60 * 1000;
+    if (log.status === "pending" && !isStalled) {
+        if (log.creationPlan?.segments && log.creationPlan.segments.length > 1) {
+            const slotCards: GenerationResult[] = log.creationPlan.segments.map((seg) => {
+                const finishedOutput = outputResults.find((o) => o.segmentIndex === seg.index);
+                if (finishedOutput) {
+                    return finishedOutput;
+                }
+                const segTask = log.segmentBatch?.tasks?.find((t) => t.segmentId === seg.segmentId)?.task;
+                return {
+                    id: getGenerationCardSlotId(log.id, seg.index),
+                    slotId: getGenerationCardSlotId(log.id, seg.index),
+                    batchId: log.id,
+                    segmentIndex: seg.index,
+                    segmentId: seg.segmentId,
+                    title: `第 ${seg.index} 段 (${seg.startSec}-${seg.endSec}秒)`,
+                    status: "pending" as const,
+                    task: segTask || representativeTask,
+                    createdAt: log.createdAt,
+                };
+            });
+            return attachBatch(slotCards);
+        }
+        return attachBatch([{ id: log.id, slotId: getGenerationCardSlotId(log.id), status: "pending", task: representativeTask, createdAt: log.createdAt }]);
     }
     if (log.segmentBatch && mergedResult.length && outputResults.length > 1) {
-        return [...mergedResult, ...outputResults, ...failedResult];
+        return attachBatch([...mergedResult, ...outputResults, ...failedResult]);
     }
     if (outputResults.length) {
-        return [...outputResults, ...failedResult];
+        return attachBatch([...outputResults, ...failedResult]);
     }
     if (log.status === "draft") {
         return [];
     }
     if (log.video) {
         const effectiveUrl = log.video.url || (log.video.storageKey ? resolveResourceUrl(log.video.storageKey) : "");
-        return [{ id: log.video.id, status: "success", video: { ...log.video, url: effectiveUrl } }];
+        return attachBatch([{ id: log.video.id, slotId: getGenerationCardSlotId(log.id), status: "success", createdAt: log.createdAt, video: { ...log.video, url: effectiveUrl } }]);
     }
-    return [{ id: log.id, status: "failed", error: log.error || t("workbench.generationFailed"), task: representativeTask, failureCount: log.failureCount }];
+    return attachBatch([{ id: log.id, slotId: getGenerationCardSlotId(log.id), status: "failed", error: resolvedError, task: representativeTask, failureCount: log.failureCount, createdAt: log.createdAt }]);
 }
 
 function serializeCreationAssistant(draft: CreationAssistantDraft): CreationAssistantDraft {
@@ -4289,7 +5179,7 @@ function appendTextReferenceContext(prompt: string, references: VideoTextReferen
 
 function buildVideoConfig(config: AiConfig, model: string): AiConfig {
     const cap = modelCapabilityConfigFor(config, model).video;
-    const ratio = cap?.ratios?.includes(config.size) ? config.size : (cap?.defaultRatio || "16:9");
+    const ratio = cap?.ratios?.includes(config.size) ? config.size : (cap?.defaultRatio || "9:16");
     const resolution = cap?.resolutions?.includes(config.vquality) ? config.vquality : (cap?.defaultResolution || "720p");
     const seconds = normalizeVideoSeconds(config.videoSeconds || String(cap?.duration?.default || 5));
     const audioSupported = cap?.generateAudio?.supported ?? false;
@@ -4389,6 +5279,7 @@ function isCurrentVideoCreationPlan(plan: VideoCreationPlan, prompt: string, mod
         && plan.model === model
         && plan.targetDurationSec === targetDurationSec
         && plan.aspectRatio === aspectRatio
-        && plan.resolution === resolution;
+        && plan.resolution === resolution
+        && validateVideoCreationPlanForGeneration(plan).valid;
 }
 // @opc-feature: video_workbench [end]

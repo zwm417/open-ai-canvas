@@ -1,0 +1,35 @@
+{
+  "skill_name": "ip-character-system",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "为儿童牙科品牌设计一个可长期使用的原创吉祥物系统。",
+      "should_trigger": true,
+      "expected_output": "明确品牌功能；建立角色圣经；规划跨媒介资产",
+      "assertions": [
+        "明确品牌功能",
+        "建立角色圣经",
+        "规划跨媒介资产"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "画一张皮卡丘同款角色。",
+      "should_trigger": false,
+      "expected_output": "不应模仿现有 IP",
+      "assertions": [
+        "不应模仿现有 IP"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "角色已确认，只新增 8 个表情。",
+      "should_trigger": true,
+      "expected_output": "复用角色圣经；只生成表情资产",
+      "assertions": [
+        "复用角色圣经",
+        "只生成表情资产"
+      ]
+    }
+  ]
+}

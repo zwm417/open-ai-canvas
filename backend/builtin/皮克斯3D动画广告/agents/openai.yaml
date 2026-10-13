@@ -1,0 +1,4 @@
+interface:
+  display_name: "皮克斯动画广告"
+  short_description: "从原生脚本、资产和分镜图制作完整3D卡通广告成片"
+  default_prompt: "使用 $pixar-animation-ad，严格先完成交付规格、品牌风格圣经和全部角色立绘/角色圣经，再创建唯一 script-v2 完成广告创意、脚本、歌词与资产提取；随后按依赖波次批量生成场景和产品资产、全部原生分镜图、原生有声视频与最终 MP4。"

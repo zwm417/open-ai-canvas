@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "style_name": "簪花女郎·珠光华服美学",
+  "validation_scope": "Moodboard-assisted Midjourney generation only",
+  "validation_statement": "The nine final images validate the combination of the user's Midjourney Moodboard and the mapped text prompts. They do not validate text-only equivalence or ImageGen equivalence.",
+  "moodboard": {
+    "created_by_user_from_reference_images": true,
+    "source_reference_count": 12,
+    "specific_id_or_code_captured": false,
+    "code_policy": "Use only a user-supplied Moodboard ID or resolved --p code; never infer one.",
+    "source_boundary": "Analyze only the artwork field. Exclude phone status bars, 5G/battery UI, progress marks, viewer controls, app marks, text and watermarks."
+  },
+  "source_reference_labels": [
+    "01-double-sleeve-s-curve",
+    "02-cloud-sky-shoulder-turn",
+    "03-luminous-butterflies",
+    "04-palace-jade-flute",
+    "05-coral-peony-portrait",
+    "06-cloud-sky-bare-back",
+    "07-closed-eyes-blossom-branches",
+    "08-blossom-frame-blue-sleeve",
+    "09-coral-gold-crown-recline",
+    "10-over-shoulder-floral-halo",
+    "11-cobalt-gold-blossom-sky",
+    "12-peony-crown-side-gaze"
+  ],
+  "prompt_status": {
+    "moodboard_assisted_visual_validation": ["02", "03", "04", "05", "06", "07", "08", "10", "12"],
+    "prompt_only_not_visually_validated": ["01", "09", "11"],
+    "imagegen_not_visually_validated": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
+  },
+  "validated_outputs": [
+    {
+      "output_index": "01",
+      "prompt_number": "08",
+      "title": "横版花团框景与蓝色牡丹大袖",
+      "filename": "h3h8a4uu8xs7_Wide_169_mid_length_frontal_portrait_woman_sligh_1a359559-3d44-4f44-9636-07d1d83e442f_1.png",
+      "sha256": "88774219af8878355e400c663124d414fbe7e161f943ec5fdfac84bbd1aa76aa"
+    },
+    {
+      "output_index": "02",
+      "prompt_number": "04",
+      "title": "横版宫室横笛",
+      "filename": "h3h8a4uu8xs7_Wide_169_interior_portrait._Woman_occupies_the_r_a0c08f67-5298-4e73-be03-0e433dcb507d_2.png",
+      "sha256": "94211b12e22c085cd84150fd4ecba0657762e09b9ad22762d0420f8969a6ca93"
+    },
+    {
+      "output_index": "03",
+      "prompt_number": "10",
+      "title": "横版回肩近景与花冠光环",
+      "filename": "h3h8a4uu8xs7_Wide_169_over_the_shoulder_portrait._Woman_ancho_20954470-94db-405f-ab5f-9e0abddd9402_1.png",
+      "sha256": "ce1099a8c60c822247713bb9828017a62cfe37288f89f170055bc388e58fa2e6"
+    },
+    {
+      "output_index": "04",
+      "prompt_number": "02",
+      "title": "横版云海露肩回望",
+      "filename": "h3h8a4uu8xs7_Wide_169_over_the_shoulder_portrait._Woman_ancho_cdd13f08-9550-446a-9bc6-ada8f6674967_1.png",
+      "sha256": "384372a2b1d37ca18bb02bed98a9cb2385a3d439bc223d467ace8ae8619c5f77"
+    },
+    {
+      "output_index": "05",
+      "prompt_number": "07",
+      "title": "横版闭目花枝与金青披风",
+      "filename": "h3h8a4uu8xs7_Wide_169_back_turned_portrait_woman_on_right_thi_9912bb12-a0a2-4002-acd7-e540647ae85c_2.png",
+      "sha256": "6cde2183035ccfdd8e1fccdd28c5d244e3249d040bc1d65cd4c670dae35fbaa2"
+    },
+    {
+      "output_index": "06",
+      "prompt_number": "03",
+      "title": "横版发光蝴蝶与蓝花前景",
+      "filename": "h3h8a4uu8xs7_Wide_169_chest_up_portrait_woman_on_right_third__fbdc5dde-09b6-4885-ac90-8c290bfd4309_0.png",
+      "sha256": "45130d243fa3fc7d2f6508b67df290a73b85f1fd077d9b2987e5fabd5687563e"
+    },
+    {
+      "output_index": "07",
+      "prompt_number": "12",
+      "title": "横版牡丹花冠、侧望与透明披帛",
+      "filename": "h3h8a4uu8xs7_Wide_169_chest_up_three_quarter_portrait_woman_a_2a1e2ebc-d317-4a62-8ff5-8dd2066de2ac_0.png",
+      "sha256": "2a39acbd3da2d3d85a7bc67dea38782820e19264e80b924ae34fb3a80bbb68b4"
+    },
+    {
+      "output_index": "08",
+      "prompt_number": "06",
+      "title": "横版云天裸肩回眸与巨幅衣袖",
+      "filename": "h3h8a4uu8xs7_Wide_169_rear_three_quarter_portrait_woman_ancho_dba711a1-dc61-499d-8d9a-0754ea33ec35_3.png",
+      "sha256": "b43e6a1d5aad387ff0c19d9d8e3a4938f7c93ea8915667679131b30b0470aa84"
+    },
+    {
+      "output_index": "09",
+      "prompt_number": "05",
+      "title": "横版珊瑚桃色侧身肖像",
+      "filename": "h3h8a4uu8xs7_Wide_169_waist_up_three_quarter_portrait_woman_o_46b39de8-0b47-4261-bb0d-7adbcfafa1c3_1.png",
+      "sha256": "6f7de36d8fe60444dab7f4a8da36f2d5bfb95fd275156ecfff026542de49d9e4"
+    }
+  ],
+  "output_board_asset": "assets/moodboard-assisted-output-board.jpg",
+  "output_board_sha256": "5662bf5058d1f324e4898d4aa42926bb402625262554da6b74ccb3f0f8295b6c"
+}

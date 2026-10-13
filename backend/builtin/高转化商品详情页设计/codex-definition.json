@@ -1,0 +1,75 @@
+﻿{
+  "id": "product_page_design",
+  "name": "商品详情页设计",
+  "description": "设计并实现带商品画廊、变体选择、真实社会证明、结构化数据和清晰购买动作的响应式商品详情页。",
+  "icon": "🛒",
+  "color": "#0F766E",
+  "category": "E-Commerce",
+  "scenarios": [
+    "商品详情页",
+    "独立站 PDP",
+    "Shopify 商品页",
+    "WooCommerce 商品页",
+    "BigCommerce 商品页",
+    "Headless Commerce",
+    "商品画廊",
+    "商品变体选择",
+    "product detail page",
+    "PDP design"
+  ],
+  "promptTemplate": "使用 $product-page-design 在当前项目中设计并实现商品详情页。先核对平台、商品数据、变体和真实证明，再完成响应式、可访问且可验证的页面。\n\n用户需求：{userInput}",
+  "negativePrompt": "fake review, fake inventory, fake urgency, invented product fact, inaccessible controls, broken variant state, layout shift, hidden add to cart, misleading price, placeholder content",
+  "preferredModel": "gemini-3-pro-image-preview",
+  "outputType": "image",
+  "aspectRatio": "auto",
+  "analysisPrompt": "先识别电商平台、商品数据结构、变体和库存来源，再规划首屏信息、画廊、购买组件、信任信息、结构化数据、移动端粘性购买栏和验收方法。页面实现必须沿用当前项目技术栈，不得捏造评论、库存或促销信息。",
+  "tools": [
+    "web_search",
+    "web_extract",
+    "fetch_url_context"
+  ],
+  "displayName": "商品详情页设计",
+  "shortDescription": "设计并实现高转化、响应式、可访问且支持多变体的商品详情页面",
+  "skillIds": [
+    "product_page_design",
+    "product-page-design"
+  ],
+  "role": "商品详情页体验工程师",
+  "agentType": "commerce-pdp-designer",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "guided",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "核对平台与商品数据",
+      "规划购买信息架构",
+      "实现响应式详情页",
+      "接入变体、库存和结构化数据",
+      "执行可访问性与转化验收"
+    ],
+    "requiredInputs": [
+      {
+        "key": "commerce_platform",
+        "label": "电商平台与当前项目",
+        "required": true,
+        "blocking": true,
+        "accepts": ["text"],
+        "prompt": "请说明 Shopify、WooCommerce、BigCommerce 或自定义技术栈，并提供当前项目位置。"
+      },
+      {
+        "key": "product_data",
+        "label": "商品、变体和购买信息",
+        "required": true,
+        "blocking": true,
+        "accepts": ["text", "image", "images"],
+        "prompt": "请提供商品信息、图片、价格、变体、库存及可验证的评论或信任信息。"
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "web_research",
+      "image_generation",
+      "task_status"
+    ]
+  }
+}

@@ -2,6 +2,16 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { CachedResourceImage } from "@/components/cached-resource-image";
 import type { Asset } from "@/stores/use-asset-store";
+// @opc-feature: asset-video-poster-governance [start]
+import { captureVideoPoster } from "@/lib/video-poster";
+
+function isImageLikeUrl(url?: string): boolean {
+    if (!url) return false;
+    if (url.startsWith("data:image/") || url.startsWith("blob:")) return true;
+    const cleanUrl = url.split(/[?#]/)[0].toLowerCase();
+    return !/\.(mp4|webm|mov|m4v|ogg|ogv|avi|mkv|flv|mp3|wav|m4a|aac)$/i.test(cleanUrl);
+}
+// @opc-feature: asset-video-poster-governance [end]
 
 type AssetMediaPreviewProps = {
     asset?: Asset | null;
@@ -40,11 +50,33 @@ function VideoAssetCardPreview({
 }) {
     const [isHovered, setIsHovered] = useState(false);
     const [videoLoaded, setVideoLoaded] = useState(false);
+    // @opc-feature: asset-video-poster-governance [start]
+    const [extractedPoster, setExtractedPoster] = useState<string | undefined>(undefined);
     const hoverTimerRef = useRef<number | null>(null);
 
     const videoUrl = asset.kind === "video" ? asset.data.url : undefined;
-    const poster = asset.coverUrl && asset.coverUrl !== videoUrl ? asset.coverUrl : undefined;
+    const rawPoster = asset.coverUrl && asset.coverUrl !== videoUrl ? asset.coverUrl : undefined;
+    const poster = isImageLikeUrl(rawPoster) ? rawPoster : undefined;
     const coverStorageKey = (asset as { coverStorageKey?: string }).coverStorageKey;
+
+    // 资产封面强化：若历史数据无海报或海报为视频流本身，后台异步提取关键帧海报并展示，彻底消除黑屏
+    useEffect(() => {
+        let active = true;
+        if (!poster && !coverStorageKey && videoUrl) {
+            void captureVideoPoster(videoUrl, { maxWidth: 480 }).then((res) => {
+                if (active && res.poster) {
+                    setExtractedPoster(URL.createObjectURL(res.poster));
+                }
+            }).catch(() => {});
+        }
+        return () => {
+            active = false;
+        };
+    }, [poster, coverStorageKey, videoUrl]);
+
+    const effectivePoster = poster || extractedPoster;
+    const hasCover = Boolean(effectivePoster || coverStorageKey);
+    // @opc-feature: asset-video-poster-governance [end]
 
     useEffect(() => {
         return () => {
@@ -75,8 +107,6 @@ function VideoAssetCardPreview({
         setVideoLoaded(false);
     };
 
-    const hasCover = Boolean(poster || coverStorageKey);
-
     return (
         <span
             className={`relative block h-full w-full overflow-hidden ${className}`}
@@ -87,7 +117,7 @@ function VideoAssetCardPreview({
             {hasCover ? (
                 <CachedResourceImage
                     storageKey={coverStorageKey}
-                    src={poster}
+                    src={effectivePoster}
                     alt={alt}
                     loading="lazy"
                     decoding="async"
@@ -104,7 +134,7 @@ function VideoAssetCardPreview({
             {isHovered && videoUrl ? (
                 <video
                     src={videoUrl}
-                    poster={poster}
+                    poster={effectivePoster}
                     aria-label={alt}
                     muted
                     playsInline

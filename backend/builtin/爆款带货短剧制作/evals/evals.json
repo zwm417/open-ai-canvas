@@ -1,0 +1,40 @@
+{
+  "skill_name": "viral-commerce-short-drama",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "请帮我完成：爆款带货短剧。使用我提供的真实素材，并交付可检查的结果。",
+      "should_trigger": true,
+      "expected_output": "触发Viral Commerce Short Drama，由带货短剧 Showrunner、效果广告创意导演、商品连续性主管与成片制片人从“核验商品身份、事实、证据、权利和交付规格”推进到“按真实投放数据制作单变量迭代版本”，使用image_generation能力并报告真实结果。",
+      "assertions": [
+        "触发Viral Commerce Short Drama",
+        "核验商品身份、事实、证据、权利和交付规格",
+        "按真实投放数据制作单变量迭代版本",
+        "image_generation",
+        "不虚构完成状态"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "我需要剧情带货，请遵守现有素材和明确规格，失败时只修复失败单元。",
+      "should_trigger": true,
+      "expected_output": "使用Viral Commerce Short Drama的领域工作流，保留用户事实和参考素材，按真实任务状态执行并只返工失败项。",
+      "assertions": [
+        "使用Viral Commerce Short Drama",
+        "保留用户事实和参考素材",
+        "按真实任务状态执行",
+        "只返工失败项"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "只帮我检查一份 CSV 的重复行并给出数量，不需要视频、分镜、动画或媒体生成。",
+      "should_trigger": false,
+      "expected_output": "不触发Viral Commerce Short Drama，因为请求不属于该 Skill 的领域或媒体边界。",
+      "assertions": [
+        "不触发Viral Commerce Short Drama",
+        "识别领域边界"
+      ]
+    }
+  ]
+}

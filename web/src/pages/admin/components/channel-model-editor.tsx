@@ -83,7 +83,18 @@ export function ChannelModelEditor({
             form.setFieldsValue(changeChannelModelCapability(form.getFieldsValue(true), protocols));
             setConfigurationChanged(true);
         } else if (changed.protocol) {
-            form.setFieldValue("capabilityConfig", modelCapability === "audio" ? undefined : defaultModelCapabilityConfig(changed.protocol, providerModelKey.trim() || modelKey.trim()));
+            const currentCap: ModelCapabilityConfig | undefined = form.getFieldValue("capabilityConfig");
+            const freshDefault = modelCapability === "audio" ? undefined : defaultModelCapabilityConfig(changed.protocol, providerModelKey.trim() || modelKey.trim());
+            const merged: ModelCapabilityConfig | undefined = currentCap && freshDefault
+                ? {
+                      ...freshDefault,
+                      ...currentCap,
+                      video: currentCap.video && freshDefault.video ? { ...freshDefault.video, ...currentCap.video } : currentCap.video || freshDefault.video,
+                      image: currentCap.image && freshDefault.image ? { ...freshDefault.image, ...currentCap.image } : currentCap.image || freshDefault.image,
+                      text: currentCap.text && freshDefault.text ? { ...freshDefault.text, ...currentCap.text } : currentCap.text || freshDefault.text,
+                  }
+                : freshDefault;
+            form.setFieldValue("capabilityConfig", merged);
             setConfigurationChanged(true);
         }
     };

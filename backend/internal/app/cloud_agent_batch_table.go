@@ -60,6 +60,34 @@ func cloudAgentBatchTablePatchSchema() map[string]any {
 	}
 }
 
+// @opc-adapter: custom-batch-tables [start]
+func isCloudAgentBatchTableType(nodeType string) bool {
+	switch nodeType {
+	case "batch-table",
+		"standard-batch-table:table",
+		"creative-asset-table:table",
+		"creative-voice-table:table",
+		"creative-storyboard-table:table":
+		return true
+	default:
+		return false
+	}
+}
+
+func cloudAgentBatchTableLabel(nodeType string) string {
+	switch nodeType {
+	case "creative-asset-table:table":
+		return "创意资产表"
+	case "creative-voice-table:table":
+		return "创意配音"
+	case "creative-storyboard-table:table":
+		return "创意分镜表"
+	default:
+		return "批量创作表"
+	}
+}
+// @opc-adapter: custom-batch-tables [end]
+
 func batchTableArgumentError() error {
 	return &cloudAgentArgumentError{BadAuthRequest("批量创作表工具参数无效：仅允许工具 schema 中声明的字段，请重新读取节点并按结构化参数重试")}
 }
@@ -69,7 +97,7 @@ func batchTableNodeFromDocument(doc map[string]any, nodeID string) (map[string]a
 		if stringValue(node["id"]) != nodeID {
 			continue
 		}
-		if stringValue(node["type"]) != "batch-table" {
+		if !isCloudAgentBatchTableType(stringValue(node["type"])) {
 			return nil, nil, nil, nil, BadAuthRequest("目标节点不是批量创作表节点")
 		}
 		metadata, ok := node["metadata"].(map[string]any)
@@ -95,6 +123,10 @@ func batchTableNodeFromDocument(doc map[string]any, nodeID string) (map[string]a
 			}
 		}
 		columns := creationMaps(table["referenceColumns"])
+		if len(columns) == 0 {
+			columns = creationMaps(defaultCloudAgentBatchReferenceColumns())
+			table["referenceColumns"] = defaultCloudAgentBatchReferenceColumns()
+		}
 		if len(columns) < 1 || len(columns) > maxCloudAgentBatchReferences {
 			return nil, nil, nil, nil, BadAuthRequest("批量创作表必须包含 1 到 10 个参考图列")
 		}
@@ -343,10 +375,12 @@ func prepareCloudAgentBatchTableEdit(repo *repository.Repository, userID, canvas
 		summaryVerb = "设置全局提示词到"
 	}
 	metadata["batchTable"] = table
-	title := cloudAgentApprovalNodeTitle(node, "批量创作表")
+	nodeType := stringValue(node["type"])
+	nodeTypeLabel := cloudAgentBatchTableLabel(nodeType)
+	title := cloudAgentApprovalNodeTitle(node, nodeTypeLabel)
 	preview := cloudAgentApprovalPreview{
-		Kind: "canvas_mutation", Title: "确认修改批量创作表", Description: "Agent 准备修改批量创作表的结构化任务数据。批准后才会写入画布；本操作不会提交生成任务。",
-		Items: []cloudAgentApprovalPreviewItem{{Operation: "edit_batch_table", NodeID: args.NodeID, NodeTitle: title, NodeType: "batch-table", NodeTypeLabel: "批量创作表", Fields: fields, Summary: fmt.Sprintf("%s批量创作表《%s》", summaryVerb, title)}},
+		Kind: "canvas_mutation", Title: fmt.Sprintf("确认修改%s", nodeTypeLabel), Description: fmt.Sprintf("Agent 准备修改%s的结构化任务数据。批准后才会写入画布；本操作不会提交生成任务。", nodeTypeLabel),
+		Items: []cloudAgentApprovalPreviewItem{{Operation: "edit_batch_table", NodeID: args.NodeID, NodeTitle: title, NodeType: nodeType, NodeTypeLabel: nodeTypeLabel, Fields: fields, Summary: fmt.Sprintf("%s%s《%s》", summaryVerb, nodeTypeLabel, title)}},
 	}
 	return &cloudAgentBatchTableMutationPlan{Canvas: canvas, Document: doc, BeforeJSON: canvas.PayloadJSON, BeforeSnapshotHash: beforeHash, Preview: preview}, nil
 }
@@ -389,7 +423,7 @@ func validateCloudAgentBatchRowPatch(doc map[string]any, input map[string]any, m
 }
 
 func cloudAgentBatchConcurrencyAllowed(value int) bool {
-	return value == 1 || value == 5 || value == 10
+	return value >= 1 && value <= 10
 }
 
 func applyCloudAgentBatchTableMutation(repo *repository.Repository, userID, canvasID string, call cloudAgentCall, policy RuntimePolicySetting, recorder ...cloudAgentMutationRecorder) (any, error) {

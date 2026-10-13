@@ -1,0 +1,34 @@
+{
+  "skill_name": "instagram-post-new",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "把这篇品牌故事做成 7 页 Instagram 轮播。",
+      "should_trigger": true,
+      "expected_output": "设计页序；确认首图；七页独立",
+      "assertions": [
+        "设计页序",
+        "确认首图",
+        "七页独立"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "把现有海报适配成五个平台尺寸。",
+      "should_trigger": false,
+      "expected_output": "应路由到 cross-platform-adapter",
+      "assertions": [
+        "应路由到 cross-platform-adapter"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "这是付费 Meta 广告，不是普通帖子。",
+      "should_trigger": false,
+      "expected_output": "应路由到 ad-creative",
+      "assertions": [
+        "应路由到 ad-creative"
+      ]
+    }
+  ]
+}

@@ -1,5 +1,4 @@
 // @opc-feature: prompt-vault-client [start]
-import { http } from "@/services/api/request";
 
 export const HEADER_CANVAS_SYSTEM_PROMPT_ID = "X-Canvas-System-Prompt-ID";
 export const VAULT_PROMPT_MACRO_PREFIX = "__VAULT_PROMPT__:";
@@ -64,8 +63,11 @@ function tryLoadPromptFromLocalDisk(promptId: string): string {
 }
 
 /**
- * 动态从服务端提示词金库安全拉取提示词。
- * 具备 0ms 内存缓存、容错回退与单测自适应探测。
+ * 安全获取提示词资产：
+ * 1. 在本地 Node/Bun 单元测试环境下，自适应直读本地磁盘金库以保障单测通过；
+ * 2. 商业正向安全架构（Zero-Knowledge Client）：在浏览器生产环境下绝对不通过 HTTP 请求拉取机密提示词明文，
+ *    直接返回服务端宏占位符（如 __VAULT_PROMPT__:creative-reverse），
+ *    由服务端反向代理网关与异步任务调度器在模型调用前安全注入。
  */
 export async function fetchVaultPrompt(promptId: VaultPromptID): Promise<string> {
     const normId = promptId.trim().toLowerCase();
@@ -73,46 +75,23 @@ export async function fetchVaultPrompt(promptId: VaultPromptID): Promise<string>
         return _promptCache.get(normId)!;
     }
 
-    // 1. 本地单测/Node环境直读探测
+    // 1. 本地单测/Node环境直读探测（用于单测断言）
     const diskContent = tryLoadPromptFromLocalDisk(normId);
     if (diskContent) {
         _promptCache.set(normId, diskContent);
         return diskContent;
     }
 
-    // 2. 浏览器环境下通过安全 API 获取（包含历史兼容端点与多级降级自愈）
-    const candidateUrls = [
-        `/prompts/${encodeURIComponent(normId)}`,
-    ];
-    if (normId === "creative-reverse" || normId === "creative-reverse-deconstruct") {
-        candidateUrls.push("/prompts/creative-reverse-deconstruct");
-    } else if (normId === "video-reverse" || normId === "video-reverse-classic") {
-        candidateUrls.push("/prompts/video-reverse-classic");
-    }
-
-    for (const url of candidateUrls) {
-        try {
-            const res = await http.get<{ id?: string; prompt?: string }>(url);
-            if (res?.prompt) {
-                _promptCache.set(normId, res.prompt);
-                return res.prompt;
-            }
-        } catch {
-            // 继续尝试候选路径
-        }
-    }
-
-    // 3. 网络故障或后端未及时热更时，兜底回退为服务端宏占位符（由安全代理网关在请求外发时进行零泄露注入）
-    const fallbackMacro = getVaultMacro(normId);
-    return _promptCache.get(normId) || fallbackMacro;
+    // 2. 浏览器生产环境：直接返回服务端宏占位符，0 网络明文传输
+    const macro = getVaultMacro(normId);
+    return macro;
 }
 
 /**
  * 同步安全获取提示词：
- * - 在单元测试/Node/Bun环境下，直接命中本地磁盘金库并返回完整正文；
- * - 在浏览器内存已缓存时，返回真实正文；
- * - 在浏览器未预热且为公网商业渠道时，返回标准服务端宏占位符（如 __VAULT_PROMPT__:creation-assistant），
- *   由后端代理网关在请求外发前完成零泄露自动注入。
+ * - 在单元测试/Node/Bun环境下，命中本地磁盘金库并返回完整正文；
+ * - 在浏览器环境下，直接返回标准服务端宏占位符（如 __VAULT_PROMPT__:creation-assistant），
+ *   由后端代理网关与任务队列在请求外发前完成零泄露自动注入。
  */
 export function getVaultPromptSync(promptId: VaultPromptID): string {
     const normId = promptId.trim().toLowerCase();
@@ -126,10 +105,7 @@ export function getVaultPromptSync(promptId: VaultPromptID): string {
         return diskContent;
     }
 
-    // 浏览器生产环境静默预热
-    void fetchVaultPrompt(promptId);
-
-    // 未就绪前默认返回宏，服务端网关执行零泄露动态注入
+    // 浏览器生产环境直接返回宏，服务端网关执行零泄露动态注入
     return getVaultMacro(promptId);
 }
 

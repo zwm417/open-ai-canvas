@@ -3,6 +3,8 @@ import { Image as AntImage } from "antd";
 import { Video, FileAudio, FileImage, Sparkles, AtSign, X } from "lucide-react";
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import { resolveResourceUrl } from "@/services/api/resources";
+import { peekLocalFirstMedia } from "@/services/local-first-media-resolver";
 
 export type ScriptSourceMedia = {
     id: string;
@@ -10,6 +12,7 @@ export type ScriptSourceMedia = {
     kind: "image" | "video" | "audio";
     url?: string;
     dataUrl?: string;
+    storageKey?: string;
 };
 
 type ScriptReferencePreviewProps = {
@@ -60,8 +63,9 @@ export function ScriptReferencePreview({
             }
 
             const isImage = media.kind === "image";
-            const previewUrl = isImage ? (media.dataUrl || media.url) : undefined;
-            const mediaUrl = media.kind === "video" ? (media.url || media.dataUrl) : undefined;
+            const storageUrl = media.storageKey ? (peekLocalFirstMedia(media.storageKey) || resolveResourceUrl(media.storageKey)) : undefined;
+            const previewUrl = isImage ? (media.dataUrl || media.url || storageUrl) : undefined;
+            const mediaUrl = media.kind === "video" ? (media.url || media.dataUrl || storageUrl) : undefined;
 
             return {
                 id: media.id,

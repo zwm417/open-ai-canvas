@@ -1,0 +1,4 @@
+interface:
+  display_name: "小说影视化流水线"
+  short_description: "从长篇小说改编到统一资产、逐镜分镜与最终视频完整成片"
+  default_prompt: "使用 $novel-to-film-pipeline，把我提供的小说改编成剧本、分镜、统一资产并制作最终视频。"

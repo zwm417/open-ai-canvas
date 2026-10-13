@@ -1,0 +1,346 @@
+{
+  "schema_version": 1,
+  "note": "新写的 Skill 结构与风格迁移示例；不是原始提示词记录，未进行 MJ 或 ImageGen 出图实测。UI 素材标签是使用安排，不表示已上传。",
+  "cases": [
+    {
+      "id": "flower-aperture",
+      "title": "花隙留一眼",
+      "idea": "同系列白花遮面近景，9:16",
+      "ratio": "9:16",
+      "intent": "人物右下偏位，白花构成近镜入口，一只眼是清晰锚点，深暗空间留在上部。",
+      "anchors_en": [
+        "white blossoms",
+        "one eye",
+        "lower right"
+      ],
+      "anchors_zh": [
+        "白花",
+        "一只眼",
+        "右下"
+      ],
+      "reference_setup": {
+        "attach_to_prompt": {
+          "mode": "ui",
+          "assets": [
+            "用户选定的人物参考图"
+          ]
+        },
+        "style_reference": {
+          "mode": "ui",
+          "assets": [
+            "用户选定的镜花水月风格参考图"
+          ]
+        },
+        "image_prompt": {
+          "mode": "none",
+          "assets": []
+        }
+      },
+      "moodboard": {
+        "mode": "ui",
+        "code": null,
+        "source": "user_existing_board"
+      },
+      "mj_with_moodboard": {
+        "prompt": "Vertical intimate photographic portrait of an adult East Asian woman in the lower right, one eye clearly visible through a narrow opening between white blossoms. Fine black strands cross her cheek, a pearl drop and a small dark vermilion silk fold catch faint light. Tall teal-black darkness above her, cold window light from the right. The blossoms closest to the lens dissolve into pale shapes while her visible eye stays precise; optical occlusion is the single dominant effect. Restrained melancholy, warm natural skin, quiet old Chinese interior, delicate grain. --ar 9:16 --s 125 --no glossy makeup, plastic skin, neon purple, lettering --v 8.2",
+        "setup_note": "使用前开启 Personalization，选择你已有的镜花水月情绪版；保留 reference_setup 指定的 Attach to prompt 与 Style reference。未提供板代码和图片 URL，此处不伪造参数；网页设置尚需实际完成。",
+        "reference_setup": {
+          "attach_to_prompt": {
+            "mode": "ui",
+            "assets": [
+              "用户选定的人物参考图"
+            ]
+          },
+          "style_reference": {
+            "mode": "ui",
+            "assets": [
+              "用户选定的镜花水月风格参考图"
+            ]
+          },
+          "image_prompt": {
+            "mode": "none",
+            "assets": []
+          }
+        }
+      },
+      "mj_without_moodboard": {
+        "prompt": "Vertical realistic film portrait inside a dim Chinese room. An adult East Asian woman occupies the lower right, looking quietly toward the camera through white blossoms; one eye is the only sharply resolved anchor. A loose black updo, stray hair against her cheek, pearl drop earring and a narrow dark vermilion translucent silk fold remain natural and understated. Very close out-of-focus flowers frame an irregular aperture; the face is on a separate middle plane; a distant wooden lattice window glows cold cyan-white at the right. Deep blue-green almost-black shadow owns the upper half and most of the room, warm skin provides a small counterpoint, red remains sparse. Shallow photographic depth, soft skin gradients, visible silk fibers, gentle highlight bloom and fine film grain. Only the foreground blossom occlusion dissolves the scene; the eye is not blurred. Calm, withheld melancholy. --ar 9:16 --s 125 --no glossy makeup, plastic skin, neon purple, lettering --v 8.2",
+        "setup_note": "使用前关闭 Moodboard 和自动 Personalization；Attach to prompt 与 Style reference 按 reference_setup 保持与上版相同。有人物参考的例子仍有参考图，本版不是纯文本测试。",
+        "reference_setup": {
+          "attach_to_prompt": {
+            "mode": "ui",
+            "assets": [
+              "用户选定的人物参考图"
+            ]
+          },
+          "style_reference": {
+            "mode": "ui",
+            "assets": [
+              "用户选定的镜花水月风格参考图"
+            ]
+          },
+          "image_prompt": {
+            "mode": "none",
+            "assets": []
+          }
+        }
+      },
+      "imagegen": {
+        "prompt": "9:16竖幅写实摄影。一位成年东亚女子位于右下方，透过贴近镜头的白花缝隙看向镜头，一只眼是画面最清晰的锚点。黑发松挽，几缕细发贴着脸颊，珍珠耳坠与窄小的暗朱红薄丝衣角隐约透光。前景白花大幅虚化，中景眼睛清楚，后方右侧木格窗发出冷青白光；上半部保留大片深青近黑的暗室空间。肤色自然温暖，暗红仅作小面积点缀，皮肤明暗连续，细小丝纤维可见，克制柔光与细胶片颗粒。梦感只由花隙的光学遮挡产生，不把全脸糊掉。不要塑料皮肤、浓艳紫红、商业美妆打光、文字或水印。"
+      },
+      "validation_level": "prompt_only"
+    },
+    {
+      "id": "running-turn",
+      "title": "风比回眸晚半拍",
+      "idea": "奔跑中的回头，16:9",
+      "ratio": "16:9",
+      "intent": "中景横向追拍，女子处于右侧三分位，身体向右前行而头回向左后；眼睛清楚，衣发及窗线共享方向性拖影。",
+      "anchors_en": [
+        "running to the right",
+        "right third",
+        "looking back"
+      ],
+      "anchors_zh": [
+        "向右奔跑",
+        "右侧三分位",
+        "回头"
+      ],
+      "reference_setup": {
+        "attach_to_prompt": {
+          "mode": "ui",
+          "assets": [
+            "用户选定的人物参考图"
+          ]
+        },
+        "style_reference": {
+          "mode": "ui",
+          "assets": [
+            "用户选定的镜花水月风格参考图"
+          ]
+        },
+        "image_prompt": {
+          "mode": "none",
+          "assets": []
+        }
+      },
+      "moodboard": {
+        "mode": "ui",
+        "code": null,
+        "source": "user_existing_board"
+      },
+      "mj_with_moodboard": {
+        "prompt": "Horizontal photographic medium shot of an adult East Asian woman running to the right through a dark Chinese corridor, her upper body in the right third, looking back over her left shoulder. Her torso keeps moving forward, one bent arm swings back, her eye remains readable. Black hair and a dark vermilion silk sleeve stream behind her; distant cold window bars streak in the same trailing direction. Foreground white blossoms blur past the lower left, deep teal-black space opens behind her. One coherent panning-motion effect, warm natural skin, translucent silk, restrained expression and fine film grain. --ar 16:9 --s 125 --no frozen mannequin pose, duplicated body, plastic skin, neon colors, text --v 8.2",
+        "setup_note": "使用前开启 Personalization，选择你已有的镜花水月情绪版；保留 reference_setup 指定的 Attach to prompt 与 Style reference。未提供板代码和图片 URL，此处不伪造参数；网页设置尚需实际完成。",
+        "reference_setup": {
+          "attach_to_prompt": {
+            "mode": "ui",
+            "assets": [
+              "用户选定的人物参考图"
+            ]
+          },
+          "style_reference": {
+            "mode": "ui",
+            "assets": [
+              "用户选定的镜花水月风格参考图"
+            ]
+          },
+          "image_prompt": {
+            "mode": "none",
+            "assets": []
+          }
+        }
+      },
+      "mj_without_moodboard": {
+        "prompt": "A realistic horizontal tracking photograph inside an old Chinese wooden corridor. An adult East Asian woman is running to the right, positioned in the right third, looking back over her left shoulder while her torso and bent arms continue the forward stride. Her near eye and the edge of her cheek remain in focus; the turn is readable rather than a static beauty pose. Loose black hair and dark vermilion gauze trail to the left, aligned with the streaking distant window frames from the panning exposure. Defocused white blossoms pass the lower-left foreground, the woman occupies the middle plane, and a wide shadowed corridor recedes across the left side. Deep cyan-green almost-black fills most of the scene; a right-hand lattice window supplies sharp cold-white highlights, the skin remains softly warm, and red is restricted to translucent fabric. Natural skin texture, fine silk weave, shallow layered focus, restrained bloom and subtle grain. Motion blur is directional and confined away from the eye. --ar 16:9 --s 125 --no frozen mannequin pose, duplicated body, plastic skin, neon colors, text --v 8.2",
+        "setup_note": "使用前关闭 Moodboard 和自动 Personalization；Attach to prompt 与 Style reference 按 reference_setup 保持与上版相同。有人物参考的例子仍有参考图，本版不是纯文本测试。",
+        "reference_setup": {
+          "attach_to_prompt": {
+            "mode": "ui",
+            "assets": [
+              "用户选定的人物参考图"
+            ]
+          },
+          "style_reference": {
+            "mode": "ui",
+            "assets": [
+              "用户选定的镜花水月风格参考图"
+            ]
+          },
+          "image_prompt": {
+            "mode": "none",
+            "assets": []
+          }
+        }
+      },
+      "imagegen": {
+        "prompt": "16:9横幅，暗室长廊内的写实中景追拍。一位成年东亚女子向右奔跑，位于右侧三分位，身体继续向前，头越过左肩回头看向身后，一只弯曲手臂自然后摆。靠近镜头的眼睛与脸颊边缘可辨，不做站定回眸。黑发和暗朱红薄纱衣袖向左后拖曳，远处窗框沿同一方向形成慢门条痕；左下近镜白花掠成虚影，人物在中景，左侧宽阔的深青近黑长廊形成纵深。右侧格窗提供冷青白光，肤色温暖自然，红色仅占薄纱局部。真实皮肤与丝纤维，浅景深、细胶片颗粒和克制柔光。主效果只有方向一致的运动拖影，眼睛保持清楚。不要木偶姿势、重复身体、乱飞肢体、全脸糊化、塑料皮肤、霓虹色或文字。"
+      },
+      "validation_level": "prompt_only"
+    },
+    {
+      "id": "empty-room",
+      "title": "人去后，衣影未走",
+      "idea": "同风格无人空镜，16:9",
+      "ratio": "16:9",
+      "intent": "无人暗室里，右侧小花瓶口的一颗水滴为清晰锚点；左侧半透明屏面残留低对比衣影，绝不补回真人。",
+      "anchors_en": [
+        "empty room",
+        "single droplet",
+        "left screen"
+      ],
+      "anchors_zh": [
+        "无人空室",
+        "一颗水滴",
+        "左侧屏面"
+      ],
+      "reference_setup": {
+        "attach_to_prompt": {
+          "mode": "none",
+          "assets": []
+        },
+        "style_reference": {
+          "mode": "ui",
+          "assets": [
+            "镜花水月母图，仅参考色光与材质，不引入人物"
+          ]
+        },
+        "image_prompt": {
+          "mode": "none",
+          "assets": []
+        }
+      },
+      "moodboard": {
+        "mode": "ui",
+        "code": null,
+        "source": "user_existing_board"
+      },
+      "mj_with_moodboard": {
+        "prompt": "Horizontal photograph of an empty room in an old Chinese house. A single droplet on a small vase rim in the right third is sharply visible, a few white blossoms lean toward cold window light. A faint vermilion robe-shaped afterimage lingers on the left screen with no physical person in the room. Wide teal-black negative space, dim lacquer wood, soft reflected cyan-white light and fine film grain. One residual optical trace, quiet unsettling stillness, restrained saturation. --ar 16:9 --s 125 --no physical people, visible face, ghost character, luminous magic, lettering --v 8.2",
+        "setup_note": "使用前开启 Personalization，选择你已有的镜花水月情绪版；保留 reference_setup 指定的 Attach to prompt 与 Style reference。未提供板代码和图片 URL，此处不伪造参数；网页设置尚需实际完成。",
+        "reference_setup": {
+          "attach_to_prompt": {
+            "mode": "none",
+            "assets": []
+          },
+          "style_reference": {
+            "mode": "ui",
+            "assets": [
+              "镜花水月母图，仅参考色光与材质，不引入人物"
+            ]
+          },
+          "image_prompt": {
+            "mode": "none",
+            "assets": []
+          }
+        }
+      },
+      "mj_without_moodboard": {
+        "prompt": "Horizontal realistic still photograph of an empty room in a traditional Chinese interior, with no physical person. A small dark vase sits in the right third; a single droplet on its rim catches a crisp cold-white highlight beside a sparse branch of white blossoms. Close defocused petals veil a little of the lower edge, the vase rim is the focus plane, and aged wooden panels recede into the rear shadows. On the translucent left screen there is only a low-contrast vermilion robe-shaped afterimage, an optical residue without a body or face; all other objects remain still. Deep blue-green near-black dominates the room, faint cyan-white window light enters from the right, a trace of muted red belongs only to the residue, and warm brown wood is almost submerged in shadow. Photographic glass reflection, actual wood grain, shallow depth, soft highlight bloom and fine film grain. Spacious, withheld, quietly uncanny. --ar 16:9 --s 125 --no physical people, visible face, ghost character, luminous magic, lettering --v 8.2",
+        "setup_note": "使用前关闭 Moodboard 和自动 Personalization；Attach to prompt 与 Style reference 按 reference_setup 保持与上版相同。有人物参考的例子仍有参考图，本版不是纯文本测试。",
+        "reference_setup": {
+          "attach_to_prompt": {
+            "mode": "none",
+            "assets": []
+          },
+          "style_reference": {
+            "mode": "ui",
+            "assets": [
+              "镜花水月母图，仅参考色光与材质，不引入人物"
+            ]
+          },
+          "image_prompt": {
+            "mode": "none",
+            "assets": []
+          }
+        }
+      },
+      "imagegen": {
+        "prompt": "16:9横幅写实静物摄影，中式木结构的无人空室，不出现实体人物。右侧三分位摆一只小深色花瓶，瓶沿一颗水滴反射清晰冷白亮点，几枝白花靠近右侧冷窗。少量近镜花瓣在下缘虚化，瓶沿是焦点，旧木墙在后景沉入暗部。左侧屏面只残留低对比暗朱红衣形光影，不画脸和身体，像人离开后尚未消散的光学余迹。其余器物静止。大片深青近黑控制整体，右侧窗光为冷青白，木色保留微弱暖棕，红色仅存在于那一小片残影。真实玻璃反光与木纹，浅景深、细颗粒和轻微高光晕染。不要补回真人、完整鬼魂、可见人脸、发光法阵、文字或水印。"
+      },
+      "validation_level": "prompt_only"
+    },
+    {
+      "id": "carp-reflection",
+      "title": "一尾鱼，半池旧梦",
+      "idea": "同风格转成白鲤与水面，不要人物，16:9",
+      "ratio": "16:9",
+      "intent": "白鲤在左侧三分位，眼和背部清楚，右侧水面冷窗倒影被一圈细纹扭曲；只迁移色光与材质，不携带人像。",
+      "anchors_en": [
+        "white carp",
+        "left third",
+        "window reflection"
+      ],
+      "anchors_zh": [
+        "白鲤",
+        "左侧三分位",
+        "窗影"
+      ],
+      "reference_setup": {
+        "attach_to_prompt": {
+          "mode": "none",
+          "assets": []
+        },
+        "style_reference": {
+          "mode": "ui",
+          "assets": [
+            "镜花水月母图，仅参考色光与材质，不引入人物"
+          ]
+        },
+        "image_prompt": {
+          "mode": "none",
+          "assets": []
+        }
+      },
+      "moodboard": {
+        "mode": "ui",
+        "code": null,
+        "source": "user_existing_board"
+      },
+      "mj_with_moodboard": {
+        "prompt": "Horizontal oblique photograph of a white carp just beneath the surface of a dark water basin in a Chinese interior. Its eye and a few back scales are clear in the left third, with dark negative water opening to the right. One thin ripple bends a cold window reflection on the right while the fish stays visually intact. Soft white blossoms enter the near edge, a narrow muted vermilion lacquer rim anchors the basin. Teal-black water, pale cyan highlights, natural scales, shallow focus, fine grain, hushed dreamlike tension. --ar 16:9 --s 125 --no people, human face, jewelry, glowing fish, CGI gloss, text --v 8.2",
+        "setup_note": "使用前开启 Personalization，选择你已有的镜花水月情绪版；保留 reference_setup 指定的 Attach to prompt 与 Style reference。未提供板代码和图片 URL，此处不伪造参数；网页设置尚需实际完成。",
+        "reference_setup": {
+          "attach_to_prompt": {
+            "mode": "none",
+            "assets": []
+          },
+          "style_reference": {
+            "mode": "ui",
+            "assets": [
+              "镜花水月母图，仅参考色光与材质，不引入人物"
+            ]
+          },
+          "image_prompt": {
+            "mode": "none",
+            "assets": []
+          }
+        }
+      },
+      "mj_without_moodboard": {
+        "prompt": "A horizontal realistic photograph viewed obliquely down into a broad dark water basin beside a Chinese lattice window. A white carp swims just under the surface in the left third; its eye and a narrow line of pearly back scales provide the sharp reality anchor. The right half holds spacious blue-green almost-black water. A single shallow ripple stretches the cold cyan-white window reflection on that side, without warping the fish anatomy. A few near-lens white blossoms soften the lower edge; a slim dark vermilion lacquer rim supplies the only red accent, while distant wooden panels disappear into shadow. Natural wet scales, subtle surface tension and reflected glass-like highlights, no artificial emission. Separate foreground blur, fish focus plane and distant reflected architecture; restrained bloom, fine film grain and low saturation. The water reflection is the only optical anomaly. --ar 16:9 --s 125 --no people, human face, jewelry, glowing fish, CGI gloss, text --v 8.2",
+        "setup_note": "使用前关闭 Moodboard 和自动 Personalization；Attach to prompt 与 Style reference 按 reference_setup 保持与上版相同。有人物参考的例子仍有参考图，本版不是纯文本测试。",
+        "reference_setup": {
+          "attach_to_prompt": {
+            "mode": "none",
+            "assets": []
+          },
+          "style_reference": {
+            "mode": "ui",
+            "assets": [
+              "镜花水月母图，仅参考色光与材质，不引入人物"
+            ]
+          },
+          "image_prompt": {
+            "mode": "none",
+            "assets": []
+          }
+        }
+      },
+      "imagegen": {
+        "prompt": "16:9横幅写实摄影，斜俯视中式格窗旁宽阔的深色水盆。一尾白鲤位于左侧三分位、贴近水面下游动，眼睛和背部少量鳞片清楚，右半边保留深青近黑的宽阔水面。一圈很浅的水纹只拉伸右侧冷青白窗影，不扭曲鱼的结构。下缘有少量近镜虚化白花，细窄暗朱红漆盆沿提供唯一红色点缀，远处木墙沉入阴影。真实湿润鳞片、细微水面张力和透亮反光，前景花、鱼的焦点层与远处倒影分开，克制高光晕染、低饱和和细胶片颗粒。异常只发生在窗影中，整体幽静。不要人物、人脸、耳饰、服装、发光鱼、塑料渲染、文字或水印。"
+      },
+      "validation_level": "prompt_only"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "react";
+import type { ClipboardEvent, CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { Image } from "antd";
 import { FileText, Image as ImageIcon, Music2, Video } from "lucide-react";
@@ -96,9 +96,90 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
         setActiveIndex(0);
     };
 
+    // @opc-feature: canvas-prompt-chip-clipboard-and-undo [start]
+    const historyRef = useRef<{ past: string[]; future: string[] }>({ past: [], future: [] });
+    const lastInputTimeRef = useRef<number>(0);
+
+    const recordHistorySnapshot = () => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        const current = serializeEditor(editor);
+        const past = historyRef.current.past;
+        if (!past.length || past[past.length - 1] !== current) {
+            past.push(current);
+            if (past.length > 60) past.shift();
+        }
+        historyRef.current.future = [];
+    };
+
+    const restoreEditorContent = (text: string) => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        editor.textContent = "";
+        const restoredTokens = parseTokens(text, activeLabels);
+        restoredTokens.forEach((token) => {
+            if (token.type === "text") {
+                const lines = token.value.split("\n");
+                lines.forEach((line, lIdx) => {
+                    if (lIdx > 0) editor.append(document.createElement("br"));
+                    if (line) editor.append(document.createTextNode(line));
+                });
+            } else {
+                const reference = referenceByLabel.get(token.label);
+                if (reference) {
+                    editor.append(createReferenceChip(reference, theme, setImagePreview, showReferenceLabels));
+                } else {
+                    editor.append(document.createTextNode(token.label));
+                }
+            }
+        });
+        placeCaretAtEnd(editor);
+        emit(text);
+    };
+
+    const handleUndo = () => {
+        const editor = editorRef.current;
+        if (!editor || !historyRef.current.past.length) return;
+        const current = serializeEditor(editor);
+        const previous = historyRef.current.past.pop()!;
+        historyRef.current.future.push(current);
+        restoreEditorContent(previous);
+    };
+
+    const handleRedo = () => {
+        const editor = editorRef.current;
+        if (!editor || !historyRef.current.future.length) return;
+        const current = serializeEditor(editor);
+        const next = historyRef.current.future.pop()!;
+        historyRef.current.past.push(current);
+        restoreEditorContent(next);
+    };
+
+    const handleCopyOrCut = (event: ClipboardEvent<HTMLDivElement>, isCut: boolean) => {
+        const selection = window.getSelection();
+        if (!selection || selection.isCollapsed || !selection.rangeCount) return;
+        const range = selection.getRangeAt(0);
+        const editor = editorRef.current;
+        if (!editor || !editor.contains(range.commonAncestorContainer)) return;
+
+        const fragment = range.cloneContents();
+        const serializedText = serializeNodes(Array.from(fragment.childNodes));
+        if (serializedText) {
+            event.preventDefault();
+            event.clipboardData.setData("text/plain", serializedText);
+            if (isCut) {
+                recordHistorySnapshot();
+                range.deleteContents();
+                syncFromEditor();
+            }
+        }
+    };
+    // @opc-feature: canvas-prompt-chip-clipboard-and-undo [end]
+
     const insertReference = (reference: CanvasResourceReference) => {
         const editor = editorRef.current;
         if (!editor) return;
+        recordHistorySnapshot();
         removeActiveMention();
         const chip = createReferenceChip(reference, theme, setImagePreview, showReferenceLabels);
         const space = document.createTextNode(" ");
@@ -137,7 +218,14 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
                 className={`${className || ""} h-full min-h-0 w-full overflow-y-auto whitespace-pre-wrap break-words outline-none`}
                 style={{ ...style, cursor: "text" }}
                 onInput={() => {
-                    if (!composingRef.current) syncFromEditor();
+                    if (!composingRef.current) {
+                        const now = Date.now();
+                        if (now - lastInputTimeRef.current > 800) {
+                            recordHistorySnapshot();
+                        }
+                        lastInputTimeRef.current = now;
+                        syncFromEditor();
+                    }
                 }}
                 onCompositionStart={() => {
                     composingRef.current = true;
@@ -146,9 +234,108 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
                     composingRef.current = false;
                     syncFromEditor();
                 }}
+                // @opc-feature: canvas-prompt-chip-clipboard-and-undo [start]
+                onCopy={(event: ClipboardEvent<HTMLDivElement>) => {
+                    handleCopyOrCut(event, false);
+                }}
+                onCut={(event: ClipboardEvent<HTMLDivElement>) => {
+                    handleCopyOrCut(event, true);
+                }}
+                onPaste={(event: ClipboardEvent<HTMLDivElement>) => {
+                    event.preventDefault();
+                    const text = event.clipboardData.getData("text/plain");
+                    if (!text) return;
+
+                    recordHistorySnapshot();
+
+                    const selection = window.getSelection();
+                    if (!selection?.rangeCount) return;
+                    const range = selection.getRangeAt(0);
+                    range.deleteContents();
+
+                    const parsedTokens = parseTokens(text, activeLabels);
+                    const hasReference = parsedTokens.some((token) => token.type === "reference" && referenceByLabel.has(token.label));
+
+                    if (hasReference) {
+                        const fragment = document.createDocumentFragment();
+                        let lastNode: Node | null = null;
+                        parsedTokens.forEach((token) => {
+                            if (token.type === "text") {
+                                const lines = token.value.split("\n");
+                                lines.forEach((line, lIdx) => {
+                                    if (lIdx > 0) {
+                                        const br = document.createElement("br");
+                                        fragment.appendChild(br);
+                                        lastNode = br;
+                                    }
+                                    if (line) {
+                                        const tn = document.createTextNode(line);
+                                        fragment.appendChild(tn);
+                                        lastNode = tn;
+                                    }
+                                });
+                            } else {
+                                const ref = referenceByLabel.get(token.label);
+                                if (ref) {
+                                    const chip = createReferenceChip(ref, theme, setImagePreview, showReferenceLabels);
+                                    fragment.appendChild(chip);
+                                    lastNode = chip;
+                                } else {
+                                    const tn = document.createTextNode(token.label);
+                                    fragment.appendChild(tn);
+                                    lastNode = tn;
+                                }
+                            }
+                        });
+                        range.insertNode(fragment);
+                        if (lastNode) {
+                            range.setStartAfter(lastNode);
+                            range.collapse(true);
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                        }
+                    } else {
+                        if (typeof document !== "undefined" && document.queryCommandSupported?.("insertText")) {
+                            document.execCommand("insertText", false, text);
+                        } else {
+                            const textNode = document.createTextNode(text);
+                            range.insertNode(textNode);
+                            range.setStartAfter(textNode);
+                            range.collapse(true);
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                        }
+                    }
+                    syncFromEditor();
+                }}
+                // @opc-feature: canvas-prompt-chip-clipboard-and-undo [end]
                 onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
                     event.stopPropagation();
                     if (isImeComposing(event)) return;
+                    // @opc-feature: canvas-prompt-chip-clipboard-and-undo [start]
+                    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+                        if (event.shiftKey) {
+                            if (historyRef.current.future.length > 0) {
+                                event.preventDefault();
+                                handleRedo();
+                                return;
+                            }
+                        } else {
+                            if (historyRef.current.past.length > 0) {
+                                event.preventDefault();
+                                handleUndo();
+                                return;
+                            }
+                        }
+                    }
+                    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+                        if (historyRef.current.future.length > 0) {
+                            event.preventDefault();
+                            handleRedo();
+                            return;
+                        }
+                    }
+                    // @opc-feature: canvas-prompt-chip-clipboard-and-undo [end]
                     if (mention && candidates.length) {
                         if (event.key === "ArrowDown") {
                             event.preventDefault();
@@ -171,10 +358,13 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
                             return;
                         }
                     }
-                    if ((event.key === "Backspace" || event.key === "Delete") && deleteAdjacentReference(event.key)) {
-                        event.preventDefault();
-                        requestAnimationFrame(syncFromEditor);
-                        return;
+                    if (event.key === "Backspace" || event.key === "Delete") {
+                        recordHistorySnapshot();
+                        if (deleteAdjacentReference(event.key)) {
+                            event.preventDefault();
+                            requestAnimationFrame(syncFromEditor);
+                            return;
+                        }
                     }
                     if (isPlainEnterKey(event) && onSubmit) {
                         event.preventDefault();
@@ -274,10 +464,11 @@ function createReferenceChip(reference: CanvasResourceReference, theme: (typeof 
     if (reference.kind === "image" && reference.previewUrl) {
         const image = document.createElement("img");
         image.src = reference.previewUrl;
-        image.alt = reference.title;
-        image.className = "size-6 rounded object-cover";
+        image.alt = reference.label;
+        image.className = "size-6 rounded object-cover cursor-pointer";
         wrapper.className = showLabel ? "mx-px inline-flex h-6 max-w-40 items-center gap-1 overflow-hidden rounded-md border px-1 align-middle" : "mx-px inline-flex size-6 items-center justify-center overflow-hidden rounded align-middle";
         if (showLabel) Object.assign(wrapper.style, { background: theme.toolbar.panel, borderColor: theme.node.stroke, color: theme.node.text } as CSSProperties);
+        wrapper.title = reference.title ? `${reference.label} (${reference.title})` : reference.label;
         wrapper.appendChild(image);
         if (showLabel) {
             const text = document.createElement("span");
@@ -285,6 +476,11 @@ function createReferenceChip(reference: CanvasResourceReference, theme: (typeof 
             text.textContent = reference.label.replace(/^@/, "");
             wrapper.appendChild(text);
         }
+        wrapper.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onImagePreview(reference.previewUrl || "");
+        });
     } else if (reference.kind === "video" && reference.previewUrl) {
         const video = document.createElement("video");
         video.src = reference.previewUrl;
@@ -345,22 +541,97 @@ function createReferenceChip(reference: CanvasResourceReference, theme: (typeof 
     return wrapper;
 }
 
+// @opc-feature: canvas-prompt-newline-preservation [start]
+function isBlockElement(node: Node): boolean {
+    if (!(node instanceof HTMLElement)) return false;
+    const tag = node.tagName.toUpperCase();
+    return (
+        tag === "DIV" ||
+        tag === "P" ||
+        tag === "LI" ||
+        tag === "TR" ||
+        tag === "BLOCKQUOTE" ||
+        tag === "H1" ||
+        tag === "H2" ||
+        tag === "H3" ||
+        tag === "H4" ||
+        tag === "H5" ||
+        tag === "H6"
+    );
+}
+
+function serializeBlockChildren(children: ChildNode[]): string {
+    if (!children.length) return "";
+    if (children.length === 1 && children[0] instanceof HTMLElement && children[0].tagName === "BR") return "";
+
+    const lastIdx = children.length - 1;
+    let text = "";
+    for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (child.nodeType === Node.TEXT_NODE) {
+            text += child.textContent || "";
+        } else if (child instanceof HTMLElement) {
+            const elem = child as HTMLElement;
+            const label = elem.dataset.refLabel || elem.dataset.referenceToken;
+            if (label) {
+                text += label;
+            } else if (elem.tagName === "BR") {
+                if (i === lastIdx && lastIdx > 0) {
+                    continue; // 忽略 Chrome 在块级元素末尾追加的占位 bogus BR
+                }
+                text += "\n";
+            } else if (isBlockElement(elem)) {
+                if (text.length > 0 && !text.endsWith("\n")) text += "\n";
+                text += serializeBlockChildren(Array.from(elem.childNodes));
+            } else {
+                text += serializeBlockChildren(Array.from(elem.childNodes));
+            }
+        }
+    }
+    return text;
+}
+
 function serializeEditor(editor: HTMLElement) {
     return serializeNodes(editor.childNodes).replace(/﻿/g, "");
 }
 
-function serializeNodes(nodes: NodeListOf<ChildNode>) {
+function serializeNodes(nodes: NodeListOf<ChildNode> | ChildNode[]) {
+    const list = Array.from(nodes);
     let result = "";
-    nodes.forEach((node) => {
-        if (node.nodeType === Node.TEXT_NODE) result += node.textContent || "";
-        if (!(node instanceof HTMLElement)) return;
-        const label = node.dataset.refLabel;
-        if (label) result += label;
-        else if (node.tagName === "BR") result += "\n";
-        else result += serializeNodes(node.childNodes);
-    });
+
+    for (let i = 0; i < list.length; i++) {
+        const node = list[i];
+        const isLast = i === list.length - 1;
+
+        if (node.nodeType === Node.TEXT_NODE) {
+            result += node.textContent || "";
+        } else if (node instanceof HTMLElement) {
+            const elem = node as HTMLElement;
+            const label = elem.dataset.refLabel || elem.dataset.referenceToken;
+            if (label) {
+                result += label;
+            } else if (elem.tagName === "BR") {
+                result += "\n";
+            } else if (isBlockElement(elem)) {
+                if (result.length > 0 && !result.endsWith("\n")) {
+                    result += "\n";
+                }
+                const blockText = serializeBlockChildren(Array.from(elem.childNodes));
+                result += blockText;
+                if (!isLast) {
+                    if (blockText === "" || !result.endsWith("\n")) {
+                        result += "\n";
+                    }
+                }
+            } else {
+                result += serializeNodes(elem.childNodes);
+            }
+        }
+    }
+
     return result;
 }
+// @opc-feature: canvas-prompt-newline-preservation [end]
 
 function removeActiveMention() {
     const selection = window.getSelection();

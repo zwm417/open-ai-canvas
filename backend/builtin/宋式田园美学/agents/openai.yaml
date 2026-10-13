@@ -1,0 +1,6 @@
+interface:
+  display_name: "宋式田园美学提示词"
+  short_description: "一句话生成宋式乡居人物、农事与庭院场景的双语提示词"
+  default_prompt: "使用 $song-pastoral-aesthetics-prompts 把“雨后清晨，一个姑娘在菜园摘豆角”编译成中英文图像提示词。"
+policy:
+  allow_implicit_invocation: true

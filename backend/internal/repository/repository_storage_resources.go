@@ -266,3 +266,21 @@ func (r *Repository) ResourceCleanupCandidates(incompleteBefore time.Time, ready
 	).Order("created_at asc, id asc").Limit(limit).Find(&resources).Error
 	return resources, err
 }
+
+// @opc-adapter: media-dual-track [start]
+func (r *Repository) UpdateResourceDualTrackStatus(id string, localStatus model.LocalStatus, localPath string, ossSyncStatus model.OSSSyncStatus, ossSyncedAt *time.Time) error {
+	updates := map[string]any{
+		"local_status":    localStatus,
+		"oss_sync_status": ossSyncStatus,
+		"updated_at":      time.Now(),
+	}
+	if localPath != "" {
+		updates["local_path"] = localPath
+	}
+	if ossSyncedAt != nil {
+		updates["oss_synced_at"] = ossSyncedAt
+	}
+	return r.db.Model(&model.Resource{}).Where("id = ?", id).Updates(updates).Error
+}
+// @opc-adapter: media-dual-track [end]
+

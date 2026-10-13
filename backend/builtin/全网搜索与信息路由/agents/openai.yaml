@@ -1,0 +1,7 @@
+interface:
+  display_name: "Agent Reach 全网搜索"
+  short_description: "自动搜索和读取网页、社交平台、代码、视频与播客内容"
+  default_prompt: "使用 $agent-reach 调研这个主题，并按可用后端汇总可靠来源。"
+
+policy:
+  allow_implicit_invocation: true

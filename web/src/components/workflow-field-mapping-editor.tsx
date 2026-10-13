@@ -123,18 +123,20 @@ export function WorkflowFieldMappingEditor({ fields, onChange, disabled = false 
                         ),
                         children: (
                             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                                <label className="grid gap-1 text-xs text-foreground/60">
+                                {/* @opc-feature: fix-label-select-conflict [start] */}
+                                <div className="grid gap-1 text-xs text-foreground/60">
                                     显示名称
                                     <Input value={field.label || ""} disabled={fieldDisabled} placeholder={field.fieldName} onChange={(event) => updateField(index, { label: event.target.value })} />
-                                </label>
-                                <label className="grid gap-1 text-xs text-foreground/60">
+                                </div>
+                                <div className="grid gap-1 text-xs text-foreground/60">
                                     参数类型
                                     <Select value={fieldType} disabled={fieldDisabled} options={fieldTypeOptions.map((item) => ({ ...item }))} onChange={(value) => updateField(index, { fieldType: value })} />
-                                </label>
-                                <label className="grid gap-1 text-xs text-foreground/60">
+                                </div>
+                                <div className="grid gap-1 text-xs text-foreground/60">
                                     输入来源
                                     <Select showSearch value={source} disabled={fieldDisabled} options={sourceOptions.map((item) => ({ ...item }))} optionFilterProp="label" onChange={(value) => updateField(index, sourcePatch(field, value))} />
-                                </label>
+                                </div>
+                                {/* @opc-feature: fix-label-select-conflict [end] */}
                                 {fieldType === "SELECT" || choices.length || presetOptions.length ? (
                                     <label className="grid gap-1 text-xs text-foreground/60 md:col-span-2 lg:col-span-3">
                                         <span className="flex items-center justify-between gap-2">
@@ -201,10 +203,12 @@ export function WorkflowFieldMappingEditor({ fields, onChange, disabled = false 
                                     </label>
                                 ) : null}
                                 {!source ? (
-                                    <label className="grid gap-1 text-xs text-foreground/60 md:col-span-2 lg:col-span-3">
+                                    /* @opc-feature: fix-label-select-conflict [start] */
+                                    <div className="grid gap-1 text-xs text-foreground/60 md:col-span-2 lg:col-span-3">
                                         工作流默认值
                                         <DefaultValueInput field={field} disabled={fieldDisabled || field.randomEnabled === true} onChange={(fieldValue) => updateField(index, { fieldValue })} />
-                                    </label>
+                                    </div>
+                                    /* @opc-feature: fix-label-select-conflict [end] */
                                 ) : null}
                             </div>
                         ),

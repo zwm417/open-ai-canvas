@@ -18,6 +18,7 @@ export async function analyzeCreationAssistantBatch(
         customRules?: string;
         replaceBuiltInPrompt?: boolean;
         promptRules?: string;
+        scene?: string;
         signal?: AbortSignal;
     },
 ) {
@@ -48,7 +49,7 @@ export async function analyzeCreationAssistantBatch(
             content.push({ type: "text", text: "以上是当前音频素材本身。请识别可听到的人声、口播、音乐、环境声和节奏，并将可核验的听觉内容写入这一文件的一句 summary。" });
         }
     }
-    const raw = await requestImageQuestion(config, [{ role: "user", content }], () => undefined, { signal: options?.signal, scene: "material_analysis" });
+    const raw = await requestImageQuestion(config, [{ role: "user", content }], () => undefined, { signal: options?.signal, scene: options?.scene || "material_analysis" });
     return normalizeAnalysisResponse(raw, manifest);
 }
 

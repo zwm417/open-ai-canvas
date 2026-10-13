@@ -1,0 +1,75 @@
+﻿{
+  "id": "cross_platform_adapter",
+  "name": "一键跨平台适配",
+  "description": "把已批准的源视觉重构为多个平台和版位的原生变体。",
+  "icon": "▦",
+  "color": "#4F7CFF",
+  "category": "Social Media",
+  "scenarios": [
+    "一键跨平台适配",
+    "跨平台适配",
+    "多平台适配",
+    "Instagram TikTok 小红书 YouTube LinkedIn",
+    "cross platform adaptation"
+  ],
+  "promptTemplate": "使用 $cross-platform-adapter 完成当前任务。先执行领域工作流和必要确认，再为每个批准的生成单元输出独立、可执行的供应商提示词。\n\n用户需求：{userInput}",
+  "negativePrompt": "collage, grid, contact sheet, stretched image, unsafe crop, distorted product, distorted person, wrong logo, changed brand, unreadable text, watermark, low quality",
+  "preferredModel": "gemini-3-pro-image-preview",
+  "outputType": "image",
+  "aspectRatio": "auto",
+  "analysisPrompt": "保护源视觉的品牌与内容核心，同时针对每个平台的画幅、UI 遮挡、阅读顺序和互动语境重新排版。你负责适配，不借适配之名改写主张或重做品牌。 按以下阶段执行：审计源视觉层级与不可变元素 → 建立目标版位矩阵 → 为每个版位设计重排策略 → 确认裁切和内容例外 → 逐版位生成或编辑 → 实尺寸检查与回归源视觉。",
+  "displayName": "一键跨平台适配",
+  "shortDescription": "将单张图片适配为多个平台原生视觉变体，支持智能重构排版。",
+  "skillIds": [
+    "cross_platform_adapter",
+    "cross-platform-adapter"
+  ],
+  "role": "跨平台视觉适配设计师",
+  "agentType": "cross-platform-adaptation-designer",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "guided",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "审计源视觉层级与不可变元素",
+      "建立目标版位矩阵",
+      "为每个版位设计重排策略",
+      "确认裁切和内容例外",
+      "逐版位生成或编辑",
+      "实尺寸检查与回归源视觉"
+    ],
+    "requiredInputs": [
+      {
+        "key": "approved_source_asset",
+        "label": "已批准的源视觉",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "image"
+        ],
+        "prompt": "请上传需要适配的源图。"
+      },
+      {
+        "key": "target_placements",
+        "label": "目标平台与具体版位",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "text",
+          "choice"
+        ],
+        "prompt": "请列出目标平台、版位和尺寸要求。"
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "image_generation",
+      "task_status",
+      "multi_asset_planning",
+      "post_production_handoff"
+    ]
+  },
+  "tools": [
+    "image_generate"
+  ]
+}

@@ -1,0 +1,51 @@
+﻿{
+  "id": "agent_reach",
+  "name": "Agent Reach 全网搜索",
+  "description": "自动检测并路由可用的互联网只读检索能力，读取网页、社交平台、代码、视频与播客内容并保留可追溯来源。",
+  "category": "Research",
+  "scenarios": [
+    "全网调研并附可靠来源",
+    "读取网页或社交平台内容",
+    "检索 GitHub、视频与播客资料"
+  ],
+  "promptTemplate": "使用 $agent-reach 完成当前任务。按专业工作流执行并交付可验证结果。\n\n用户需求：{userInput}",
+  "preferredModel": "auto",
+  "outputType": "text",
+  "displayName": "Agent Reach 全网搜索",
+  "shortDescription": "自动检测并路由可用的互联网只读检索能力，读取网页、社交平台、代码、视频与播客内容并保留可追溯来源。",
+  "skillIds": [
+    "agent_reach",
+    "agent-reach"
+  ],
+  "role": "互联网研究与来源核验专员",
+  "agentType": "agent-reach-specialist",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "direct",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "检测当前可用检索后端",
+      "按目标平台执行最窄只读查询",
+      "提取来源时间与内容证据",
+      "交叉核验事实并标注缺口",
+      "交付可追溯研究结果"
+    ],
+    "requiredInputs": [
+      {
+        "key": "research_target",
+        "label": "研究主题、平台或链接",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "text"
+        ]
+      }
+    ],
+    "capabilities": [
+      "web_research",
+      "reference_analysis",
+      "task_status"
+    ]
+  },
+  "tools": []
+}

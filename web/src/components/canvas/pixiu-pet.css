@@ -1,0 +1,311 @@
+/* 貔貅桌宠：所有动画只作用于本组件内部的 SVG 分组，不触发布局重排。 */
+.pixiu-pet {
+    display: block;
+    overflow: visible;
+}
+
+.pixiu-pet * {
+    transform-box: fill-box;
+}
+
+/* 待机：整体悬浮 + 身体呼吸（影子留在地面反向缩放，制造离地感）。 */
+.pixiu-pet .pi-float {
+    animation: pixiu-float 3.8s ease-in-out infinite;
+    transform-origin: 50% 50%;
+}
+
+@keyframes pixiu-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-2.2px);
+    }
+}
+
+.pixiu-pet .pi-shadow {
+    animation: pixiu-shadow 3.8s ease-in-out infinite;
+    transform-origin: 50% 50%;
+}
+
+@keyframes pixiu-shadow {
+    0%,
+    100% {
+        transform: scale(1, 1);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(0.9, 0.92);
+        opacity: 0.55;
+    }
+}
+
+.pixiu-pet .pi-breath {
+    animation: pixiu-breath 3.4s ease-in-out infinite;
+    transform-origin: 50% 100%;
+}
+
+@keyframes pixiu-breath {
+    0%,
+    100% {
+        transform: scale(1, 1);
+    }
+    50% {
+        transform: scale(1.012, 1.032) translateY(-0.4px);
+    }
+}
+
+.pixiu-pet .pi-eyes {
+    animation: pixiu-blink 5.6s ease-in-out infinite;
+    transform-origin: 50% 45%;
+}
+
+@keyframes pixiu-blink {
+    0%,
+    91%,
+    97%,
+    100% {
+        transform: scaleY(1);
+    }
+    94% {
+        transform: scaleY(0.06);
+    }
+}
+
+.pixiu-pet .pi-tail {
+    animation: pixiu-wag 1.9s ease-in-out infinite alternate;
+    transform-origin: 92% 88%;
+}
+
+@keyframes pixiu-wag {
+    from {
+        transform: rotate(-7deg);
+    }
+    to {
+        transform: rotate(11deg);
+    }
+}
+
+.pixiu-pet .pi-wing {
+    animation: pixiu-flap 5.4s ease-in-out infinite;
+}
+
+.pixiu-pet .pi-wing--l {
+    transform-origin: 100% 80%;
+}
+
+.pixiu-pet .pi-wing--r {
+    transform-origin: 0% 80%;
+}
+
+@keyframes pixiu-flap {
+    0%,
+    84%,
+    100% {
+        transform: rotate(0deg);
+    }
+    89% {
+        transform: rotate(-16deg);
+    }
+    94% {
+        transform: rotate(7deg);
+    }
+}
+
+.pixiu-pet .pi-coin {
+    animation: pixiu-coin 2.6s ease-in-out infinite alternate;
+    transform-origin: 50% 60%;
+}
+
+@keyframes pixiu-coin {
+    from {
+        transform: translateY(0) rotate(-3deg);
+    }
+    to {
+        transform: translateY(-1.8px) rotate(4deg);
+    }
+}
+
+/* 工作中：头顶星芒旋转、尾巴摇快、眼球左右打量。 */
+.pixiu-pet .pi-spark {
+    opacity: 0;
+    transform-origin: 50% 50%;
+}
+
+.pixiu-pet .pi-pupils {
+    transform-origin: 50% 50%;
+}
+
+.pixiu-pet--working .pi-spark {
+    opacity: 1;
+    animation: pixiu-spark 1.5s linear infinite;
+}
+
+@keyframes pixiu-spark {
+    from {
+        transform: rotate(0deg) scale(0.85);
+    }
+    50% {
+        transform: rotate(180deg) scale(1.1);
+    }
+    to {
+        transform: rotate(360deg) scale(0.85);
+    }
+}
+
+.pixiu-pet--working .pi-tail {
+    animation-duration: 0.8s;
+}
+
+.pixiu-pet--working .pi-pupils {
+    animation: pixiu-look 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes pixiu-look {
+    from {
+        transform: translateX(-1.2px);
+    }
+    to {
+        transform: translateX(1.2px);
+    }
+}
+
+/* 等待审批：蹦跳 + 张嘴 + 铜钱发光。 */
+.pixiu-pet .pi-mouth-open {
+    opacity: 0;
+}
+
+.pixiu-pet--attention .pi-mouth-open {
+    opacity: 1;
+}
+
+.pixiu-pet--attention .pi-mouth-smile {
+    opacity: 0;
+}
+
+.pixiu-pet--attention .pi-pet {
+    animation: pixiu-bounce 0.62s ease-in-out infinite alternate;
+    transform-origin: 50% 100%;
+}
+
+@keyframes pixiu-bounce {
+    from {
+        transform: translateY(0) scale(1.02, 0.97);
+    }
+    to {
+        transform: translateY(-4.5px) scale(0.98, 1.04);
+    }
+}
+
+.pixiu-pet--attention .pi-coin {
+    animation:
+        pixiu-coin 2.6s ease-in-out infinite alternate,
+        pixiu-glow 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes pixiu-glow {
+    from {
+        filter: drop-shadow(0 0 1px rgba(255, 196, 60, 0.35));
+    }
+    to {
+        filter: drop-shadow(0 0 5px rgba(255, 196, 60, 0.95));
+    }
+}
+
+/* ===== 大动作：原地小跳（每 9s 跳一次，起跳/落地带压缩拉伸） ===== */
+.pixiu-pet .pi-hop {
+    transform-origin: 50% 100%;
+    animation: pixiu-hop 9s ease-in-out infinite;
+}
+
+@keyframes pixiu-hop {
+    0%,
+    26% {
+        transform: translateY(0) scale(1, 1);
+    }
+    29% {
+        transform: translateY(0) scale(1.06, 0.92);
+    }
+    33% {
+        transform: translateY(-7px) scale(0.97, 1.05);
+    }
+    37% {
+        transform: translateY(0) scale(1.05, 0.94);
+    }
+    40% {
+        transform: translateY(-3px) scale(0.99, 1.02);
+    }
+    43%,
+    100% {
+        transform: translateY(0) scale(1, 1);
+    }
+}
+
+/* 吐金币：三枚大铜钱从嘴角连续蹦出、高抛旋转带金光，每 1.2s 一枚，转身时自动跟随镜像。
+   周期 3.6s 三枚错峰，待审批时加速。 */
+.pixiu-pet .pi-spit {
+    opacity: 0;
+    transform-origin: 50% 50%;
+}
+
+.pixiu-pet .pi-spit circle,
+.pixiu-pet .pi-spit rect {
+    filter: drop-shadow(0 0 3px rgba(255, 200, 60, 0.8));
+}
+
+.pixiu-pet .pi-spit--a {
+    animation: pixiu-spit-a 3.6s ease-out infinite;
+}
+
+.pixiu-pet .pi-spit--b {
+    animation: pixiu-spit-a 3.6s ease-out -1.2s infinite;
+}
+
+.pixiu-pet .pi-spit--c {
+    animation: pixiu-spit-b 3.6s ease-out -2.4s infinite;
+}
+
+@keyframes pixiu-spit-a {
+    0%,
+    14% {
+        opacity: 0;
+        transform: translate(0, 0) scale(0.55) rotate(0deg);
+    }
+    20% {
+        opacity: 1;
+    }
+    48% {
+        opacity: 1;
+    }
+    66%,
+    100% {
+        opacity: 0;
+        transform: translate(30px, -27px) scale(1.12) rotate(260deg);
+    }
+}
+
+@keyframes pixiu-spit-b {
+    0%,
+    14% {
+        opacity: 0;
+        transform: translate(0, 0) scale(0.55) rotate(0deg);
+    }
+    20% {
+        opacity: 1;
+    }
+    48% {
+        opacity: 1;
+    }
+    66%,
+    100% {
+        opacity: 0;
+        transform: translate(26px, -30px) scale(1.12) rotate(-240deg);
+    }
+}
+
+.pixiu-pet--attention .pi-spit--a,
+.pixiu-pet--attention .pi-spit--b,
+.pixiu-pet--attention .pi-spit--c {
+    animation-duration: 2.4s;
+}

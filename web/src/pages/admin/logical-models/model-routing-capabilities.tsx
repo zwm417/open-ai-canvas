@@ -437,7 +437,8 @@ export function CapabilityRequestEditor({
                         {optionItems.map((definition) => {
                             const constraint = spec.options![definition.name];
                             return (
-                                <label key={definition.name} className="min-w-0">
+                                // @opc-feature: fix-routing-capability-label-select-conflict [start]
+                                <div key={definition.name} className="min-w-0">
                                     <span className="mb-1 block text-xs text-foreground/45">
                                         {definition.label}
                                         {definition.unit ? ` (${definition.unit})` : ""}
@@ -453,7 +454,8 @@ export function CapabilityRequestEditor({
                                             onOptionsChange(result);
                                         }}
                                     />
-                                </label>
+                                </div>
+                                // @opc-feature: fix-routing-capability-label-select-conflict [end]
                             );
                         })}
                     </div>
@@ -539,8 +541,9 @@ function OptionRuleEditor({ definition, source, value, onChange }: { definition:
                         onChange={(keys) => onChange({ values: keys.map((key) => normalizeScalar(source.values!.find((item) => scalarKey(item) === key)) as Scalar) })}
                     />
                 ) : (
+                    // @opc-feature: fix-routing-capability-label-select-conflict [start]
                     <div className="grid grid-cols-3 gap-2">
-                        <label>
+                        <div>
                             <span className="mb-1 block text-xs text-foreground/45">最小值</span>
                             <InputNumber
                                 className="w-full"
@@ -550,8 +553,8 @@ function OptionRuleEditor({ definition, source, value, onChange }: { definition:
                                 value={value?.min}
                                 onChange={(next) => onChange({ ...value, min: next ?? source.min, max: value?.max ?? source.max, step: value?.step ?? source.step })}
                             />
-                        </label>
-                        <label>
+                        </div>
+                        <div>
                             <span className="mb-1 block text-xs text-foreground/45">最大值</span>
                             <InputNumber
                                 className="w-full"
@@ -561,8 +564,8 @@ function OptionRuleEditor({ definition, source, value, onChange }: { definition:
                                 value={value?.max}
                                 onChange={(next) => onChange({ ...value, min: value?.min ?? source.min, max: next ?? source.max, step: value?.step ?? source.step })}
                             />
-                        </label>
-                        <label>
+                        </div>
+                        <div>
                             <span className="mb-1 block text-xs text-foreground/45">调整步长</span>
                             <InputNumber
                                 className="w-full"
@@ -572,8 +575,9 @@ function OptionRuleEditor({ definition, source, value, onChange }: { definition:
                                 value={value?.step}
                                 onChange={(next) => onChange({ ...value, min: value?.min ?? source.min, max: value?.max ?? source.max, step: next ?? source.step })}
                             />
-                        </label>
+                        </div>
                     </div>
+                    // @opc-feature: fix-routing-capability-label-select-conflict [end]
                 )}
             </div>
         </div>
@@ -595,16 +599,18 @@ function ConstraintValueInput({ constraint, value, allowClear, onChange }: { con
     return <InputNumber className="w-full" min={constraint.min} max={constraint.max} step={constraint.step} value={typeof value === "number" ? value : undefined} onChange={(next) => onChange(next ?? undefined)} />;
 }
 
+// @opc-feature: fix-routing-capability-label-select-conflict [start]
 function NumberInput({ label, unit, value, min, max, disabled, onChange }: { label: string; unit: string; value?: number; min?: number; max?: number; disabled?: boolean; onChange: (value: number | null) => void }) {
     return (
-        <label className="min-w-0">
+        <div className="min-w-0">
             <span className="mb-1 block text-xs text-foreground/45">
                 {label} ({unit})
             </span>
             <InputNumber className="w-full" precision={0} disabled={disabled} value={value} min={min} max={max} onChange={onChange} />
-        </label>
+        </div>
     );
 }
+// @opc-feature: fix-routing-capability-label-select-conflict [end]
 
 function updateInput(current: CapabilitySpec, name: string, constraint: { min: number; max: number } | undefined, update: (patch: Partial<CapabilitySpec>) => void) {
     const inputs = { ...(current.inputs || {}) };

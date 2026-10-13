@@ -1,16 +1,27 @@
 /* Same layer as the legacy overlay rules; explicit component classes keep
    menus quiet without changing dialogs, notifications or the canvas editor. */
 @layer utilities {
+    /* @opc-feature: fix-workspace-quiet-popup-shadow [start] */
     .workspace-quiet-popup.ant-select-dropdown,
     .workspace-quiet-popup .ant-dropdown-menu,
     .workspace-quiet-popup .ant-popover-container,
     .workspace-account-popover .ant-popover-container {
         border: 0 !important;
-        border-radius: var(--user-radius-card) !important;
-        background: var(--user-surface-raised) !important;
+        border-radius: var(--user-radius-card, 12px) !important;
+        background: var(--user-surface-raised, #ffffff) !important;
         background-image: none !important;
         box-shadow: none !important;
     }
+
+    .dark .workspace-quiet-popup.ant-select-dropdown,
+    .dark .workspace-quiet-popup .ant-dropdown-menu,
+    .dark .workspace-quiet-popup .ant-popover-container,
+    .dark .workspace-account-popover .ant-popover-container {
+        border: 0 !important;
+        background: var(--user-surface-raised, #222226) !important;
+        box-shadow: none !important;
+    }
+    /* @opc-feature: fix-workspace-quiet-popup-shadow [end] */
 
     .workspace-quiet-popup.ant-select-dropdown,
     .workspace-quiet-popup .ant-dropdown-menu {

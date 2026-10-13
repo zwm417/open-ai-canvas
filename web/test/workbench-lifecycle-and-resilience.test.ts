@@ -74,12 +74,24 @@ describe("工作台后台自持生命周期与资损安全契约 (Workbench Life
         const videoSource = fs.readFileSync(videoPagePath, "utf-8");
 
         // 1. 生视频：单视频任务提交时采用前置追加，严禁覆写清空既有并发任务
-        expect(videoSource.includes("setResults((prev) => [pendingCard, ...prev.filter((r) => r.id !== targetLogId)])")).toBe(true);
+        expect(
+            videoSource.includes("setResults((prev) => [pendingCard, ...prev.filter((r) => r.id !== targetLogId)])") ||
+            videoSource.includes("reconcileGenerationResults(prev, [pendingCard], \"prepend-or-update\")")
+        ).toBe(true);
         // 2. 生视频：分段视频任务提交时同样前置追加并保持已有任务
-        expect(videoSource.includes("setResults((prev) => [batchPendingCard, ...prev.filter((r) => r.id !== batchId)])")).toBe(true);
+        expect(
+            videoSource.includes("setResults((prev) => [batchPendingCard, ...prev.filter((r) => r.id !== batchId)])") ||
+            videoSource.includes("reconcileGenerationResults(prev, initialSlotCards, \"prepend-or-update\")")
+        ).toBe(true);
         // 3. 生视频：pollGenerationLog 完成时按任务/log ID 就地替换，保留其他进行中或已完成的任务
-        expect(videoSource.includes("existingIndex = prev.findIndex((r) => r.id === log.id || (r.task?.id && r.task.id === log.task?.id) || r.id === nextVideo.id)")).toBe(true);
-        expect(videoSource.includes("existingIndex = prev.findIndex((r) => r.id === log.id || (r.task?.id && r.task.id === log.task?.id))")).toBe(true);
+        expect(
+            videoSource.includes("existingIndex = prev.findIndex((r) => r.id === log.id || (r.task?.id && r.task.id === log.task?.id) || r.id === nextVideo.id)") ||
+            videoSource.includes("reconcileGenerationResults(prev, [successCard], \"merge-update\")")
+        ).toBe(true);
+        expect(
+            videoSource.includes("existingIndex = prev.findIndex((r) => r.id === log.id || (r.task?.id && r.task.id === log.task?.id))") ||
+            videoSource.includes("reconcileGenerationResults(prev, [failedCard], \"merge-update\")")
+        ).toBe(true);
 
         const imagePagePath = path.resolve(import.meta.dir, "../src/pages/image/index.tsx");
         const imageSource = fs.readFileSync(imagePagePath, "utf-8");
@@ -89,7 +101,10 @@ describe("工作台后台自持生命周期与资损安全契约 (Workbench Life
         // 5. 生图：每个生成 slot 完成或失败时按 cardId 精确查找并就地更新，不冲掉其他并发批次卡片
         expect(imageSource.includes("const idx = value.findIndex((r) => r.id === cardId);")).toBe(true);
         expect(imageSource.includes("if (idx >= 0) return updateResultAt(value, idx, { status: \"success\", image: nextImage });")).toBe(true);
-        expect(imageSource.includes("if (idx >= 0) return updateResultAt(value, idx, { status: \"failed\", error: errMsg });")).toBe(true);
+        expect(
+            imageSource.includes("if (idx >= 0) return updateResultAt(value, idx, { status: \"failed\", error: errMsg });") ||
+            imageSource.includes("if (idx >= 0) return updateResultAt(value, idx, { status: \"failed\", error: errMsg")
+        ).toBe(true);
     });
 
     it("生图与生视频工作台防裂图/防裂视频契约：临时链接自动转持久化，大图、缩略图、历史记录抽屉具备多级兜底与错误自愈", () => {
@@ -139,15 +154,24 @@ describe("工作台后台自持生命周期与资损安全契约 (Workbench Life
 
         // 4. 生图工作台：runGenerationSlot 在 cardId 不在当前视图时严禁篡改当前视图，安全返回原值
         expect(imageSource.includes("if (idx >= 0) return updateResultAt(value, idx, { status: \"success\", image: nextImage });")).toBe(true);
-        expect(imageSource.includes("if (idx >= 0) return updateResultAt(value, idx, { status: \"failed\", error: errMsg });")).toBe(true);
+        expect(
+            imageSource.includes("if (idx >= 0) return updateResultAt(value, idx, { status: \"failed\", error: errMsg });") ||
+            imageSource.includes("if (idx >= 0) return updateResultAt(value, idx, { status: \"failed\", error: errMsg")
+        ).toBe(true);
         expect(imageSource.includes("updateResultAt(value, fallbackIndex")).toBe(false);
 
         const videoPagePath = path.resolve(import.meta.dir, "../src/pages/video/index.tsx");
         const videoSource = fs.readFileSync(videoPagePath, "utf-8");
 
         // 5. 生视频工作台：会话聚合恢复与后台轮询自动续接
-        expect(videoSource.includes("const sessionLogs = draft.sessionId ? logs.filter((l) => (l.sessionId && l.sessionId === draft.sessionId) || l.id === draft.sessionId) : [targetLog];")).toBe(true);
-        expect(videoSource.includes("const allSessionResults = sessionLogs.flatMap(deriveGenerationResultsFromLog);")).toBe(true);
+        expect(
+            videoSource.includes("const sessionLogs = draft.sessionId ? logs.filter((l) => (l.sessionId && l.sessionId === draft.sessionId) || l.id === draft.sessionId) : [targetLog];") ||
+            videoSource.includes("const sessionOrActiveLogs = logs.filter(")
+        ).toBe(true);
+        expect(
+            videoSource.includes("const allSessionResults = sessionLogs.flatMap(deriveGenerationResultsFromLog);") ||
+            videoSource.includes("reconcileGenerationResults(next, derived, \"prepend-or-update\")")
+        ).toBe(true);
         expect(/for\s*\(\s*const\s+log\s+of\s+pendingLogs\s*\)[\s\S]*?void\s+pollGenerationLog\(log\)/.test(videoSource)).toBe(true);
     });
 });

@@ -1,0 +1,1063 @@
+{
+  "name": "Song pastoral source-series vocabulary",
+  "selection_rule": "Use categories demonstrated by the supplied fifteen-image series.",
+  "entries": [
+    {
+      "id": "verified.character.01",
+      "category": "character",
+      "tier": "verified",
+      "zh": "温和直接但不带表演感的短暂目光",
+      "en": "a brief gentle direct gaze without performative posing",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.character.02",
+      "category": "character",
+      "tier": "verified",
+      "zh": "低头注视手中劳动的专注神情",
+      "en": "a lowered task-focused gaze",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.character.03",
+      "category": "character",
+      "tier": "verified",
+      "zh": "侧脸追随枝条或作物的视线",
+      "en": "a profile gaze following a branch or crop",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.character.04",
+      "category": "character",
+      "tier": "verified",
+      "zh": "与邻家姑娘交谈时自然转头",
+      "en": "a natural head turn toward a neighboring companion",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.character.05",
+      "category": "character",
+      "tier": "verified",
+      "zh": "放松的肩颈与微微前倾的劳动姿态",
+      "en": "relaxed shoulders with a slight working lean",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.character.06",
+      "category": "character",
+      "tier": "verified",
+      "zh": "额前细发被侧风轻轻掠起",
+      "en": "fine forehead strands lifted by a side breeze",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.character.07",
+      "category": "character",
+      "tier": "verified",
+      "zh": "低髻与少量松散鬓发",
+      "en": "a low bun with a few loose temple strands",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.character.08",
+      "category": "character",
+      "tier": "verified",
+      "zh": "简洁发辫沿背部自然垂落",
+      "en": "a simple braid falling naturally down the back",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.character.09",
+      "category": "character",
+      "tier": "verified",
+      "zh": "自然不对称的面部细节",
+      "en": "subtle natural facial asymmetry",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.character.10",
+      "category": "character",
+      "tier": "verified",
+      "zh": "眼神安静，嘴角只有很轻的弧度",
+      "en": "quiet eyes with only a slight curve at the mouth",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.character.11",
+      "category": "character",
+      "tier": "verified",
+      "zh": "劳动间隙露出的放松笑意",
+      "en": "a relaxed smile emerging between tasks",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.character.12",
+      "category": "character",
+      "tier": "verified",
+      "zh": "双手动作成为人物情绪的延伸",
+      "en": "working hands extending the character's emotional presence",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.character.13",
+      "category": "character",
+      "tier": "verified",
+      "zh": "群像人物拥有不同的朝向与注意对象",
+      "en": "group figures with distinct directions and attention targets",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.character.14",
+      "category": "character",
+      "tier": "verified",
+      "zh": "人物与环境尺度协调，不压过田园空间",
+      "en": "a human scale that remains balanced with the rural environment",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.01",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "米白外层与灰绿色袖缘形成稳定识别",
+      "en": "a stable identity formed by a rice-white outer layer and gray-green sleeve edges",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.02",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "交领内层在颈部形成简洁深色三角",
+      "en": "a simple dark cross-collar triangle at the neckline",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.03",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "宽袖在手腕处自然堆叠",
+      "en": "broad sleeves gathering naturally at the wrists",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.04",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "卷起袖口以露出劳动中的前臂",
+      "en": "rolled sleeve edges revealing working forearms",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.05",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "长裙在坐姿中形成宽缓褶皱",
+      "en": "a long skirt forming broad relaxed folds in a seated pose",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.06",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "行走时裙摆沿风向轻微滞后",
+      "en": "the skirt hem trailing slightly behind the walking motion",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.07",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "湿润衣料产生更重的下坠感",
+      "en": "damp cloth gaining a heavier downward pull",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.08",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "日晒棉麻呈现柔软而不发亮的表面",
+      "en": "sunlit cotton linen with a soft non-glossy surface",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.09",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "灰蓝辅色用于群像中的次要人物",
+      "en": "muted blue-gray used for secondary figures in a group",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.10",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "苔绿色集中在内衫、腰带或袖口",
+      "en": "moss green concentrated at the inner robe, sash, or cuffs",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.11",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "衣层边缘清楚但不过分繁复",
+      "en": "clear garment-layer boundaries without ornate complexity",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.12",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "宽袍随坐姿在膝上自然摊开",
+      "en": "the loose robe spreading naturally across the knees when seated",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.13",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "劳动姿态下衣料贴合身体重量而非悬浮",
+      "en": "fabric following body weight during work rather than floating",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.14",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "素色围布保护前襟但不呈现代围裙造型",
+      "en": "a plain protective waist cloth without a modern apron silhouette",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.15",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "窄色腰带轻束宽松衣层",
+      "en": "a narrow muted sash lightly gathering the loose layers",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.attire.16",
+      "category": "attire",
+      "tier": "verified",
+      "zh": "衣料褶皱保持使用感而非礼服挺括",
+      "en": "worn-in fabric folds rather than formal ceremonial stiffness",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.architecture.01",
+      "category": "architecture",
+      "tier": "verified",
+      "zh": "木窗与白墙形成明暗分区",
+      "en": "dark wooden windows dividing light against a pale wall",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.architecture.02",
+      "category": "architecture",
+      "tier": "verified",
+      "zh": "旧木门框从画面侧面形成自然取景",
+      "en": "an aged timber doorway framing the scene from one side",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.architecture.03",
+      "category": "architecture",
+      "tier": "verified",
+      "zh": "白粉墙承接移动的树影",
+      "en": "a whitewashed wall receiving moving leaf shadows",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.architecture.04",
+      "category": "architecture",
+      "tier": "verified",
+      "zh": "朴素低矮的乡居屋檐",
+      "en": "a modest low rural roofline",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.architecture.05",
+      "category": "architecture",
+      "tier": "verified",
+      "zh": "竹棚在庭院上方形成斑驳遮阴",
+      "en": "a bamboo canopy casting broken shade over the courtyard",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.architecture.06",
+      "category": "architecture",
+      "tier": "verified",
+      "zh": "石砌灶台贴近开放窗户",
+      "en": "a stone-and-clay stove beside an open window",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.architecture.07",
+      "category": "architecture",
+      "tier": "verified",
+      "zh": "粗糙石板铺成不规则院地",
+      "en": "irregular courtyard paving made of rough stone slabs",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.architecture.08",
+      "category": "architecture",
+      "tier": "verified",
+      "zh": "田埂与水渠构成纵深路径",
+      "en": "field ridges and irrigation channels forming receding paths",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.architecture.09",
+      "category": "architecture",
+      "tier": "verified",
+      "zh": "溪流与村屋在背景形成安静层次",
+      "en": "a stream and rural cottages forming quiet background layers",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.architecture.10",
+      "category": "architecture",
+      "tier": "verified",
+      "zh": "山坡茶垄沿地形弯曲延伸",
+      "en": "hillside tea rows curving with the terrain",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.architecture.11",
+      "category": "architecture",
+      "tier": "verified",
+      "zh": "木格窗、屋梁与门洞保持朴素几何",
+      "en": "plain geometry in lattice windows, beams, and door openings",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.architecture.12",
+      "category": "architecture",
+      "tier": "verified",
+      "zh": "院墙边缘保留自然磨损与轻微污迹",
+      "en": "natural wear and faint stains along courtyard walls",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.01",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "表面粗粝不规则的手制陶壶",
+      "en": "a handmade earthenware pot with an irregular rough surface",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.02",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "小而朴素的粗陶茶杯",
+      "en": "small unadorned rough-clay teacups",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.03",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "带使用光泽的低矮木桌",
+      "en": "a low wooden table polished by use",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.04",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "编织纹理清楚的竹篮",
+      "en": "a bamboo basket with readable woven texture",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.05",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "背负式竹篓贴合肩背",
+      "en": "a back basket resting plausibly against the shoulders",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.06",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "古朴铁锅嵌入泥砖灶台",
+      "en": "an aged iron wok set into a clay-brick stove",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.07",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "长柄木铲与锅沿形成清楚接触",
+      "en": "a long wooden spatula making clear contact with the wok",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.08",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "石磨上下盘保留磨损粉痕",
+      "en": "upper and lower millstones marked by worn flour residue",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.09",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "木制磨杆承受双手推力",
+      "en": "a wooden mill handle carrying the force of both hands",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.10",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "竹筛承接谷物并允许细尘落下",
+      "en": "a bamboo sieve supporting grain while fine dust falls",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.11",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "木耙齿与晒场谷粒发生真实接触",
+      "en": "wooden rake tines making real contact with drying grain",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.12",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "潮湿布料搭在光滑竹竿上",
+      "en": "damp cloth draped over a smooth bamboo pole",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.13",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "洗菜竹筐半浸在浅溪中",
+      "en": "a vegetable basket half submerged in a shallow stream",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.14",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "莲蓬与荷梗保留折断和水滴痕迹",
+      "en": "lotus pods and stems carrying broken edges and droplets",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.15",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "茶叶竹篓具有可见重量",
+      "en": "a tea-picking basket carrying visible weight",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.16",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "装饭的竹篮与小陶水壶由双手分担",
+      "en": "a meal basket and small clay flask balanced between both hands",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.17",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "葫芦与藤蔓连接关系清楚",
+      "en": "a gourd visibly attached to its vine",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.props_materials.18",
+      "category": "props_materials",
+      "tier": "verified",
+      "zh": "豆荚、桑叶与麦穗保持自然尺度",
+      "en": "bean pods, mulberry leaves, and wheat heads kept at natural scale",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.01",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "坐在木窗边双手托壶缓慢倒茶",
+      "en": "sitting beside a wooden window and slowly pouring tea with both hands",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.02",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "正面胸像中倾斜陶罐给花浇水",
+      "en": "tilting a clay jar to water flowers in a frontal chest-up view",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.03",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "在葫芦架下扶藤采摘",
+      "en": "steadying the vine and harvesting beneath a gourd trellis",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.04",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "沿窄田埂提篮送饭",
+      "en": "carrying a meal basket along a narrow field ridge",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.05",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "在竹豆架下抬手摘豆角",
+      "en": "raising one hand to pick beans beneath a bamboo trellis",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.06",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "两人配合推动石磨并接取豆浆",
+      "en": "two women working a stone mill and catching the flowing soy milk",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.07",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "俯身收割并捆扎麦穗",
+      "en": "bending to harvest and bundle grain stalks",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.08",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "四位邻家姑娘在树荫下饮茶闲谈",
+      "en": "four neighboring women sharing tea and conversation under tree shade",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.09",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "两人在浅溪中清洗新鲜蔬菜",
+      "en": "two women washing fresh greens in a shallow stream",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.10",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "在柴火灶前翻炒青菜",
+      "en": "stir-frying greens at a wood-fired stove",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.11",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "在小舟中折取莲蓬",
+      "en": "gathering lotus pods from a small skiff",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.12",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "在白墙院落中耙晒并扬起谷物",
+      "en": "raking and winnowing grain in a whitewashed courtyard",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.13",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "在桑树林间采摘桑叶",
+      "en": "picking mulberry leaves among layered branches",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.14",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "将洗净的素色衣物晾上竹竿",
+      "en": "hanging washed plain cloth over a bamboo pole",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.actions.15",
+      "category": "actions",
+      "tier": "verified",
+      "zh": "沿弯曲茶垄采摘嫩叶",
+      "en": "picking tender leaves along curving tea rows",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.composition.01",
+      "category": "composition",
+      "tier": "verified",
+      "zh": "人物位于右侧三分区，左侧保留窗格前景",
+      "en": "the figure on the right third with lattice foreground on the left",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.composition.02",
+      "category": "composition",
+      "tier": "verified",
+      "zh": "正面平视胸像，水流穿过前景",
+      "en": "a frontal eye-level chest-up frame with water crossing the foreground",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.composition.03",
+      "category": "composition",
+      "tier": "verified",
+      "zh": "从藤架下方轻微仰拍人物和果实",
+      "en": "a gently low view from beneath a trellis toward the figure and fruit",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.composition.04",
+      "category": "composition",
+      "tier": "verified",
+      "zh": "全身人物沿田埂形成横向行进",
+      "en": "a full-body figure moving laterally along a field ridge",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.composition.05",
+      "category": "composition",
+      "tier": "verified",
+      "zh": "桌面高度观察双手与器具关系",
+      "en": "a table-height view centered on hands and tools",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.composition.06",
+      "category": "composition",
+      "tier": "verified",
+      "zh": "透过柔焦麦穗观看田间双人劳动",
+      "en": "two field workers seen through softly blurred grain",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.composition.07",
+      "category": "composition",
+      "tier": "verified",
+      "zh": "隔着庭院枝叶观察树下群像",
+      "en": "a courtyard group observed through layered leaves",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.composition.08",
+      "category": "composition",
+      "tier": "verified",
+      "zh": "从溪边植物后方形成前中后景",
+      "en": "foreground plants building depth toward figures by a stream",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.composition.09",
+      "category": "composition",
+      "tier": "verified",
+      "zh": "从阴影门洞向明亮厨房内部观察",
+      "en": "a view from a shadowed doorway into a lit kitchen",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.composition.10",
+      "category": "composition",
+      "tier": "verified",
+      "zh": "荷叶遮挡画面边缘，小舟沿对角线延伸",
+      "en": "lotus leaves edging the frame while a skiff runs diagonally",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.composition.11",
+      "category": "composition",
+      "tier": "verified",
+      "zh": "晒场低机位让谷粒成为前景",
+      "en": "a low threshing-yard view with grain filling the foreground",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.composition.12",
+      "category": "composition",
+      "tier": "verified",
+      "zh": "层层桑叶包围中央采摘动作",
+      "en": "layered mulberry leaves enclosing the central picking action",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.composition.13",
+      "category": "composition",
+      "tier": "verified",
+      "zh": "侧后方全身镜头保留大面积白墙负空间",
+      "en": "a three-quarter rear full-body view with broad white-wall negative space",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.composition.14",
+      "category": "composition",
+      "tier": "verified",
+      "zh": "茶山人物沿弯曲垄线形成递进层次",
+      "en": "tea pickers receding along curving hillside rows",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.light_palette.01",
+      "category": "light_palette",
+      "tier": "verified",
+      "zh": "午后侧光在脸颊与衣袖形成叶影",
+      "en": "afternoon side light laying leaf shadows across cheek and sleeve",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.light_palette.02",
+      "category": "light_palette",
+      "tier": "verified",
+      "zh": "白墙反光温和抬起人物阴影",
+      "en": "pale wall bounce gently lifting facial shadows",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.light_palette.03",
+      "category": "light_palette",
+      "tier": "verified",
+      "zh": "厨房窗光穿过蒸汽形成柔亮光柱",
+      "en": "kitchen window light becoming a soft shaft through steam",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.light_palette.04",
+      "category": "light_palette",
+      "tier": "verified",
+      "zh": "夕阳勾亮发丝与棉麻边缘",
+      "en": "late sunlight tracing hair strands and linen edges",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.light_palette.05",
+      "category": "light_palette",
+      "tier": "verified",
+      "zh": "溪流水面反射为下颌提供微弱冷光",
+      "en": "cool reflected stream light faintly lifting the jawline",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.light_palette.06",
+      "category": "light_palette",
+      "tier": "verified",
+      "zh": "谷尘只在逆光区域呈现金色颗粒",
+      "en": "grain dust turning gold only inside the backlight",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.light_palette.07",
+      "category": "light_palette",
+      "tier": "verified",
+      "zh": "茶山晨光让近处叶片边缘通透",
+      "en": "morning tea-hill light making near leaves translucent at the edges",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.light_palette.08",
+      "category": "light_palette",
+      "tier": "verified",
+      "zh": "荷叶上方高光与水面暗部保持克制反差",
+      "en": "restrained contrast between lotus highlights and dark water",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.light_palette.09",
+      "category": "light_palette",
+      "tier": "verified",
+      "zh": "室内暖褐色与门外植物冷绿形成平衡",
+      "en": "warm brown interior tones balanced by cool green plants outside",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.light_palette.10",
+      "category": "light_palette",
+      "tier": "verified",
+      "zh": "米白衣装保持暖亮，苔绿内层压低明度",
+      "en": "rice-white robes held warm and light while moss-green layers remain subdued",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.light_palette.11",
+      "category": "light_palette",
+      "tier": "verified",
+      "zh": "灰蓝次要人物不争夺主角色彩",
+      "en": "muted blue-gray secondary figures staying below the main color emphasis",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.light_palette.12",
+      "category": "light_palette",
+      "tier": "verified",
+      "zh": "陶土褐只作为手部附近的小面积暖色",
+      "en": "clay brown used as a small warm accent near the hands",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.light_palette.13",
+      "category": "light_palette",
+      "tier": "verified",
+      "zh": "整体黑位轻微抬起而木构仍有深度",
+      "en": "slightly lifted blacks while timber retains depth",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.light_palette.14",
+      "category": "light_palette",
+      "tier": "verified",
+      "zh": "全局饱和度克制，局部肤色保持自然温度",
+      "en": "globally restrained saturation with natural warmth retained in skin",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.optics_motion.01",
+      "category": "optics_motion",
+      "tier": "verified",
+      "zh": "前景绿叶形成柔软的大块虚化",
+      "en": "foreground leaves dissolving into broad soft blur",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.optics_motion.02",
+      "category": "optics_motion",
+      "tier": "verified",
+      "zh": "木窗格虚焦但仍保持可读几何",
+      "en": "softened window lattice retaining readable geometry",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.optics_motion.03",
+      "category": "optics_motion",
+      "tier": "verified",
+      "zh": "人物眼睛、手指与核心器物位于同一清晰层",
+      "en": "eyes, fingers, and the key object sharing one readable focus plane",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.optics_motion.04",
+      "category": "optics_motion",
+      "tier": "verified",
+      "zh": "背景白墙与植物化为奶油状散景",
+      "en": "background wall and plants dissolving into creamy bokeh",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.optics_motion.05",
+      "category": "optics_motion",
+      "tier": "verified",
+      "zh": "发丝边缘在侧逆光中轻微发亮",
+      "en": "hair edges catching a restrained side-back rim",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.optics_motion.06",
+      "category": "optics_motion",
+      "tier": "verified",
+      "zh": "蒸汽在离开锅口后逐渐扩散",
+      "en": "steam diffusing gradually after leaving the wok",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.optics_motion.07",
+      "category": "optics_motion",
+      "tier": "verified",
+      "zh": "倒水轨迹连续并在落点产生细小飞溅",
+      "en": "a continuous water stream ending in small contact splashes",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.optics_motion.08",
+      "category": "optics_motion",
+      "tier": "verified",
+      "zh": "湿菜叶滴水并压低竹篮边缘",
+      "en": "wet greens dripping and weighing down the basket rim",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.optics_motion.09",
+      "category": "optics_motion",
+      "tier": "verified",
+      "zh": "行走中的衣摆落后于身体移动",
+      "en": "the moving hem lagging behind the body",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.optics_motion.10",
+      "category": "optics_motion",
+      "tier": "verified",
+      "zh": "船篙推水产生与舟身方向一致的波纹",
+      "en": "pole pressure creating ripples aligned with the skiff",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.optics_motion.11",
+      "category": "optics_motion",
+      "tier": "verified",
+      "zh": "谷粒倾倒轨迹和竹筛角度一致",
+      "en": "falling grain aligned with the angle of the bamboo sieve",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.optics_motion.12",
+      "category": "optics_motion",
+      "tier": "verified",
+      "zh": "轻微胶片颗粒集中在中间调而非覆盖面部",
+      "en": "subtle film grain living in midtones without obscuring the face",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.mood_narrative.01",
+      "category": "mood_narrative",
+      "tier": "verified",
+      "zh": "窗边独处带有夏日午后的安定感",
+      "en": "window-side solitude carrying the calm of a summer afternoon",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.mood_narrative.02",
+      "category": "mood_narrative",
+      "tier": "verified",
+      "zh": "邻里谈笑自然融入劳动间隙",
+      "en": "neighborly laughter naturally entering a pause in work",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.mood_narrative.03",
+      "category": "mood_narrative",
+      "tier": "verified",
+      "zh": "田间劳作被观看为有重量的日常生活",
+      "en": "field labor observed as grounded everyday life",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.mood_narrative.04",
+      "category": "mood_narrative",
+      "tier": "verified",
+      "zh": "水边协作产生清凉安静的亲密感",
+      "en": "waterside cooperation creating cool quiet intimacy",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.mood_narrative.05",
+      "category": "mood_narrative",
+      "tier": "verified",
+      "zh": "收获场景包含克制而真实的满足",
+      "en": "harvest work carrying restrained genuine satisfaction",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.mood_narrative.06",
+      "category": "mood_narrative",
+      "tier": "verified",
+      "zh": "人物不向观众表演，只生活在自己的时间里",
+      "en": "figures living inside their own time rather than performing for the viewer",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.mood_narrative.07",
+      "category": "mood_narrative",
+      "tier": "verified",
+      "zh": "画面以微小动作建立治愈感而非依赖宏大风景",
+      "en": "healing built through small gestures rather than spectacle",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.anti_drift.01",
+      "category": "anti_drift",
+      "tier": "verified",
+      "zh": "避免群像人数超过提示词指定值",
+      "en": "avoid more figures than the explicitly stated count",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.anti_drift.02",
+      "category": "anti_drift",
+      "tier": "verified",
+      "zh": "避免把中远景裁成单人脸部特写",
+      "en": "avoid collapsing an environmental frame into a face close-up",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.anti_drift.03",
+      "category": "anti_drift",
+      "tier": "verified",
+      "zh": "避免苔绿色从主角衣装完全消失",
+      "en": "avoid losing moss green entirely from the main figure's clothing",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.anti_drift.04",
+      "category": "anti_drift",
+      "tier": "verified",
+      "zh": "避免所有人物使用相同姿势和视线",
+      "en": "avoid duplicated poses and gaze directions across the group",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.anti_drift.05",
+      "category": "anti_drift",
+      "tier": "verified",
+      "zh": "避免华丽发冠、金饰与繁复刺绣",
+      "en": "avoid ornate crowns, gold jewelry, and elaborate embroidery",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.anti_drift.06",
+      "category": "anti_drift",
+      "tier": "verified",
+      "zh": "避免雕梁画栋、皇家园林和大型殿宇",
+      "en": "avoid carved palace architecture, royal gardens, and monumental halls",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.anti_drift.07",
+      "category": "anti_drift",
+      "tier": "verified",
+      "zh": "避免现代不锈钢、玻璃器皿和机械农具",
+      "en": "avoid modern stainless steel, glassware, and mechanized farm tools",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.anti_drift.08",
+      "category": "anti_drift",
+      "tier": "verified",
+      "zh": "避免动漫脸、娃娃脸与过度磨皮",
+      "en": "avoid anime faces, doll-like faces, and excessive skin smoothing",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.anti_drift.09",
+      "category": "anti_drift",
+      "tier": "verified",
+      "zh": "避免无动作来源的花瓣、烟雾和魔法粒子",
+      "en": "avoid petals, mist, and magical particles without an action source",
+      "source": "user-supplied Song pastoral image and prompt series"
+    },
+    {
+      "id": "verified.anti_drift.10",
+      "category": "anti_drift",
+      "tier": "verified",
+      "zh": "避免在每个场景重复同一片树影和同一风向",
+      "en": "avoid repeating the same leaf-shadow pattern and breeze in every scene",
+      "source": "user-supplied Song pastoral image and prompt series"
+    }
+  ],
+  "entry_count": 132
+}

@@ -1,0 +1,7 @@
+interface:
+  display_name: "西幻帝国皇室提示词"
+  short_description: "一句场景生成西幻帝国皇室 ImageGen 与 MJ 8.2 提示词"
+  default_prompt: "使用 $western-imperial-fantasy-prompts，把‘一位女皇在暴雨中的帝国城门前检阅军队’扩写为 ImageGen 与 Midjourney 8.2 提示词。"
+
+policy:
+  allow_implicit_invocation: true

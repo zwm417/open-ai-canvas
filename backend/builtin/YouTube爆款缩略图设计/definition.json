@@ -1,0 +1,73 @@
+﻿{
+  "id": "youtube_thumbnail",
+  "name": "YouTube 封面图",
+  "description": "根据视频真实内容、标题方向和频道识别规划并生成 YouTube 缩略图及测试变体。",
+  "icon": "▶",
+  "color": "#FF0033",
+  "category": "Social Media",
+  "scenarios": [
+    "YouTube 封面图",
+    "YouTube thumbnail",
+    "视频缩略图",
+    "高点击率封面"
+  ],
+  "promptTemplate": "使用 $youtube-thumbnail 完成当前任务。先执行领域工作流和必要确认，再为每个批准的生成单元输出独立、可执行的供应商提示词。\n\n用户需求：{userInput}",
+  "negativePrompt": "tiny text, text wall, clutter, fake UI, screenshot frame, low contrast, distorted face, distorted product, watermark, low quality, blurry",
+  "preferredModel": "gemini-3-pro-image-preview",
+  "outputType": "image",
+  "aspectRatio": "auto",
+  "analysisPrompt": "用一个清晰的视觉问题、结果或冲突补充视频标题，在小尺寸中建立点击理由。你负责标题与缩略图的协同、频道识别和可测试差异，不制造视频中不存在的内容。 按以下阶段执行：核验视频内容和标题承诺 → 找到单一好奇缺口或结果 → 设计少量可解释缩略图路线 → 确认文字、人物和产品使用 → 逐路线生成缩略图 → 执行小尺寸和标题协同测试。",
+  "displayName": "YouTube 封面图",
+  "shortDescription": "制作高质量的 YouTube 缩略图，提升点击率。",
+  "skillIds": [
+    "youtube_thumbnail",
+    "youtube-thumbnail"
+  ],
+  "role": "YouTube 缩略图创意策略师",
+  "agentType": "youtube-thumbnail-strategist",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "guided",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "核验视频内容和标题承诺",
+      "找到单一好奇缺口或结果",
+      "设计少量可解释缩略图路线",
+      "确认文字、人物和产品使用",
+      "逐路线生成缩略图",
+      "执行小尺寸和标题协同测试"
+    ],
+    "requiredInputs": [
+      {
+        "key": "video_content",
+        "label": "视频真实内容与标题方向",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "text"
+        ],
+        "prompt": "请提供视频内容、受众和标题方向。"
+      },
+      {
+        "key": "channel_assets",
+        "label": "频道识别与参考素材",
+        "required": false,
+        "blocking": false,
+        "accepts": [
+          "text",
+          "image",
+          "images"
+        ]
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "image_generation",
+      "task_status",
+      "post_production_handoff"
+    ]
+  },
+  "tools": [
+    "image_generate"
+  ]
+}

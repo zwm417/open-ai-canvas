@@ -44,10 +44,19 @@ export function ChoiceBrowser({
     const normalizedQuery = query.trim().toLowerCase();
     const visible = options.filter((option) => [option.label, option.subtitle, option.vendor, option.searchText].join(" ").toLowerCase().includes(normalizedQuery));
     const unavailable = disabled || loading || Boolean(error);
+    const revealInsideScrollArea = () => {
+        const input = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const field = input?.closest<HTMLElement>(".ant-form-item") || input?.closest<HTMLElement>(".choice-browser");
+        const scrollArea = field?.closest<HTMLElement>(".ant-tabs-body-holder");
+        if (!field || !scrollArea) return;
+        const fieldTop = field.offsetTop;
+        const centeredTop = Math.max(0, fieldTop - (scrollArea.clientHeight - field.offsetHeight) / 2);
+        scrollArea.scrollTo({ top: centeredTop, behavior: "smooth" });
+    };
 
     return (
         <div className="choice-browser">
-            <Input id={id} {...aria} allowClear aria-label={`搜索${label}`} disabled={unavailable} prefix={<Search className="size-3.5" aria-hidden="true" />} placeholder={placeholder} value={query} onChange={(event) => setQuery(event.target.value)} />
+            <Input id={id} {...aria} allowClear aria-label={`搜索${label}`} disabled={unavailable} prefix={<Search className="size-3.5" aria-hidden="true" />} placeholder={placeholder} value={query} onChange={(event) => setQuery(event.target.value)} onFocus={() => requestAnimationFrame(revealInsideScrollArea)} />
             {loading || error || !options.length ? (
                 <div className="choice-browser-state" role={error ? "alert" : "status"}>
                     {loading ? "正在读取可选项…" : error || "暂无可用选项"}

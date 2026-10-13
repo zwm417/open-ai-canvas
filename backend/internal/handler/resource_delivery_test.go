@@ -35,6 +35,11 @@ func TestServeResourceDeliveryRedirectsCloudMediaWithoutWritingBody(t *testing.T
 	if got := recorder.Header().Get("Location"); got != "https://cdn.example.com/users/user-1/image/test.png?signature=redacted" {
 		t.Fatalf("location = %q", got)
 	}
+	// @opc-adapter: fast-media-redirect-cache [start]
+	if got := recorder.Header().Get("Cache-Control"); got != "private, max-age=300" {
+		t.Fatalf("cache-control = %q, want private, max-age=300", got)
+	}
+	// @opc-adapter: fast-media-redirect-cache [end]
 	if recorder.Body.Len() != 0 {
 		t.Fatalf("redirect wrote %d body bytes; platform must not send cloud media", recorder.Body.Len())
 	}
@@ -94,3 +99,32 @@ func TestServeResourceDeliveryStreamsPlatformBytesAndRangeMetadata(t *testing.T)
 		t.Fatalf("content-disposition = %q", recorder.Header().Get("Content-Disposition"))
 	}
 }
+
+// @opc-adapter: fast-media-redirect-cache [start]
+func TestServeResourceDeliveryRedirectsCloudMediaWithSafeExpirationTTL(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	expires := time.Now().Add(100 * time.Second)
+	router.GET("/resource-expiring", func(c *gin.Context) {
+		serveResourceDelivery(c, &service.ResourceDelivery{Access: &assets.ResourceAccess{
+			ResourceID: "resource-exp",
+			URL:        "https://cdn.example.com/expiring.mp4",
+			Delivery:   assets.DeliveryOrigin,
+			ExpiresAt:  &expires,
+		}}, "private, no-cache", "")
+	})
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/resource-expiring", nil))
+
+	if recorder.Code != http.StatusTemporaryRedirect {
+		t.Fatalf("status = %d, want 307", recorder.Code)
+	}
+	cacheControl := recorder.Header().Get("Cache-Control")
+	// 100s * 0.8 ≈ 80s
+	if !strings.HasPrefix(cacheControl, "private, max-age=") {
+		t.Fatalf("cache-control = %q, want private, max-age=...", cacheControl)
+	}
+}
+// @opc-adapter: fast-media-redirect-cache [end]
+

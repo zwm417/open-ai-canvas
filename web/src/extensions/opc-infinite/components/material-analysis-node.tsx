@@ -92,7 +92,7 @@ export function MaterialAnalysisNodeContent({ node, theme }: Props) {
         });
     };
 
-    const featureCredit = useFeatureCredit("material_analysis", selectedModel);
+    const featureCredit = useFeatureCredit("canvas_material_analysis", selectedModel);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -498,6 +498,7 @@ export function MaterialAnalysisNodeContent({ node, theme }: Props) {
                     customRules: customRules || undefined,
                     replaceBuiltInPrompt: replacePrompt,
                     promptRules: promptRules || undefined,
+                    scene: "canvas_material_analysis",
                     signal: controller.signal,
                 },
             );
@@ -695,7 +696,7 @@ export function MaterialAnalysisNodeContent({ node, theme }: Props) {
                         className="h-9 text-sm flex-1 min-w-0"
                     />
                 </div>
-                <FeatureCreditBadge scene="material_analysis" model={selectedModel} size="small" />
+                <FeatureCreditBadge scene="canvas_material_analysis" model={selectedModel} size="small" />
             </div>
 
             {/* 素材管理与下游连线控制（整合紧凑卡片） */}

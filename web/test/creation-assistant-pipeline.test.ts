@@ -102,4 +102,51 @@ describe("Creation Assistant Pipeline & Contracts", () => {
         const normalized = normalizeCreationAssistantScript(raw);
         expect(normalized).toBe("【分镜 1】开场展示商品特写");
     });
+
+    it("should strictly align dual-track reverse parameters and local ASR defaults with canvas node", async () => {
+        const { defaultCreationAssistantDraft } = await import("../src/stores/use-creation-assistant-store");
+        expect(defaultCreationAssistantDraft.deconstructSceneThreshold).toBe(0.15);
+        expect(defaultCreationAssistantDraft.deconstructMinSceneGapSec).toBe(0.25);
+        expect(defaultCreationAssistantDraft.deconstructLocalAsrEnabled).toBe(true);
+        expect(defaultCreationAssistantDraft.deconstructWordLevelAudio).toBe(true);
+
+        expect(defaultCreationAssistantDraft.classicSceneThreshold).toBe(0.20);
+        expect(defaultCreationAssistantDraft.classicMinSceneGapSec).toBe(0.3);
+        expect(defaultCreationAssistantDraft.reverseActiveMode).toBe("classic");
+    });
+
+    it("should isolate classic and deconstruct prompt states and preserve unapplied scripts", async () => {
+        const { useCreationAssistantStore } = await import("../src/stores/use-creation-assistant-store");
+        const store = useCreationAssistantStore.getState();
+
+        // 模拟经典反推产出脚本
+        store.updateDraft({
+            classicPrompt: "【经典时序反推】0-5s 运镜推进特写",
+            classicStatus: "complete",
+        });
+
+        // 模拟创意反推产出分镜
+        store.updateDraft({
+            deconstructPrompt: "【创意分镜拆解】镜头 1：0.0s-3.5s 核心钩子",
+            deconstructStatus: "complete",
+        });
+
+        const currentDraft = useCreationAssistantStore.getState().draft;
+        expect(currentDraft.classicPrompt).toBe("【经典时序反推】0-5s 运镜推进特写");
+        expect(currentDraft.deconstructPrompt).toBe("【创意分镜拆解】镜头 1：0.0s-3.5s 核心钩子");
+
+        // 模拟用户进入配置模式重调参数（非破坏性）
+        store.updateDraft({
+            deconstructSceneThreshold: 0.18,
+            classicSceneThreshold: 0.22,
+        });
+
+        const updatedDraft = useCreationAssistantStore.getState().draft;
+        // 脚本必须完整保留，绝不被清空
+        expect(updatedDraft.classicPrompt).toBe("【经典时序反推】0-5s 运镜推进特写");
+        expect(updatedDraft.deconstructPrompt).toBe("【创意分镜拆解】镜头 1：0.0s-3.5s 核心钩子");
+        expect(updatedDraft.deconstructSceneThreshold).toBe(0.18);
+        expect(updatedDraft.classicSceneThreshold).toBe(0.22);
+    });
 });
+

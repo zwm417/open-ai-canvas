@@ -1,7 +1,9 @@
 import { resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
 import { dataUrlToFile } from "@/lib/image-utils";
 import { buildImageReferencePromptText } from "@/lib/image-reference-prompt";
-import { imageToDataUrl } from "@/services/image-storage";
+// @opc-feature: upstream-image-adaptation [start]
+import { imageToDataUrl, resolveUpstreamImageReference } from "@/services/image-storage";
+// @opc-feature: upstream-image-adaptation [end]
 import type { ReferenceImage } from "@/types/image";
 import { withOpenAIPromptCacheKey } from "@/lib/openai-prompt-cache";
 import { modelCapabilityConfigFor, normalizeImageValue } from "@/lib/model-capabilities";
@@ -33,7 +35,7 @@ async function requestGeminiImages(config: AiConfig, prompt: string, references:
     // 否则资源缓存瞬时未命中时会出现“偶发缺参考图”或把 storageKey 当 URL 请求的问题。
     const referenceParts = await Promise.all(
         references.map(async (image) => {
-            const dataUrl = await imageToDataUrl(image);
+            const dataUrl = await resolveUpstreamImageReference(image, config, { requirement: "require-base64" });
             const inlineData = parseGeminiImageDataUrl(dataUrl);
             return { inlineData };
         }),
@@ -125,11 +127,11 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
     }
 }
 
-async function grokImageInputURL(image: ReferenceImage) {
-    const candidate = image.url?.trim() || "";
-    if (/^https?:\/\//i.test(candidate)) return candidate;
-    return imageToDataUrl(image);
+// @opc-feature: upstream-image-adaptation [start]
+async function grokImageInputURL(image: ReferenceImage, config?: AiConfig) {
+    return resolveUpstreamImageReference(image, config);
 }
+// @opc-feature: upstream-image-adaptation [end]
 
 export async function requestEdit(config: AiConfig, prompt: string, references: ReferenceImage[], mask?: ReferenceImage, options?: RequestOptions) {
     const selectedModel = config.model || config.imageModel;
@@ -151,7 +153,9 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
         if (mask) throw new Error("Grok 图片协议不支持蒙版编辑，请移除蒙版后重试");
         if (references.length !== 1) throw new Error("Grok 图片编辑必须提供且仅支持 1 张参考图");
         try {
-            const imageUrl = await grokImageInputURL(references[0]);
+            // @opc-feature: upstream-image-adaptation [start]
+            const imageUrl = await resolveUpstreamImageReference(references[0], requestConfig, { targetModel: requestConfig.model });
+            // @opc-feature: upstream-image-adaptation [end]
             const size = normalizedImage.size && normalizedImage.size !== "auto" ? normalizedImage.size : undefined;
             const aspectRatio = size?.includes(":") ? size : undefined;
             const resolution = normalizeGrokImageResolution(normalizedImage.quality);
@@ -181,7 +185,9 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
         const sizeRequest = resolveImageRequestSize(imageProfile, quality, normalizedImage.size);
         const requestSize = sizeRequest?.parameter === "size" ? { ...sizeRequest, value: normalizeVolcengineArkImageSize(sizeRequest.value)! } : sizeRequest;
         try {
-            const images = await Promise.all(references.map((image) => imageToDataUrl(image)));
+            // @opc-feature: upstream-image-adaptation [start]
+            const images = await Promise.all(references.map((image) => resolveUpstreamImageReference(image, requestConfig, { requirement: "require-base64" })));
+            // @opc-feature: upstream-image-adaptation [end]
             const response = await postVolcengineArkImage(
                 requestConfig,
                 {
@@ -217,9 +223,14 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     if (requestSize) {
         formData.set(requestSize.parameter, requestSize.value);
     }
-    const files = await Promise.all(references.map(async (image) => dataUrlToFile({ ...image, dataUrl: await imageToDataUrl(image) })));
+    // @opc-feature: upstream-image-adaptation [start]
+    const files = await Promise.all(references.map(async (image) => dataUrlToFile({ ...image, dataUrl: await resolveUpstreamImageReference(image, requestConfig, { requirement: "require-base64" }) })));
     files.forEach((file) => formData.append("image", file));
-    if (mask) formData.set("mask", dataUrlToFile(mask));
+    if (mask) {
+        const maskDataUrl = await resolveUpstreamImageReference(mask, requestConfig, { requirement: "require-base64", label: "蒙版图" });
+        formData.set("mask", dataUrlToFile({ ...mask, dataUrl: maskDataUrl }));
+    }
+    // @opc-feature: upstream-image-adaptation [end]
 
     try {
         const images = parseImagePayload(await imageChannelTransport(requestConfig).postForm<ImageApiResponse>(aiApiUrl(requestConfig, "/images/edits"), formData, { signal: options?.signal, headers: aiHeaders(requestConfig) }));
@@ -229,16 +240,44 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     }
 }
 
+// @opc-feature: upstream-image-adaptation [start]
+async function adaptMessagesImagesForUpstream<T extends ResponseInputMessage | AiTextMessage>(messages: T[], config: AiConfig): Promise<T[]> {
+    return Promise.all(
+        messages.map(async (msg) => {
+            if (!("content" in msg) || !Array.isArray(msg.content)) return msg;
+            const adaptedContent = await Promise.all(
+                (msg.content as any[]).map(async (part) => {
+                    if (part.type !== "image_url") return part;
+                    const originalUrl = part.image_url?.url || "";
+                    const adaptedUrl = await resolveUpstreamImageReference({ url: originalUrl }, config);
+                    return {
+                        ...part,
+                        image_url: { ...part.image_url, url: adaptedUrl },
+                    };
+                })
+            );
+            return {
+                ...msg,
+                content: adaptedContent,
+            } as T;
+        })
+    );
+}
+// @opc-feature: upstream-image-adaptation [end]
+
 export async function requestImageQuestion(config: AiConfig, messages: AiTextMessage[], onDelta: (text: string) => void, options?: RequestOptions) {
     const requestConfig = resolveModelRequestConfig(config, config.model || config.textModel);
+    // @opc-feature: upstream-image-adaptation [start]
+    const effectiveMessages = await adaptMessagesImagesForUpstream(messages, requestConfig);
+    // @opc-feature: upstream-image-adaptation [end]
     try {
         if (requestConfig.apiFormat === "gemini") {
-            const answer = (await requestGeminiStreamingResponse(requestConfig, toGeminiBody(requestConfig, messages), onDelta, options)).content || "没有返回内容";
+            const answer = (await requestGeminiStreamingResponse(requestConfig, toGeminiBody(requestConfig, effectiveMessages), onDelta, options)).content || "没有返回内容";
             if (answer === "没有返回内容") onDelta(answer);
             return answer;
         }
         if (requestConfig.interfaceType === "claude-api") {
-            const answer = (await requestStreamingClaude(requestConfig, toClaudeBody(requestConfig, messages), onDelta, options)).content || "没有返回内容";
+            const answer = (await requestStreamingClaude(requestConfig, toClaudeBody(requestConfig, effectiveMessages), onDelta, options)).content || "没有返回内容";
             if (answer === "没有返回内容") onDelta(answer);
             return answer;
         }
@@ -249,7 +288,7 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
                         requestConfig,
                         {
                             model: requestConfig.model,
-                            messages: toChatCompletionMessages(withSystemMessage(requestConfig, messages)),
+                            messages: toChatCompletionMessages(withSystemMessage(requestConfig, effectiveMessages)),
                             // @opc-feature: request-generation-options [start]
                             ...(typeof options?.temperature === "number" ? { temperature: options.temperature } : {}),
                             ...(typeof options?.presence_penalty === "number" ? { presence_penalty: options.presence_penalty } : {}),
@@ -269,7 +308,7 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
                     requestConfig,
                     {
                         model: requestConfig.model,
-                        input: toResponseInput(withSystemMessage(requestConfig, messages)),
+                        input: toResponseInput(withSystemMessage(requestConfig, effectiveMessages)),
                         // @opc-feature: request-generation-options [start]
                         ...(typeof options?.temperature === "number" ? { temperature: options.temperature } : {}),
                         ...(typeof options?.presence_penalty === "number" ? { presence_penalty: options.presence_penalty } : {}),
@@ -289,15 +328,18 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
 
 export async function requestToolResponse(config: AiConfig, messages: ResponseInputMessage[], tools: ResponseFunctionTool[], toolChoice: ToolChoice = "auto", onDelta?: (text: string) => void, options?: RequestOptions): Promise<ToolResponseResult> {
     const requestConfig = resolveModelRequestConfig(config, config.model || config.textModel);
+    // @opc-feature: upstream-image-adaptation [start]
+    const effectiveMessages = await adaptMessagesImagesForUpstream(messages, requestConfig);
+    // @opc-feature: upstream-image-adaptation [end]
     try {
         if (requestConfig.apiFormat === "gemini") {
-            return await requestGeminiStreamingResponse(requestConfig, toGeminiBody(requestConfig, messages, toGeminiToolOptions(tools, toolChoice)), onDelta, options);
+            return await requestGeminiStreamingResponse(requestConfig, toGeminiBody(requestConfig, effectiveMessages, toGeminiToolOptions(tools, toolChoice)), onDelta, options);
         }
-        if (requestConfig.interfaceType === "claude-api") return await requestStreamingClaude(requestConfig, toClaudeBody(requestConfig, messages, tools), onDelta, options);
+        if (requestConfig.interfaceType === "claude-api") return await requestStreamingClaude(requestConfig, toClaudeBody(requestConfig, effectiveMessages, tools), onDelta, options);
         if (requestConfig.interfaceType === "chat-completion" || !requestConfig.interfaceType) {
             const chatPayload: Record<string, unknown> = {
                 model: requestConfig.model,
-                messages: toChatCompletionMessages(withSystemMessage(requestConfig, messages)),
+                messages: toChatCompletionMessages(withSystemMessage(requestConfig, effectiveMessages)),
                 tools,
                 tool_choice: toChatCompletionToolChoice(toolChoice),
                 parallel_tool_calls: false,
@@ -325,7 +367,7 @@ export async function requestToolResponse(config: AiConfig, messages: ResponseIn
             withOpenAIPromptCacheKey(
                 {
                     model: requestConfig.model,
-                    input: toResponseInput(withSystemMessage(requestConfig, messages)),
+                    input: toResponseInput(withSystemMessage(requestConfig, effectiveMessages)),
                     tools: tools.map(toResponseTool),
                     tool_choice: toolChoice,
                     parallel_tool_calls: false,

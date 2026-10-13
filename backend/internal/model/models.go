@@ -26,6 +26,24 @@ type AssetVersionStatus string
 type WorkflowStatus string
 type WorkflowStepStatus string
 
+// @opc-adapter: media-dual-track [start]
+type LocalStatus string
+type OSSSyncStatus string
+
+const (
+	LocalStatusPending LocalStatus = "pending"
+	LocalStatusReady   LocalStatus = "ready"
+	LocalStatusFailed  LocalStatus = "failed"
+	LocalStatusSkipped LocalStatus = "skipped"
+
+	OSSSyncStatusPending     OSSSyncStatus = "pending"
+	OSSSyncStatusSynced      OSSSyncStatus = "synced"
+	OSSSyncStatusSkipped     OSSSyncStatus = "skipped"
+	OSSSyncStatusFailed      OSSSyncStatus = "failed"
+	OSSSyncStatusInterrupted OSSSyncStatus = "interrupted"
+)
+// @opc-adapter: media-dual-track [end]
+
 // AdminAuditEvent 只允许追加，用于还原管理员写操作，禁止作为可编辑业务状态使用。
 type AdminAuditEvent struct {
 	ID           string    `json:"id" gorm:"primaryKey;size:36"`

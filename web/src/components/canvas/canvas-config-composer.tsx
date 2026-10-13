@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "react";
+import type { ClipboardEvent, CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "react";
 import { Button, Image } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { BookmarkPlus, FileText, Image as ImageIcon, Music2, Pencil, Sparkles, Video, X } from "lucide-react";
@@ -259,6 +259,28 @@ export function CanvasConfigComposer({ value, inputs, skillReferences = [], gene
                         composingRef.current = false;
                         syncFromEditor();
                     }}
+                    // @opc-feature: canvas-prompt-newline-preservation [start]
+                    onPaste={(event: ClipboardEvent<HTMLDivElement>) => {
+                        event.preventDefault();
+                        const text = event.clipboardData.getData("text/plain");
+                        if (!text) return;
+                        if (typeof document !== "undefined" && document.queryCommandSupported?.("insertText")) {
+                            document.execCommand("insertText", false, text);
+                        } else {
+                            const selection = window.getSelection();
+                            if (!selection?.rangeCount) return;
+                            const range = selection.getRangeAt(0);
+                            range.deleteContents();
+                            const textNode = document.createTextNode(text);
+                            range.insertNode(textNode);
+                            range.setStartAfter(textNode);
+                            range.collapse(true);
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                        }
+                        syncFromEditor();
+                    }}
+                    // @opc-feature: canvas-prompt-newline-preservation [end]
                     onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
                         event.stopPropagation();
                         if (event.key === "/" && !mention) window.setTimeout(() => setPresetOpen(true));
@@ -438,22 +460,97 @@ function createReferenceChip(input: NodeGenerationInput, inputs: NodeGenerationI
     return wrapper;
 }
 
+// @opc-feature: canvas-prompt-newline-preservation [start]
+function isBlockElement(node: Node): boolean {
+    if (!(node instanceof HTMLElement)) return false;
+    const tag = node.tagName.toUpperCase();
+    return (
+        tag === "DIV" ||
+        tag === "P" ||
+        tag === "LI" ||
+        tag === "TR" ||
+        tag === "BLOCKQUOTE" ||
+        tag === "H1" ||
+        tag === "H2" ||
+        tag === "H3" ||
+        tag === "H4" ||
+        tag === "H5" ||
+        tag === "H6"
+    );
+}
+
+function serializeBlockChildren(children: ChildNode[]): string {
+    if (!children.length) return "";
+    if (children.length === 1 && children[0] instanceof HTMLElement && children[0].tagName === "BR") return "";
+
+    const lastIdx = children.length - 1;
+    let text = "";
+    for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (child.nodeType === Node.TEXT_NODE) {
+            text += child.textContent || "";
+        } else if (child instanceof HTMLElement) {
+            const elem = child as HTMLElement;
+            const label = elem.dataset.referenceToken || elem.dataset.refLabel;
+            if (label) {
+                text += label;
+            } else if (elem.tagName === "BR") {
+                if (i === lastIdx && lastIdx > 0) {
+                    continue; // 忽略 Chrome 在块级元素末尾追加的占位 bogus BR
+                }
+                text += "\n";
+            } else if (isBlockElement(elem)) {
+                if (text.length > 0 && !text.endsWith("\n")) text += "\n";
+                text += serializeBlockChildren(Array.from(elem.childNodes));
+            } else {
+                text += serializeBlockChildren(Array.from(elem.childNodes));
+            }
+        }
+    }
+    return text;
+}
+
 function serializeEditor(editor: HTMLElement) {
     return serializeNodes(editor.childNodes).replace(/\uFEFF/g, "");
 }
 
-function serializeNodes(nodes: NodeListOf<ChildNode>) {
+function serializeNodes(nodes: NodeListOf<ChildNode> | ChildNode[]) {
+    const list = Array.from(nodes);
     let result = "";
-    nodes.forEach((node) => {
-        if (node.nodeType === Node.TEXT_NODE) result += node.textContent || "";
-        if (!(node instanceof HTMLElement)) return;
-        const referenceToken = node.dataset.referenceToken;
-        if (referenceToken) result += referenceToken;
-        else if (node.tagName === "BR") result += "\n";
-        else result += serializeNodes(node.childNodes);
-    });
+
+    for (let i = 0; i < list.length; i++) {
+        const node = list[i];
+        const isLast = i === list.length - 1;
+
+        if (node.nodeType === Node.TEXT_NODE) {
+            result += node.textContent || "";
+        } else if (node instanceof HTMLElement) {
+            const elem = node as HTMLElement;
+            const label = elem.dataset.referenceToken || elem.dataset.refLabel;
+            if (label) {
+                result += label;
+            } else if (elem.tagName === "BR") {
+                result += "\n";
+            } else if (isBlockElement(elem)) {
+                if (result.length > 0 && !result.endsWith("\n")) {
+                    result += "\n";
+                }
+                const blockText = serializeBlockChildren(Array.from(elem.childNodes));
+                result += blockText;
+                if (!isLast) {
+                    if (blockText === "" || !result.endsWith("\n")) {
+                        result += "\n";
+                    }
+                }
+            } else {
+                result += serializeNodes(elem.childNodes);
+            }
+        }
+    }
+
     return result;
 }
+// @opc-feature: canvas-prompt-newline-preservation [end]
 
 function removeActiveMention() {
     const selection = window.getSelection();

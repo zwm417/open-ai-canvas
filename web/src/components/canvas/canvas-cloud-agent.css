@@ -1764,6 +1764,22 @@
     display: none;
 }
 
+/* 貔貅桌宠形象：去掉圆形底板与按钮投影，宠物自带落地影子；状态点收进角落不压住犄角。 */
+.canvas-agent-launcher.canvas-agent-launcher-pixiu {
+    padding: 0;
+    border-radius: 999px;
+    box-shadow: none;
+}
+
+.canvas-agent-launcher-pixiu::before {
+    display: none;
+}
+
+.canvas-agent-launcher-pixiu .canvas-agent-launcher-status {
+    top: 3px;
+    right: 4px;
+}
+
 .canvas-agent-launcher-status {
     position: absolute;
     top: 6px;

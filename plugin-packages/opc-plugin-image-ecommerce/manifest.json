@@ -2,17 +2,23 @@
   "apiVersion": "yingce.plugin/v1",
   "id": "opc-plugin-image-ecommerce",
   "name": "电商全案与商品摄影",
-  "version": "1.0.0",
-  "description": "提供商品白底图、服装模特上身、商品实景使用、服装改款、3D爆炸分解图以及电商8联商详套图的商业视觉全流程技能。",
+  "version": "1.2.0",
+  "description": "提供商品白底图、服装模特上身、商品实景使用、服装改款、亚马逊卖点标注图、广告创意海报、3D爆炸分解图以及电商8联商详套图的商业视觉全流程技能。",
   "author": "opc-Copilot",
-  "surfaces": ["fullscreen", "settings"],
+  "surfaces": [
+    "fullscreen",
+    "settings"
+  ],
   "permissions": [
     "generation.run",
     "media.read",
     "ai.text"
   ],
   "trusted": true,
-  "runtime": { "backend": "trusted-backend", "web": "declarative" },
+  "runtime": {
+    "backend": "trusted-backend",
+    "web": "declarative"
+  },
   "contributes": {
     "workbenchCategories": [
       {
@@ -48,6 +54,53 @@
         "isRecommended": true
       },
       {
+        "id": "amazon-listing-images",
+        "categoryId": "ecommerce",
+        "secondaryCategoryIds": [
+          "recommend",
+          "ecommerce"
+        ],
+        "name": "亚马逊卖点标注图",
+        "subtitle": "产品标线标注与工业级信息图",
+        "description": "严格遵循亚马逊 1:1 白底与信息图规范，基于产品渲染图生成精细工程引线、微距特写与关键技术参数排版。",
+        "isRecommended": true,
+        "defaultAspectRatio": "1:1",
+        "defaultCount": 1,
+        "keywords": [
+          "亚马逊",
+          "amazon",
+          "listing",
+          "卖点",
+          "主图",
+          "辅图",
+          "电商"
+        ]
+      },
+      {
+        "id": "ad-creative",
+        "categoryId": "ecommerce",
+        "secondaryCategoryIds": [
+          "recommend",
+          "ecommerce",
+          "social"
+        ],
+        "name": "广告创意海报",
+        "subtitle": "营销大促与商业海报留白排版",
+        "description": "商业级大促营销海报，智能计算主体视觉重心与文案呼吸留白，结合高精度字体渲染与行动转化徽章。",
+        "isRecommended": true,
+        "defaultAspectRatio": "1:1",
+        "defaultCount": 1,
+        "keywords": [
+          "广告",
+          "海报",
+          "banner",
+          "创意",
+          "推广",
+          "投放",
+          "slogan"
+        ]
+      },
+      {
         "id": "clothing-redesign",
         "categoryId": "ecommerce",
         "name": "服装改款",
@@ -60,13 +113,6 @@
         "name": "3D拆解爆炸图",
         "subtitle": "生成产品内部精密结构与组件拆解",
         "description": "专业展示工业产品与数码配件的精细拆解透视与结构层次。"
-      },
-      {
-        "id": "detail-8pack",
-        "categoryId": "ecommerce",
-        "name": "商详套图全案",
-        "subtitle": "首图/卖点/场景/成分等8大细分",
-        "description": "一站式规划生成电商详情页成套视觉物料，包含主图、卖点特写、成分与包装图。"
       },
       {
         "id": "ghost-mannequin-3d",

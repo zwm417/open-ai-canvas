@@ -24,6 +24,10 @@ const (
 	maxRuntimeTimeoutMinutes        = 9_999
 	defaultWorkerConcurrency        = 8
 	defaultChannelConcurrency       = 8
+	// @opc-adapter: workbench_batch_concurrency [start]
+	defaultActiveTaskLimit          = 20
+	defaultTaskCreateRate           = 120
+	// @opc-adapter: workbench_batch_concurrency [end]
 )
 
 // 画布 Agent 单步的输出上限与执行时限。上限是"每次模型调用"的边界（思考 + 正文 + 工具参数），
@@ -55,6 +59,16 @@ func agentStepTimeoutSecondsDefault() int {
 	}
 	return min(max(value, MinRuntimeAgentStepTimeoutSeconds), MaxRuntimeAgentStepTimeoutSeconds)
 }
+
+// @opc-adapter: workbench_batch_concurrency [start]
+func defaultActiveTaskLimitValue() int {
+	return min(max(envInt("CANVAS_ACTIVE_TASK_LIMIT", defaultActiveTaskLimit), 1), maxRuntimeConcurrency)
+}
+
+func defaultTaskCreateRateValue() int {
+	return min(max(envInt("CANVAS_TASK_CREATE_RATE", defaultTaskCreateRate), 1), maxRuntimeRate)
+}
+// @opc-adapter: workbench_batch_concurrency [end]
 
 type RuntimeResourcePolicy struct {
 	ResourceUploadMB        int64 `json:"resourceUploadMB"`
@@ -169,7 +183,9 @@ func DefaultRuntimePolicy() RuntimePolicySetting {
 		Task: RuntimeTaskPolicy{
 			WorkerConcurrency:        defaultWorkerConcurrencyLimit(),
 			ChannelConcurrency:       defaultChannelConcurrencyLimit(),
-			ActiveTaskLimit:          5,
+			// @opc-adapter: workbench_batch_concurrency [start]
+			ActiveTaskLimit:          defaultActiveTaskLimitValue(),
+			// @opc-adapter: workbench_batch_concurrency [end]
 			ImageTimeoutMinutes:      8,
 			TextTimeoutMinutes:       8,
 			AudioTimeoutMinutes:      8,
@@ -181,7 +197,9 @@ func DefaultRuntimePolicy() RuntimePolicySetting {
 			AgentMaxSessions:         DefaultRuntimeAgentSessions,
 		},
 		Request: RuntimeRequestPolicy{
-			TaskCreatePerMinute:        30,
+			// @opc-adapter: workbench_batch_concurrency [start]
+			TaskCreatePerMinute:        defaultTaskCreateRateValue(),
+			// @opc-adapter: workbench_batch_concurrency [end]
 			ResourceUploadPerMinute:    30,
 			ResourceImportPerMinute:    30,
 			AssetWritePerMinute:        120,
@@ -365,6 +383,14 @@ func (s *Service) readRuntimePolicy() (*model.SystemSetting, RuntimePolicySettin
 	if strings.TrimSpace(setting.ValueJSON) == "" || json.Unmarshal([]byte(setting.ValueJSON), &value) != nil {
 		return nil, RuntimePolicySetting{}, errors.New("资源与请求策略配置格式无效")
 	}
+	// @opc-adapter: workbench_batch_concurrency [start]
+	if envLimit := envInt("CANVAS_ACTIVE_TASK_LIMIT", 0); envLimit > 0 {
+		value.Task.ActiveTaskLimit = min(max(envLimit, 1), maxRuntimeConcurrency)
+	}
+	if envRate := envInt("CANVAS_TASK_CREATE_RATE", 0); envRate > 0 {
+		value.Request.TaskCreatePerMinute = min(max(envRate, 1), maxRuntimeRate)
+	}
+	// @opc-adapter: workbench_batch_concurrency [end]
 	if err := validateRuntimePolicy(value); err != nil {
 		return nil, RuntimePolicySetting{}, err
 	}

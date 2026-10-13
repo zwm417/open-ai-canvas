@@ -1,0 +1,6 @@
+interface:
+  display_name: "商品主图与套图"
+  short_description: "基于真实商品参考图生成高一致性的主图、卖点图和场景套图"
+  default_prompt: "使用 $ecommerce-image-workflow 根据商品参考图生成主图、卖点图和场景套图，并确保不同图片背景明显不同。"
+policy:
+  allow_implicit_invocation: true

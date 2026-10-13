@@ -928,7 +928,7 @@ export default function CreativeInspirationsPage() {
                                             preset={preset}
                                             onClick={() => setLightboxItem(preset)}
                                         >
-                                            {/* 顶部信息徽标 */}
+                                            {/* 顶部信息徽标 (高对比度清晰呈现：黑底白字+琥珀金点缀，杜绝未悬停时发暗看不清) */}
                                             <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none z-10">
                                                 <div className="flex items-center gap-1.5 flex-wrap pointer-events-auto">
                                                     <button
@@ -937,13 +937,16 @@ export default function CreativeInspirationsPage() {
                                                             e.stopPropagation();
                                                             handleCategoryChange(preset.category);
                                                         }}
-                                                        className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-black/60 hover:bg-amber-600/90 text-amber-300 hover:text-white border border-amber-500/30 hover:border-amber-400 backdrop-blur-md transition-all cursor-pointer shadow-sm"
+                                                        style={{ color: "#ffffff", backgroundColor: "rgba(28, 25, 23, 0.92)" }}
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold !text-white hover:!text-white !bg-stone-900/90 dark:!bg-black/90 hover:!bg-amber-600 border border-white/25 hover:border-amber-400 backdrop-blur-md transition-all cursor-pointer shadow-md select-none active:scale-95"
                                                     >
-                                                        {preset.category}
+                                                        <span className="size-1.5 rounded-full bg-amber-400 shrink-0 shadow-[0_0_6px_rgba(251,191,36,0.8)]" />
+                                                        <span className="!text-white" style={{ color: "#ffffff" }}>{preset.category}</span>
                                                     </button>
                                                     {preset.crossCategories && preset.crossCategories.length > 0 && (
                                                         <span
-                                                            className="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-black/60 backdrop-blur-md text-indigo-300 border border-indigo-500/30"
+                                                            style={{ color: "#c7d2fe", backgroundColor: "rgba(28, 25, 23, 0.92)" }}
+                                                            className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold !bg-stone-900/90 dark:!bg-black/90 backdrop-blur-md !text-indigo-200 border border-indigo-400/40 shadow-sm"
                                                             title={`交叉专题：${preset.crossCategories.join(", ")}`}
                                                         >
                                                             +{preset.crossCategories.length}
@@ -952,17 +955,26 @@ export default function CreativeInspirationsPage() {
                                                 </div>
                                                 <div className="flex items-center gap-1.5">
                                                     {preset.isOverridden && (
-                                                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-400/40 text-amber-100 border border-amber-300/30 backdrop-blur-sm">
+                                                        <span
+                                                            style={{ color: "#0c0a09", backgroundColor: "#f59e0b" }}
+                                                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded !bg-amber-500 !text-stone-950 border border-amber-300 shadow-sm"
+                                                        >
                                                             已修改
                                                         </span>
                                                     )}
-                                                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded backdrop-blur-sm border flex items-center gap-1 ${
-                                                        isCardVertical
-                                                            ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/40 font-semibold shadow-sm"
-                                                            : "bg-black/60 text-stone-300 border-white/10"
-                                                    }`}>
+                                                    <span
+                                                        style={{
+                                                            color: isCardVertical ? "#6ee7b7" : "#e7e5e4",
+                                                            backgroundColor: isCardVertical ? "rgba(6, 78, 59, 0.92)" : "rgba(28, 25, 23, 0.92)",
+                                                        }}
+                                                        className={`text-[10px] font-mono px-2 py-0.5 rounded backdrop-blur-sm border flex items-center gap-1 ${
+                                                            isCardVertical
+                                                                ? "!bg-emerald-950/90 !text-emerald-300 border-emerald-500/40 font-semibold shadow-sm"
+                                                                : "!bg-stone-900/90 dark:!bg-black/90 !text-stone-200 border-white/20"
+                                                        }`}
+                                                    >
                                                         {isCardVertical && <Smartphone className="size-2.5 text-emerald-400" />}
-                                                        <span>{preset.recommendedParams?.aspectRatio || "1:1"}</span>
+                                                        <span style={{ color: isCardVertical ? "#6ee7b7" : "#e7e5e4" }}>{preset.recommendedParams?.aspectRatio || "1:1"}</span>
                                                         {isCardVertical && <span className="text-[9px] text-emerald-400 font-sans">竖屏</span>}
                                                     </span>
                                                 </div>

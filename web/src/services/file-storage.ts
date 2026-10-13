@@ -125,7 +125,14 @@ export async function uploadMediaFile(input: Blob, prefix = "file", onProgress?:
     }
 }
 
-export async function resolveMediaUrl(storageKey?: string, fallback = "") {
+function inferStorageMediaType(storageKey: string, fallback: string): "image" | "video" | "audio" {
+    const combined = `${storageKey} ${fallback}`.toLowerCase();
+    if (/\.(mp3|wav|m4a|aac|flac|ogg|opus)\b|audio/.test(combined)) return "audio";
+    if (/\.(mp4|webm|mov|m4v|ogv|avi|mkv|flv)\b|video/.test(combined)) return "video";
+    return "image";
+}
+
+export async function resolveMediaUrl(storageKey?: string, fallback = "", mediaType?: "image" | "video" | "audio") {
     if (!storageKey) return fallback;
     // @opc-feature: zero-overhead-local-cache [start]
     // 商业化交付与极致流畅规范：桌面端内嵌优先以本地为主，
@@ -133,13 +140,15 @@ export async function resolveMediaUrl(storageKey?: string, fallback = "") {
     const memoryHit = peekLocalFirstMedia(storageKey, fallback) || peekCachedResourceObjectUrl(storageKey);
     if (memoryHit) return memoryHit;
 
+    const resolvedMediaType = mediaType || inferStorageMediaType(storageKey, fallback);
+
     if (storageKey.startsWith("file:") || storageKey.startsWith("media:")) {
         const cached = objectUrls.get(storageKey);
         if (cached) return cached;
         try {
             const resolved = await resolveLocalFirstMedia(storageKey, {
                 fallbackUrl: fallback,
-                mediaType: "video",
+                mediaType: resolvedMediaType,
             });
             if (resolved?.url) return resolved.url;
         } catch {}
@@ -155,7 +164,7 @@ export async function resolveMediaUrl(storageKey?: string, fallback = "") {
         try {
             const resolved = await resolveLocalFirstMedia(storageKey, {
                 fallbackUrl: fallback,
-                mediaType: "video",
+                mediaType: resolvedMediaType,
             });
             if (resolved && resolved.url) {
                 return resolved.url;
@@ -179,12 +188,12 @@ export async function resolveMediaUrl(storageKey?: string, fallback = "") {
     if (!blob) return fallback;
     const url = URL.createObjectURL(blob);
     objectUrls.set(storageKey, url);
-    const mediaType: "image" | "video" | "audio" = blob.type?.startsWith("video/")
+    const detectedMediaType: "image" | "video" | "audio" = blob.type?.startsWith("video/")
         ? "video"
         : blob.type?.startsWith("audio/")
         ? "audio"
         : "image";
-    primeLocalFirstMedia(storageKey, url, blob, mediaType);
+    primeLocalFirstMedia(storageKey, url, blob, detectedMediaType);
     return url;
 }
 
@@ -210,11 +219,11 @@ export async function setMediaBlob(storageKey: string, blob: Blob) {
 export async function deleteStoredMedia(keys: Iterable<string>) {
     await Promise.all(
         Array.from(new Set(keys)).map(async (key) => {
-            if (resourceIdFromStorageKey(key)) return;
             const url = objectUrls.get(key);
             if (url) URL.revokeObjectURL(url);
             objectUrls.delete(key);
             evictLocalFirstMedia(key, url);
+            if (resourceIdFromStorageKey(key)) return;
             await store.removeItem(key);
         }),
     );

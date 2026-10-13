@@ -1,0 +1,59 @@
+/*
+ * The admin portal is intentionally scoped by body.admin-overlays. Ant Design
+ * renders popup nodes outside the triggering form, so selectors tied only to
+ * .admin-modal-root cannot be a reliable theme boundary.
+ */
+[data-admin-overlay-host] {
+    position: fixed;
+    z-index: 10000;
+    inset: 0;
+    pointer-events: none;
+}
+
+[data-admin-overlay-host] > * {
+    pointer-events: auto;
+}
+
+body.admin-overlays :where(.ant-select-dropdown, .ant-dropdown-menu, .ant-popover-inner, .ant-picker-dropdown .ant-picker-panel-container, .ant-cascader-dropdown) {
+    border: 1px solid var(--admin-border) !important;
+    border-radius: var(--admin-radius-lg) !important;
+    background: var(--admin-surface) !important;
+    background-image: none !important;
+    color: var(--admin-text) !important;
+    box-shadow: var(--admin-shadow-overlay) !important;
+    backdrop-filter: none !important;
+    isolation: isolate;
+}
+
+body.admin-overlays :where(.ant-select-item, .ant-dropdown-menu-item, .ant-dropdown-menu-submenu-title, .ant-picker-cell, .ant-cascader-menu-item) {
+    color: var(--admin-text) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+body.admin-overlays :where(.ant-select-item-option-content, .ant-dropdown-menu-title-content) {
+    color: inherit !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+body.admin-overlays :where(.ant-select-item-option-active:not(.ant-select-item-option-disabled), .ant-dropdown-menu-item:not(.ant-dropdown-menu-item-disabled):hover, .ant-dropdown-menu-submenu-title:not(.ant-dropdown-menu-item-disabled):hover, .ant-picker-cell-in-view:hover .ant-picker-cell-inner, .ant-cascader-menu-item-active) {
+    background: var(--admin-surface-2) !important;
+    color: var(--admin-text) !important;
+}
+
+body.admin-overlays :where(.ant-select-item-option-selected:not(.ant-select-item-option-disabled), .ant-dropdown-menu-item-selected, .ant-picker-cell-selected .ant-picker-cell-inner, .ant-cascader-menu-item-active) {
+    background: var(--admin-surface-3) !important;
+    color: var(--admin-text) !important;
+    font-weight: 600;
+}
+
+body.admin-overlays :where(.ant-select-dropdown, .ant-dropdown, .ant-popover, .ant-picker-dropdown, .ant-cascader-dropdown) {
+    z-index: 10050 !important;
+}
+
+.dark body.admin-overlays :where(.ant-select-dropdown, .ant-dropdown-menu, .ant-popover-inner, .ant-picker-dropdown .ant-picker-panel-container, .ant-cascader-dropdown) {
+    border-color: var(--admin-border) !important;
+    background: var(--admin-surface) !important;
+    color: var(--admin-text) !important;
+}

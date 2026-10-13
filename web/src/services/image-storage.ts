@@ -10,6 +10,11 @@ import { evictLocalFirstMedia, peekLocalFirstMedia, resolveLocalFirstMedia } fro
 // @opc-feature: asset-deduplication [start]
 import { computeBlobSha256, computeTextSha256 } from "@/lib/asset-fingerprint";
 // @opc-feature: asset-deduplication [end]
+// @opc-feature: upstream-image-adaptation [start]
+import { resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
+import { isVolcengineArkImageProtocol } from "@/lib/model-protocols";
+import { getResourceInputURL } from "@/services/api/resources";
+// @opc-feature: upstream-image-adaptation [end]
 
 export type UploadedImage = {
     url: string;
@@ -172,24 +177,140 @@ export async function setImageBlob(storageKey: string, blob: Blob) {
 export async function imageToDataUrl(image: { url?: string; dataUrl?: string; storageKey?: string; name?: string; type?: string; mimeType?: string }) {
     if (image.storageKey) {
         const blob = await getImageBlob(image.storageKey);
-        if (blob) return blobToDataUrl(await normalizeImageBlob(blob, image.name || image.url));
+        if (blob) return blobToDataUrl(await normalizeImageBlob(blob, image.name || image.url, image.type || image.mimeType));
     }
     const url = image.dataUrl || (await resolveImageUrl(image.storageKey, image.url || ""));
     if (!url) return url;
     if (url.startsWith("data:image/")) return url;
-    if (url.startsWith("data:")) return blobToDataUrl(await normalizeImageBlob(await (await fetch(url)).blob(), image.name));
-    const blob = await (await fetch(url, { credentials: isResourceUrl(url) ? "include" : "same-origin" })).blob();
-    return blobToDataUrl(await normalizeImageBlob(blob, image.name || url));
+    if (url.startsWith("data:")) return blobToDataUrl(await normalizeImageBlob(await (await fetch(url)).blob(), image.name, image.type || image.mimeType));
+    let fetchUrl = url;
+    if (typeof window !== "undefined" && url.startsWith("/")) {
+        fetchUrl = `${window.location.origin}${url}`;
+    }
+    const blob = await (await fetch(fetchUrl, { credentials: isResourceUrl(url) ? "include" : "same-origin" })).blob();
+    return blobToDataUrl(await normalizeImageBlob(blob, image.name || url, image.type || image.mimeType));
 }
+
+// @opc-feature: upstream-image-adaptation [start]
+export type UpstreamImageRequirement = "auto" | "require-url" | "require-base64";
+
+export interface UpstreamImageAdaptOptions {
+    targetModel?: string;
+    requirement?: UpstreamImageRequirement;
+    label?: string;
+}
+
+export function isPublicMediaUrl(value?: string): boolean {
+    return /^https?:\/\//i.test(String(value || "").trim());
+}
+
+/**
+ * 智能嗅探上游渠道/模型对图片素材的协议要求：
+ * - "require-url": 必须为公网可达 URL（例如插件声明 requiresPublicMediaUrls、第三方 Webhook 等）
+ * - "require-base64": 必须为标准带 MIME 类型的 Base64 Data URL（例如原生 Gemini API、火山方舟等）
+ * - "auto": 自适应模式（OpenAI 兼容协议 / NewAPI / Claude 等）：公网 URL 优先，本地/内网/未公开素材自动转换为合规 Base64 Data URL
+ */
+export function detectUpstreamImageRequirement(config?: AiConfig, targetModel?: string): UpstreamImageRequirement {
+    if (!config) return "auto";
+    const safeConfig = { ...config, channels: config.channels || [], models: config.models || [] };
+    const selectedModel = targetModel || safeConfig.model || safeConfig.imageModel || safeConfig.textModel;
+    const requestConfig = resolveModelRequestConfig(safeConfig, selectedModel);
+
+    const explicitInterfaceType = (config as any)?.interfaceType;
+    const effectiveInterfaceType = explicitInterfaceType || requestConfig.interfaceType || "";
+    const explicitApiFormat = (config as any)?.apiFormat;
+    const effectiveApiFormat = explicitApiFormat || requestConfig.apiFormat || "";
+
+    // 1. 严格要求公网可达 URL 的协议或插件通道
+    if (
+        effectiveInterfaceType === "agnes-image" ||
+        (requestConfig as any).requiresPublicMediaUrls ||
+        (safeConfig as any).requiresPublicMediaUrls
+    ) {
+        return "require-url";
+    }
+
+    // 2. 严格要求内联 Base64 的原生协议
+    // - Gemini 原生协议（apiFormat === "gemini" 或 interfaceType === "gemini-image"）：
+    //   Gemini API inlineData 仅支持内联 base64 字节，不支持随意传入任意公网外部 url
+    // - 火山方舟图片原生协议（volcengine-ark-image / volcengine-ark-agent-plan-image）：直接接受 base64
+    if (
+        effectiveApiFormat === "gemini" ||
+        effectiveInterfaceType === "gemini-image" ||
+        isVolcengineArkImageProtocol(effectiveInterfaceType)
+    ) {
+        return "require-base64";
+    }
+
+    // 3. 自适应协议（chat-completion、claude-api、grok-image 等）
+    return "auto";
+}
+
+/**
+ * 将任意形态的图片素材（本地 resource:id、/api/resources/... 相对路径、blob:、公网 URL、DataURL）
+ * 根据上游通道的协议要求，自动适配为标准 Base64 Data URL 或标准公网 URL。
+ * 与视频工作台 resolveMiniMaxImageUrl / resolveSeedanceVideosImageUrl / resolveVideoGenerationsUrl 机制完全对齐。
+ */
+export async function resolveUpstreamImageReference(
+    image: { url?: string; dataUrl?: string; storageKey?: string; name?: string; type?: string; mimeType?: string },
+    config?: AiConfig,
+    options?: UpstreamImageAdaptOptions
+): Promise<string> {
+    const requirement = options?.requirement || (config ? detectUpstreamImageRequirement(config, options?.targetModel) : "auto");
+    const directUrl = (image.url || image.dataUrl || "").trim();
+    const label = options?.label || "参考图";
+
+    if (requirement === "require-url") {
+        if (image.storageKey?.startsWith("resource:")) {
+            try {
+                const publicUrl = await getResourceInputURL(image.storageKey);
+                if (isPublicMediaUrl(publicUrl)) return publicUrl;
+            } catch (err) {
+                console.warn("[resolveUpstreamImageReference] 读取公网对象存储地址失败:", err);
+            }
+        }
+        if (isPublicMediaUrl(directUrl)) {
+            return directUrl;
+        }
+        throw new Error(`${label}需要公网可达的 URL 地址；请先将素材保存至对象存储或提供公网直链`);
+    }
+
+    if (requirement === "require-base64") {
+        if (directUrl.startsWith("data:image/")) {
+            return directUrl;
+        }
+        const dataUrl = await imageToDataUrl(image);
+        if (!dataUrl) throw new Error(`${label}读取失败，无法转换为标准 Base64 数据`);
+        return dataUrl;
+    }
+
+    // "auto" 自适应模式：
+    // 1. 若已经是公网可达 URL，直接复用公网 URL（0 额外开销，0 流量冗余）
+    if (isPublicMediaUrl(directUrl)) {
+        return directUrl;
+    }
+
+    // 2. 若已经是标准 image DataURL，直接复用
+    if (directUrl.startsWith("data:image/")) {
+        return directUrl;
+    }
+
+    // 3. 包含本地相对路径（如 /api/resources/...）、blob: 临时地址、storageKey 等：
+    // 外部上游渠道无法直接拉取本地内网资源，必须自动转换为标准 Base64 DataURL（附带通过 magic bytes 或文件名校验的合法 MIME 类型）
+    const dataUrl = await imageToDataUrl(image);
+    if (!dataUrl) throw new Error(`${label}读取失败，请检查素材是否有效或重新上传`);
+    return dataUrl;
+}
+// @opc-feature: upstream-image-adaptation [end]
 
 export async function deleteStoredImages(keys: Iterable<string>) {
     await Promise.all(
         Array.from(new Set(keys)).map(async (key) => {
-            if (resourceIdFromStorageKey(key)) return;
             const url = objectUrls.get(key);
             if (url) URL.revokeObjectURL(url);
             objectUrls.delete(key);
             evictLocalFirstMedia(key, url);
+            if (resourceIdFromStorageKey(key)) return;
             await store.removeItem(key);
         }),
     );
@@ -221,10 +342,15 @@ function blobToDataUrl(blob: Blob) {
     });
 }
 
-async function normalizeImageBlob(blob: Blob, sourceName = "") {
-    if (blob.type.startsWith("image/")) return blob;
+async function normalizeImageBlob(blob: Blob, sourceName = "", declaredType = "") {
+    if (blob.type.startsWith("image/")) {
+        // 部分非标准环境可能生成 image/jpg，规范化为标准 RFC image/jpeg
+        if (blob.type === "image/jpg") return blob.slice(0, blob.size, "image/jpeg");
+        return blob;
+    }
     const bytes = new Uint8Array(await blob.slice(0, 32).arrayBuffer());
-    const mimeType = detectImageMimeType(bytes) || imageMimeTypeFromName(sourceName);
+    let mimeType = detectImageMimeType(bytes) || (declaredType.startsWith("image/") ? declaredType : "") || imageMimeTypeFromName(sourceName);
+    if (mimeType === "image/jpg") mimeType = "image/jpeg";
     if (!mimeType) throw new Error("无法识别参考图片格式，请重新上传 PNG、JPEG、WebP 或 GIF 图片");
     return blob.slice(0, blob.size, mimeType);
 }

@@ -314,7 +314,7 @@ export function workflowVideoCapabilityConfig(fields: readonly WorkflowVideoFiel
         // 工作流声明了比例字段时，不能继续沿用普通模型的比例列表。
         // 没有 options 时只保留该字段当前默认值（例如 `auto`）。
         profile.ratios = options.length ? options : defaultValue ? [defaultValue] : [];
-        if (profile.ratios.length) profile.defaultRatio = matchWorkflowValue(defaultValue, profile.ratios) || profile.ratios[0];
+        if (profile.ratios.length) profile.defaultRatio = matchWorkflowValue(defaultValue, profile.ratios) || (profile.ratios.includes("9:16") ? "9:16" : profile.ratios[0]);
     }
     const generateAudioField = fields.find((field) => workflowBooleanFieldMatches(field, "generateaudio"));
     const watermarkField = fields.find((field) => workflowBooleanFieldMatches(field, "watermark"));

@@ -1,0 +1,6 @@
+interface:
+  display_name: "服装 UGC 生活化上身图"
+  short_description: "锁定 SKU 与穿着逻辑，再按真实受众和版位任务规划 UGC 资产。"
+  default_prompt: "使用 $fashion-ugc-post-creator 按领域工作流完成当前任务；复用已确认输入，只在必要确认门暂停，并按真实任务状态交付。"
+policy:
+  allow_implicit_invocation: true

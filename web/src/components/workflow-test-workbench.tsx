@@ -351,9 +351,10 @@ function MediaPicker({ kind, limit, files, maskIndex, onChange }: { kind: MediaK
 function WorkflowParameter({ field, value, onChange }: { field: WorkflowFieldMapping; value: unknown; onChange: (value: unknown) => void }) {
     const label = field.label || field.fieldName;
     const type = String(field.fieldType || "").toUpperCase();
+    // @opc-feature: fix-label-select-conflict [start]
     if (field.randomEnabled && !field.source)
         return (
-            <label>
+            <div>
                 <span title={`${field.nodeId}.${field.fieldName}`}>
                     {label}
                     <small>
@@ -361,10 +362,10 @@ function WorkflowParameter({ field, value, onChange }: { field: WorkflowFieldMap
                     </small>
                 </span>
                 <Input value="每次运行随机生成" disabled />
-            </label>
+            </div>
         );
     return (
-        <label>
+        <div>
             <span title={`${field.nodeId}.${field.fieldName}`}>
                 {label}
                 <small>
@@ -380,7 +381,8 @@ function WorkflowParameter({ field, value, onChange }: { field: WorkflowFieldMap
             ) : (
                 <Input value={displayValue(value)} onChange={(event) => onChange(event.target.value)} />
             )}
-        </label>
+        </div>
+        // @opc-feature: fix-label-select-conflict [end]
     );
 }
 

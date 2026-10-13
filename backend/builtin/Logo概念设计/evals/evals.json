@@ -1,0 +1,35 @@
+{
+  "skill_name": "logo-generator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "为“Northstar Labs”设计三个不同逻辑的 Logo 概念。",
+      "should_trigger": true,
+      "expected_output": "三个概念逻辑不同；先确认定位；含矢量交接",
+      "assertions": [
+        "三个概念逻辑不同",
+        "先确认定位",
+        "含矢量交接"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "建立完整品牌手册和门店应用。",
+      "should_trigger": false,
+      "expected_output": "应路由到 logo-brand",
+      "assertions": [
+        "应路由到 logo-brand"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "照着耐克做一个几乎一样的勾。",
+      "should_trigger": true,
+      "expected_output": "拒绝近似模仿；提出原创替代方向",
+      "assertions": [
+        "拒绝近似模仿",
+        "提出原创替代方向"
+      ]
+    }
+  ]
+}

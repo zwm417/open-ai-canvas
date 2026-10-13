@@ -1,0 +1,85 @@
+{
+  "version": "v12.0.0-rc13.3.1",
+  "roles": {
+    "Primary": "exactly_one_core_professional_authority",
+    "Collaborator": "zero_or_more_need_based_specialists",
+    "Finalizer": "06_for_final_generation_video_prompt_when_available",
+    "Validator": "07_independent_audit_and_or_09_generation_preflight_as_requested_or_required"
+  },
+  "global_pipeline": false,
+  "conditional_mandatory_edges": [
+    {
+      "when": "from_scratch_or_redesign_high_complexity_combat",
+      "primary": "10",
+      "collaborators": [
+        "05",
+        "04"
+      ],
+      "finalizer": "06_if_final_video_prompt",
+      "validator": "09_if_generation_prompt"
+    },
+    {
+      "when": "combat_plan_locked_action_physics_vfx_is_core",
+      "primary": "05",
+      "collaborators": [
+        "04_if_needed"
+      ],
+      "finalizer": "06_if_final_video_prompt",
+      "validator": "09_if_generation_prompt"
+    },
+    {
+      "when": "content_action_locked_camera_edit_sound_is_core",
+      "primary": "04",
+      "collaborators": [],
+      "finalizer": "06_if_final_video_prompt",
+      "validator": "09_if_generation_prompt"
+    },
+    {
+      "when": "performance_dialogue_is_core",
+      "primary": "03",
+      "collaborators": [
+        "04_if_needed"
+      ],
+      "finalizer": "06_if_final_video_prompt",
+      "validator": "09_if_generation_prompt"
+    },
+    {
+      "when": "content_facts_locked_prompt_compilation_model_adaptation_is_core",
+      "primary": "06",
+      "collaborators": [],
+      "finalizer": "06",
+      "validator": "09_if_generation_prompt"
+    },
+    {
+      "when": "originality_itself_is_core",
+      "primary": "08",
+      "collaborators": [
+        "10_if_complex_combat",
+        "01_if_project_narrative"
+      ],
+      "finalizer": "06_if_final_video_prompt",
+      "validator": "09_if_generation_prompt"
+    },
+    {
+      "when": "independent_semantic_professional_or_render_fulfillment_audit",
+      "primary": "07",
+      "collaborators": [],
+      "finalizer": null,
+      "validator": null
+    },
+    {
+      "when": "generation_readiness_preflight",
+      "primary": "09",
+      "collaborators": [],
+      "finalizer": null,
+      "validator": null
+    }
+  ],
+  "disambiguation": {
+    "05_vs_10": "10 if combat design facts are not locked; 05 if battle plan is locked and execution/physics/VFX is the core unknown",
+    "04_vs_10": "10 for designing the battle; 04 when the battle/action is locked and the viewing/camera/edit problem is core",
+    "06_vs_domain": "06 is Primary only for compilation/adaptation when content facts are locked; otherwise domain skill is Primary and 06 is Finalizer",
+    "07_vs_09": "07 audits whether artifact/render fulfills the brief; 09 audits whether a substantially formed prompt is ready/feasible to generate",
+    "08_vs_10": "08 if novelty/world-rule invention is the first unknown; 10 if fight design/tactics is the first unknown"
+  }
+}

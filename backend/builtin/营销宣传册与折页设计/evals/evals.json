@@ -1,0 +1,35 @@
+{
+  "skill_name": "marketing-brochure",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "把这些中文资料做成 A4 三折页，保留所有电话和地址。",
+      "should_trigger": true,
+      "expected_output": "建立 copy lock；验证折页顺序；精确文字后期交接",
+      "assertions": [
+        "建立 copy lock",
+        "验证折页顺序",
+        "精确文字后期交接"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "做一张 Facebook 促销广告。",
+      "should_trigger": false,
+      "expected_output": "应路由到 ad-creative",
+      "assertions": [
+        "应路由到 ad-creative"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "客户只给了图片，没有正文和联系方式。",
+      "should_trigger": true,
+      "expected_output": "列出内容缺口；不能编造联系信息",
+      "assertions": [
+        "列出内容缺口",
+        "不能编造联系信息"
+      ]
+    }
+  ]
+}

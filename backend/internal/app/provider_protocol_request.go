@@ -18,6 +18,10 @@ import (
 
 	"infinite-canvas/backend/internal/model"
 	"infinite-canvas/backend/internal/protocol"
+
+	// @opc-adapter: prompt-vault-app-import [start]
+	opcvault "infinite-canvas/backend/internal/custom/opc-vault"
+	// @opc-adapter: prompt-vault-app-import [end]
 )
 
 func protocolRequestFromInput(input canvasGenerationInput) protocol.GenerationRequest {
@@ -35,8 +39,13 @@ func protocolRequestFromInput(input canvasGenerationInput) protocol.GenerationRe
 		Capability:    protocol.Capability(input.Mode),
 		Model:         input.Config.Model,
 		// @opc-adapter: prompt-vault-macro-injection [start]
-		Prompt:        resolveVaultMacroInApp(input.Prompt),
-		Instructions:  resolveVaultMacroInApp(strings.TrimSpace(input.Config.SystemPrompt)),
+		Prompt: func() string {
+			if input.Mode == "text" {
+				return opcvault.NeutralizeRestrictedMacros(input.Prompt)
+			}
+			return opcvault.ResolvePromptMacros(input.Prompt, false)
+		}(),
+		Instructions:  opcvault.ResolvePromptMacros(strings.TrimSpace(input.Config.SystemPrompt), true),
 		// @opc-adapter: prompt-vault-macro-injection [end]
 		Images:        protocolImageReferences(input),
 		Videos:        protocolMediaReferences(input.ReferenceVideos, "video"),

@@ -1,6 +1,6 @@
 // @opc-feature: feature-credits [start]
 import { useEffect, useMemo, useState } from "react";
-import { App, Button, Card, Form, InputNumber, Radio, Select, Switch, Tag, Alert } from "antd";
+import { App, Button, Card, Form, InputNumber, Radio, Select, Switch, Tag, Alert, Tooltip } from "antd";
 import { Coins, RefreshCw, Save, Sparkles, Search, Sliders, CheckCircle2, Zap, Layers, Bot } from "lucide-react";
 
 import {
@@ -217,8 +217,8 @@ export function FeatureCreditsPanel({
                 );
             case "creation_assistant":
                 return (
-                    <Tag color="cyan" className="text-[10px] m-0">
-                        💡 创造与编导助手
+                    <Tag color="orange" className="text-[10px] m-0">
+                        💡 创作助手 (生视频)
                     </Tag>
                 );
             case "image_workbench":
@@ -227,16 +227,17 @@ export function FeatureCreditsPanel({
                         🎨 生图工作台
                     </Tag>
                 );
+            case "canvas_table":
             case "voice":
                 return (
                     <Tag color="purple" className="text-[10px] m-0">
-                        🎙️ 台词配音表
+                        📊 画布多维表格
                     </Tag>
                 );
             case "canvas":
                 return (
                     <Tag color="geekblue" className="text-[10px] m-0">
-                        🧩 画布智能算子
+                        🧩 画布智能节点
                     </Tag>
                 );
             default:
@@ -320,7 +321,7 @@ export function FeatureCreditsPanel({
                             </Tag>
                         </h3>
                         <p className="text-xs text-stone-500 dark:text-stone-400">
-                            针对特定功能板块（如视频反推、编导助手、深度复刻、素材分析）调用的大模型配置专属倍率，按实际 Token 消耗精确结算
+                            针对画布二开节点、多维表格、创作助手及原生工作台配置大模型专属倍率与积分规则，未配置场景自动执行原系统保底计费
                         </p>
                     </div>
                 </div>
@@ -431,40 +432,26 @@ export function FeatureCreditsPanel({
                 </button>
             </div>
 
-            <Form form={form} layout="vertical" disabled={loading}>
+            <Form form={form} layout="vertical" disabled={loading} preserve={true}>
                 {/* 选项卡1：大模型专属场景倍率配置区 */}
                 {activeTab === "multiplier" && (
                     <div className="space-y-3">
-                        <Alert
-                            type="info"
-                            showIcon
-                            icon={<Sparkles className="size-4 text-amber-600" />}
-                            message="场景倍率计费机制说明"
-                            description={
-                                <div className="text-xs space-y-1">
-                                    <p>
-                                        • <strong>公式</strong>: 扣费金额 = (实际输入/输出 Token × 模型 Token 单价) × <strong>场景倍率</strong>。
-                                    </p>
-                                    <p>
-                                        • <strong>免重复收费保证</strong>: 设为「Token 场景倍率计费」后，前置扣费自动免除为 0，由系统网关按真实用量结算 1 次，绝对杜绝重复扣除。
-                                    </p>
-                                    <p>
-                                        • 当前正在配置针对「<strong>{getModelLabel(selectedModel)}</strong>」的倍率。保存后，用户在该功能板块调用该模型时将自动套用对应倍率。
-                                    </p>
-                                </div>
-                            }
-                            className="bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60"
-                        />
+                        <div className="flex items-center gap-2 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-900/60 px-3.5 py-2 rounded-lg text-xs text-amber-900 dark:text-amber-200">
+                            <Sparkles className="size-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                            <span>
+                                当前正在为「<strong>{getModelLabel(selectedModel)}</strong>」设置各板块计费倍率。系统将按 <strong>模型基础单价 × 场景倍率</strong> 自动结算。
+                            </span>
+                        </div>
 
                         {/* 批量阶梯定价快捷栏 */}
                         <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-stone-100/80 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 text-xs">
                             <div className="flex items-center gap-2">
                                 <Sliders className="size-3.5 text-amber-600 dark:text-amber-400" />
                                 <span className="font-semibold text-stone-800 dark:text-stone-200">
-                                    批量阶梯定价快捷栏:
+                                    批量快捷设倍率:
                                 </span>
                                 <span className="text-stone-500 dark:text-stone-400">
-                                    一键将识别到的全部 {textScenes.length} 个大模型板块设为指定倍率
+                                    一键应用至全部 {textScenes.length} 个功能板块
                                 </span>
                             </div>
                             <div className="flex items-center gap-1.5 flex-wrap">
@@ -487,124 +474,118 @@ export function FeatureCreditsPanel({
                             </div>
                         </div>
 
-                        <div className="grid gap-3">
-                            {textScenes.map((def) => {
-                                const presets = def.recommendedMultipliers && def.recommendedMultipliers.length > 0
-                                    ? def.recommendedMultipliers.map((m) => ({ label: `${m}x`, val: m }))
-                                    : [
-                                        { label: "1.0x 标准", val: 1.0 },
-                                        { label: "1.2x", val: 1.2 },
-                                        { label: "1.5x 推荐", val: 1.5 },
-                                        { label: "2.0x 高阶", val: 2.0 },
-                                    ];
+                        <div className="overflow-x-auto rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-2xs">
+                            <table className="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr className="border-b border-stone-200 dark:border-stone-800 bg-stone-50/90 dark:bg-stone-850/90 text-stone-600 dark:text-stone-300 font-medium">
+                                        <th className="py-2.5 px-4 min-w-[200px]">功能板块</th>
+                                        <th className="py-2.5 px-3 w-20 text-center">状态</th>
+                                        <th className="py-2.5 px-3 w-44">计费模式</th>
+                                        <th className="py-2.5 px-3 min-w-[260px]">倍率 / 扣点配置</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-stone-100 dark:divide-stone-800/60">
+                                    {textScenes.map((def) => {
+                                        const presets = def.recommendedMultipliers && def.recommendedMultipliers.length > 0
+                                            ? def.recommendedMultipliers.map((m) => ({ label: `${m}x`, val: m }))
+                                            : [
+                                                { label: "1.0x", val: 1.0 },
+                                                { label: "1.2x", val: 1.2 },
+                                                { label: "1.5x", val: 1.5 },
+                                                { label: "2.0x", val: 2.0 },
+                                            ];
 
-                                return (
-                                    <Form.Item
-                                        key={def.scene}
-                                        noStyle
-                                        shouldUpdate={(prev, curr) =>
-                                            prev[`${def.scene}_enabled`] !== curr[`${def.scene}_enabled`] ||
-                                            prev[`${def.scene}_mode`] !== curr[`${def.scene}_mode`] ||
-                                            prev[`${def.scene}_multiplier`] !== curr[`${def.scene}_multiplier`]
-                                        }
-                                    >
-                                        {({ getFieldValue }) => {
-                                            const isCurrentEnabled = Boolean(getFieldValue(`${def.scene}_enabled`));
-                                            const currentMode = getFieldValue(`${def.scene}_mode`) || "token_multiplier";
-                                            const currentMultiplier = Number(getFieldValue(`${def.scene}_multiplier`) || 1.0);
+                                        return (
+                                            <Form.Item
+                                                key={def.scene}
+                                                noStyle
+                                                shouldUpdate={(prev, curr) =>
+                                                    prev[`${def.scene}_enabled`] !== curr[`${def.scene}_enabled`] ||
+                                                    prev[`${def.scene}_mode`] !== curr[`${def.scene}_mode`] ||
+                                                    prev[`${def.scene}_multiplier`] !== curr[`${def.scene}_multiplier`]
+                                                }
+                                            >
+                                                {({ getFieldValue }) => {
+                                                    const isCurrentEnabled = Boolean(getFieldValue(`${def.scene}_enabled`));
+                                                    const currentMode = getFieldValue(`${def.scene}_mode`) || "token_multiplier";
+                                                    const currentMultiplier = Number(getFieldValue(`${def.scene}_multiplier`) || 1.0);
 
-                                            return (
-                                                <Card
-                                                    size="small"
-                                                    className={`transition-all duration-200 ${
-                                                        isCurrentEnabled
-                                                            ? "border-amber-300/80 bg-amber-500/[0.02] dark:border-amber-700/60 dark:bg-amber-500/[0.03] shadow-xs"
-                                                            : "border-stone-200 dark:border-stone-800 bg-stone-50/40 dark:bg-stone-900/30 opacity-75"
-                                                    }`}
-                                                >
-                                                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-                                                        {/* 左侧：板块信息 */}
-                                                        <div className="flex-1 min-w-0 pr-2">
-                                                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                                <span className="font-semibold text-stone-900 dark:text-stone-100 text-sm">
-                                                                    {def.title}
-                                                                </span>
-                                                                {getCategoryBadge(def.category)}
-                                                                <code className="text-[10px] text-stone-400 bg-stone-100 dark:bg-stone-800 px-1 py-0.5 rounded">
-                                                                    {def.scene}
-                                                                </code>
-                                                            </div>
-                                                            <p className="text-xs text-stone-500 dark:text-stone-400">
-                                                                {def.description}
-                                                            </p>
-                                                        </div>
+                                                    return (
+                                                        <tr className={`transition-colors ${isCurrentEnabled ? "hover:bg-amber-50/20 dark:hover:bg-amber-950/10" : "bg-stone-50/40 dark:bg-stone-900/40 opacity-60"}`}>
+                                                            {/* 功能板块名称与分类 */}
+                                                            <td className="py-2.5 px-4">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span
+                                                                        className="font-medium text-stone-900 dark:text-stone-100 cursor-default"
+                                                                        title={def.description}
+                                                                    >
+                                                                        {def.title}
+                                                                    </span>
+                                                                    {getCategoryBadge(def.category)}
+                                                                </div>
+                                                            </td>
 
-                                                        {/* 右侧：模式选择与倍率快速设置 */}
-                                                        <div className="flex flex-wrap items-center gap-3 border-t lg:border-t-0 pt-2 lg:pt-0 border-stone-200 dark:border-stone-800">
-                                                            {/* 启用计费 */}
-                                                            <div className="flex items-center gap-1.5 bg-stone-100/70 dark:bg-stone-800/70 px-2 py-1 rounded">
-                                                                <span className="text-xs text-stone-600 dark:text-stone-300 font-medium">启用</span>
+                                                            {/* 状态开关 */}
+                                                            <td className="py-2.5 px-3 text-center">
                                                                 <Form.Item name={`${def.scene}_enabled`} valuePropName="checked" noStyle>
                                                                     <Switch size="small" />
                                                                 </Form.Item>
-                                                            </div>
+                                                            </td>
 
-                                                            {/* 模式选择 */}
-                                                            <Form.Item name={`${def.scene}_mode`} noStyle>
-                                                                <Radio.Group size="small" disabled={!isCurrentEnabled} optionType="button" buttonStyle="solid">
-                                                                    <Radio.Button value="token_multiplier">Token 倍率计费</Radio.Button>
-                                                                    <Radio.Button value="fixed">固定积分</Radio.Button>
-                                                                </Radio.Group>
-                                                            </Form.Item>
+                                                            {/* 计费模式 */}
+                                                            <td className="py-2.5 px-3">
+                                                                <Form.Item name={`${def.scene}_mode`} noStyle>
+                                                                    <Radio.Group size="small" disabled={!isCurrentEnabled} optionType="button" buttonStyle="solid">
+                                                                        <Radio.Button value="token_multiplier">Token倍率</Radio.Button>
+                                                                        <Radio.Button value="fixed">固定积分</Radio.Button>
+                                                                    </Radio.Group>
+                                                                </Form.Item>
+                                                            </td>
 
-                                                            {/* 当为 Token 倍率计费时：倍率输入与快速预设 */}
-                                                            {currentMode === "token_multiplier" ? (
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <span className="text-xs font-medium text-stone-700 dark:text-stone-300">倍率:</span>
-                                                                    <Form.Item
-                                                                        name={`${def.scene}_multiplier`}
-                                                                        noStyle
-                                                                        rules={[{ required: true, message: "请输入倍率" }]}
-                                                                    >
-                                                                        <InputNumber
-                                                                            min={0.1}
-                                                                            max={50}
-                                                                            step={0.1}
-                                                                            precision={1}
-                                                                            size="small"
-                                                                            addonAfter="倍"
-                                                                            className="w-24 font-bold text-amber-600 dark:text-amber-400"
-                                                                            disabled={!isCurrentEnabled}
-                                                                        />
-                                                                    </Form.Item>
-
-                                                                    {/* 快捷倍率标签 */}
-                                                                    <div className="hidden sm:flex items-center gap-1">
-                                                                        {presets.map((preset) => (
-                                                                            <button
-                                                                                key={preset.val}
-                                                                                type="button"
+                                                            {/* 倍率 / 扣点配置 */}
+                                                            <td className="py-2.5 px-3">
+                                                                {currentMode === "token_multiplier" ? (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Form.Item
+                                                                            name={`${def.scene}_multiplier`}
+                                                                            noStyle
+                                                                            rules={[{ required: true, message: "请输入倍率" }]}
+                                                                        >
+                                                                            <InputNumber
+                                                                                min={0.1}
+                                                                                max={50}
+                                                                                step={0.1}
+                                                                                precision={1}
+                                                                                size="small"
+                                                                                addonAfter="倍"
+                                                                                className="w-20 font-bold text-amber-600 dark:text-amber-400"
                                                                                 disabled={!isCurrentEnabled}
-                                                                                onClick={() => setPresetMultiplier(def.scene, preset.val)}
-                                                                                className={`px-1.5 py-0.5 text-[10px] rounded border transition-colors cursor-pointer ${
-                                                                                    Math.abs(currentMultiplier - preset.val) < 0.05
-                                                                                        ? "bg-amber-500 text-white border-amber-500 font-semibold"
-                                                                                        : "bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700"
-                                                                                }`}
-                                                                            >
-                                                                                {preset.label}
-                                                                            </button>
-                                                                        ))}
+                                                                            />
+                                                                        </Form.Item>
+                                                                        <div className="flex items-center gap-1">
+                                                                            {presets.map((preset) => (
+                                                                                <button
+                                                                                    key={preset.val}
+                                                                                    type="button"
+                                                                                    disabled={!isCurrentEnabled}
+                                                                                    onClick={() => setPresetMultiplier(def.scene, preset.val)}
+                                                                                    className={`px-1.5 py-0.5 text-[10px] rounded border transition-colors cursor-pointer ${
+                                                                                        Math.abs(currentMultiplier - preset.val) < 0.05
+                                                                                            ? "bg-amber-500 text-white border-amber-500 font-semibold"
+                                                                                            : "bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700"
+                                                                                    }`}
+                                                                                >
+                                                                                    {preset.label}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            ) : (
-                                                                /* 固定积分输入 */
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <span className="text-xs text-stone-600 dark:text-stone-300">扣点:</span>
+                                                                ) : (
                                                                     <Form.Item
                                                                         name={`${def.scene}_credits`}
                                                                         noStyle
                                                                         rules={[{ required: true, message: "请输入积分" }]}
+                                                                        preserve={true}
                                                                     >
                                                                         <InputNumber
                                                                             min={0}
@@ -616,16 +597,16 @@ export function FeatureCreditsPanel({
                                                                             disabled={!isCurrentEnabled}
                                                                         />
                                                                     </Form.Item>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </Card>
-                                            );
-                                        }}
-                                    </Form.Item>
-                                );
-                            })}
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }}
+                                            </Form.Item>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 )}
@@ -633,86 +614,73 @@ export function FeatureCreditsPanel({
                 {/* 选项卡2：全部功能板块一览（包含生图/生视频工作台） */}
                 {activeTab === "all" && (
                     <div className="space-y-3">
-                        <div className="text-xs text-stone-500 dark:text-stone-400 mb-2">
-                            下方罗列系统权威注册的全部独立工作台与画布节点，包含生图与生视频的计费模式及默认绑定模型：
+                        <div className="text-xs text-stone-500 dark:text-stone-400">
+                            配置各独立工作台与画布功能的计费模式、固定点数及默认调用模型：
                         </div>
-                        <div className="grid gap-3">
-                            {allScenes.map((def) => {
-                                const isText = def.capability === "text";
-                                const sceneModels = getModelsForCapability(def.capability);
+                        <div className="overflow-x-auto rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-2xs">
+                            <table className="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr className="border-b border-stone-200 dark:border-stone-800 bg-stone-50/90 dark:bg-stone-850/90 text-stone-600 dark:text-stone-300 font-medium">
+                                        <th className="py-2.5 px-4 min-w-[200px]">功能板块</th>
+                                        <th className="py-2.5 px-3 w-16 text-center">类型</th>
+                                        <th className="py-2.5 px-3 w-16 text-center">状态</th>
+                                        <th className="py-2.5 px-3 w-56">计费模式</th>
+                                        <th className="py-2.5 px-3 w-36">扣费规则 / 点数</th>
+                                        <th className="py-2.5 px-3 w-48">默认绑定模型</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-stone-100 dark:divide-stone-800/60">
+                                    {allScenes.map((def) => {
+                                        const isText = def.capability === "text";
+                                        const sceneModels = getModelsForCapability(def.capability);
 
-                                return (
-                                    <Form.Item
-                                        key={def.scene}
-                                        noStyle
-                                        shouldUpdate={(prev, curr) =>
-                                            prev[`${def.scene}_enabled`] !== curr[`${def.scene}_enabled`] ||
-                                            prev[`${def.scene}_mode`] !== curr[`${def.scene}_mode`]
-                                        }
-                                    >
-                                        {({ getFieldValue }) => {
-                                            const isCurrentEnabled = Boolean(getFieldValue(`${def.scene}_enabled`));
+                                        return (
+                                            <Form.Item
+                                                key={def.scene}
+                                                noStyle
+                                                shouldUpdate={(prev, curr) =>
+                                                    prev[`${def.scene}_enabled`] !== curr[`${def.scene}_enabled`] ||
+                                                    prev[`${def.scene}_mode`] !== curr[`${def.scene}_mode`]
+                                                }
+                                            >
+                                                {({ getFieldValue }) => {
+                                                    const isCurrentEnabled = Boolean(getFieldValue(`${def.scene}_enabled`));
+                                                    const currentMode = getFieldValue(`${def.scene}_mode`) || (isText ? "token_multiplier" : "fixed");
 
-                                            return (
-                                                <Card
-                                                    size="small"
-                                                    className={`transition-all duration-200 ${
-                                                        isCurrentEnabled
-                                                            ? "border-amber-300/80 bg-amber-500/[0.02] dark:border-amber-700/60 dark:bg-amber-500/[0.03]"
-                                                            : "border-stone-200 dark:border-stone-800 bg-stone-50/40 dark:bg-stone-900/30 opacity-75"
-                                                    }`}
-                                                >
-                                                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                                        <div className="flex-1 min-w-0 pr-4">
-                                                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                                <span className="font-semibold text-stone-900 dark:text-stone-100 text-sm">
-                                                                    {def.title}
-                                                                </span>
-                                                                {getCategoryBadge(def.category)}
-                                                                <Tag color={isText ? "blue" : def.capability === "video" ? "volcano" : "cyan"} className="text-[10px]">
-                                                                    {isText ? "文本/多模态" : def.capability === "video" ? "生视频" : "生图"}
+                                                    return (
+                                                        <tr className={`transition-colors ${isCurrentEnabled ? "hover:bg-amber-50/20 dark:hover:bg-amber-950/10" : "bg-stone-50/40 dark:bg-stone-900/40 opacity-60"}`}>
+                                                            {/* 功能板块名称与分类 */}
+                                                            <td className="py-2.5 px-4">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span
+                                                                        className="font-medium text-stone-900 dark:text-stone-100 cursor-default"
+                                                                        title={def.description}
+                                                                    >
+                                                                        {def.title}
+                                                                    </span>
+                                                                    {getCategoryBadge(def.category)}
+                                                                </div>
+                                                            </td>
+
+                                                            {/* 类型 */}
+                                                            <td className="py-2.5 px-3 text-center">
+                                                                <Tag
+                                                                    color={isText ? "blue" : def.capability === "video" ? "volcano" : "cyan"}
+                                                                    className="text-[10px] m-0"
+                                                                >
+                                                                    {isText ? "文本" : def.capability === "video" ? "视频" : "图片"}
                                                                 </Tag>
-                                                                <code className="text-[10px] text-stone-400 bg-stone-100 dark:bg-stone-800 px-1 py-0.5 rounded">
-                                                                    {def.scene}
-                                                                </code>
-                                                            </div>
-                                                            <p className="text-xs text-stone-500 dark:text-stone-400">
-                                                                {def.description}
-                                                            </p>
-                                                        </div>
+                                                            </td>
 
-                                                        <div className="flex flex-wrap items-center gap-3 border-t md:border-t-0 pt-2 md:pt-0 border-stone-200 dark:border-stone-800">
-                                                            {/* 启用开关 */}
-                                                            <div className="flex items-center gap-1.5 bg-stone-100/70 dark:bg-stone-800/70 px-2 py-1 rounded">
-                                                                <span className="text-xs text-stone-600 dark:text-stone-300 font-medium">启用</span>
+                                                            {/* 状态开关 */}
+                                                            <td className="py-2.5 px-3 text-center">
                                                                 <Form.Item name={`${def.scene}_enabled`} valuePropName="checked" noStyle>
                                                                     <Switch size="small" />
                                                                 </Form.Item>
-                                                            </div>
-
-                                                            {/* 扣减固定积分值 */}
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="text-xs text-stone-600 dark:text-stone-300">固定点数:</span>
-                                                                <Form.Item
-                                                                    name={`${def.scene}_credits`}
-                                                                    noStyle
-                                                                    rules={[{ required: true, message: "请输入积分" }]}
-                                                                >
-                                                                    <InputNumber
-                                                                        min={0}
-                                                                        max={100000}
-                                                                        precision={2}
-                                                                        size="small"
-                                                                        addonAfter="积分"
-                                                                        className="w-28"
-                                                                        disabled={!isCurrentEnabled}
-                                                                    />
-                                                                </Form.Item>
-                                                            </div>
+                                                            </td>
 
                                                             {/* 计费模式 */}
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="text-xs text-stone-600 dark:text-stone-300">模式:</span>
+                                                            <td className="py-2.5 px-3">
                                                                 <Form.Item name={`${def.scene}_mode`} noStyle>
                                                                     <Radio.Group size="small" disabled={!isCurrentEnabled} optionType="button" buttonStyle="solid">
                                                                         {isText && <Radio.Button value="token_multiplier">Token倍率</Radio.Button>}
@@ -720,15 +688,50 @@ export function FeatureCreditsPanel({
                                                                         <Radio.Button value="model_price">模型定价</Radio.Button>
                                                                     </Radio.Group>
                                                                 </Form.Item>
-                                                            </div>
+                                                            </td>
 
-                                                            {/* 默认模型 */}
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="text-xs text-stone-600 dark:text-stone-300">默认模型:</span>
-                                                                <Form.Item name={`${def.scene}_defaultModel`} noStyle>
+                                                            {/* 扣费规则 / 点数 */}
+                                                            <td className="py-2.5 px-3">
+                                                                {currentMode === "fixed" ? (
+                                                                    <Form.Item
+                                                                        name={`${def.scene}_credits`}
+                                                                        noStyle
+                                                                        rules={[{ required: true, message: "请输入积分" }]}
+                                                                        preserve={true}
+                                                                    >
+                                                                        <InputNumber
+                                                                            min={0}
+                                                                            max={100000}
+                                                                            precision={2}
+                                                                            size="small"
+                                                                            addonAfter="积分"
+                                                                            className="w-28"
+                                                                            disabled={!isCurrentEnabled}
+                                                                        />
+                                                                    </Form.Item>
+                                                                ) : currentMode === "token_multiplier" ? (
+                                                                    <span
+                                                                        className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 px-2 py-0.5 rounded"
+                                                                        title="在【检索匹配板块】中精细配置模型专属倍率"
+                                                                    >
+                                                                        Token倍率
+                                                                    </span>
+                                                                ) : (
+                                                                    <span
+                                                                        className="text-[11px] text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-stone-800 px-2 py-0.5 rounded"
+                                                                        title="跟随系统渠道/前台目录中的模型单价扣点"
+                                                                    >
+                                                                        按模型单价
+                                                                    </span>
+                                                                )}
+                                                            </td>
+
+                                                            {/* 默认绑定模型 */}
+                                                            <td className="py-2.5 px-3">
+                                                                <Form.Item name={`${def.scene}_defaultModel`} noStyle preserve={true}>
                                                                     <Select
                                                                         size="small"
-                                                                        className="w-48"
+                                                                        className="w-40 sm:w-44"
                                                                         placeholder="跟随全局默认"
                                                                         allowClear
                                                                         disabled={!isCurrentEnabled}
@@ -742,15 +745,15 @@ export function FeatureCreditsPanel({
                                                                         }))}
                                                                     />
                                                                 </Form.Item>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </Card>
-                                            );
-                                        }}
-                                    </Form.Item>
-                                );
-                            })}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }}
+                                            </Form.Item>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 )}

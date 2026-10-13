@@ -6,58 +6,14 @@ import { buildGenerationConfig, resolveCanvasGenerationModel } from "@/lib/canva
 import { modelCompatibilityError, modelRequestOptions, type ModelRequirements } from "@/lib/model-selection";
 import type { AiConfig } from "@/stores/use-config-store";
 import type { ReferenceVideo } from "@/types/media";
-import { createStoryboardRow, cinematicStoryboardColumns, storyboardRowsOutputContract } from "@/lib/canvas/canvas-project-domain";
+import { createStoryboardRow, cinematicStoryboardColumns } from "@/lib/canvas/canvas-project-domain";
 import type { StoryboardColumn } from "@/types/canvas";
 
-const LIST_MODE_SYSTEM_PROMPT = `你是一个电商内容分析助手。用户会给你产品图片和一个任务描述。
-请严格根据用户要求的数量生成数据；如果用户说“生成5个卖点”，就必须返回5行，每行一个独立卖点。
-
-输出严格为以下 JSON 格式（不要输出其他内容）：
-{
-  "columns": ["列名1", "列名2", "列名3"],
-  "rows": [
-    {"列名1": "内容", "列名2": "内容", "列名3": "内容"}
-  ]
-}
-
-规则：
-1. 第一列不需要输出（它是图片本身），从第二列开始定义分析维度
-2. 列名根据任务需求自动决定（如：核心卖点、视觉细节、文案标题、搭配建议等）
-3. 用户明确要求数量时，rows 数量必须严格等于目标数量；一行只表达一个独立任务或卖点
-4. 用户没有明确数量时，多张图片默认每张图片一行
-5. 每个单元格内容简洁有力，适合电商/社交媒体使用
-6. 不要把多个编号卖点塞进一个单元格；不要把整段分析只放进“任务提示词”
-7. 列数建议 3-6 列，根据任务复杂度决定
-8. 只输出 JSON，不要有任何其他文字`;
-
-const VIDEO_LIST_MODE_SYSTEM_PROMPT = `你是专业的视频内容分析与分镜脚本助手。用户会给你一个视频和任务要求。
-请完整观看/理解视频内容，按时间顺序拆解关键情节、动作、台词、画面和镜头运动；不要只做概括。
-如果用户要求拆解脚本或关键帧，请为每个镜头输出可直接用于视频节点生成的结构化分镜数据。
-
-${storyboardRowsOutputContract("如果用户要求关键帧，请让每个镜头的 imageGenerationPrompt 能描述该镜头代表性首帧；durationSeconds 填写该镜头时长。")}
-输出格式：
-{
-  "title": "视频脚本拆解",
-  "rows": [
-    {
-      "shotNumber": 1,
-      "durationSeconds": 3,
-      "sourceStartSeconds": 0,
-      "sourceEndSeconds": 3,
-      "keyframeTimeSeconds": 1.5,
-      "plotDescription": "画面和动作",
-      "dialogue": "台词或旁白",
-      "shotSize": "景别",
-      "camera": "机位和镜头设计",
-      "motion": "运镜",
-      "videoMotionPrompt": "可直接用于视频生成的动态描述",
-      "imageGenerationPrompt": "可直接用于首帧生成的画面描述",
-      "audioEffects": "音乐/音效",
-      "continuityOut": "镜头结尾状态"
-    }
-  ]
-}
-只输出 JSON，不要 Markdown、代码块或解释文字。`;
+// @opc-feature: prompt-vault-client [start]
+// 商业安全防御：画布列表分析与视频分镜分析系统提示词已迁入服务端金库，客户端仅保留宏标识
+const LIST_MODE_SYSTEM_PROMPT = "__VAULT_PROMPT__:canvas-list-mode";
+const VIDEO_LIST_MODE_SYSTEM_PROMPT = "__VAULT_PROMPT__:canvas-video-list-mode";
+// @opc-feature: prompt-vault-client [end]
 
 type ListGenerationResult = {
     columns: string[];
@@ -367,17 +323,23 @@ export async function handleListGenerate({
             ...promptVideoUrls.map((url, index) => ({ id: `prompt-video-${index}`, name: `video-${index + 1}`, type: "video", url })),
         ];
 
-        const fullPrompt = `${isVideoAnalysis ? VIDEO_LIST_MODE_SYSTEM_PROMPT : LIST_MODE_SYSTEM_PROMPT}\n\n用户任务：${prompt}\n\n图片数量：${imageNodes.length} 张\n视频数量：${referenceVideos.length} 个\n目标行数：${targetRowCount || "未指定，按任务判断"}`;
+        // @opc-feature: prompt-vault-client [start]
+        const listSystemPrompt = isVideoAnalysis ? VIDEO_LIST_MODE_SYSTEM_PROMPT : LIST_MODE_SYSTEM_PROMPT;
+        const userPrompt = `用户任务：${prompt}\n\n图片数量：${imageNodes.length} 张\n视频数量：${referenceVideos.length} 个\n目标行数：${targetRowCount || "未指定，按任务判断"}`;
 
         const result = await runBackendGenerationTask({
             projectId,
             mode: "text",
-            prompt: fullPrompt,
-            config: listConfig,
+            prompt: userPrompt,
+            config: {
+                ...listConfig,
+                systemPrompt: listSystemPrompt,
+            },
             referenceImages,
             referenceVideos,
             streamText: false,
         });
+        // @opc-feature: prompt-vault-client [end]
 
         const text = result.text || "";
         if (isVideoAnalysis) {

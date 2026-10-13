@@ -320,169 +320,17 @@ func relaySecretPrefixSuffixLength(data []byte, secret []byte) int {
 
 const (
 	// HeaderCanvasSystemPromptID 客户端可通过此请求头指定需要服务端注入的提示词资产 ID
-	HeaderCanvasSystemPromptID = "X-Canvas-System-Prompt-ID"
+	HeaderCanvasSystemPromptID = opcvault.HeaderCanvasSystemPromptID
 	// VaultPromptMacroPrefix 请求体中使用的提示词资产宏前缀
-	VaultPromptMacroPrefix = "__VAULT_PROMPT__:"
+	VaultPromptMacroPrefix = opcvault.VaultPromptMacroPrefix
 )
 
-// resolveVaultMacro 扫描文本并替换所有 __VAULT_PROMPT__:<id> 为真实资产文本
-func resolveVaultMacro(text string) string {
-	if !strings.Contains(text, VaultPromptMacroPrefix) {
-		return text
-	}
-	for _, id := range opcvault.ListPromptIDs() {
-		macro := VaultPromptMacroPrefix + id
-		if strings.Contains(text, macro) {
-			if prompt, err := opcvault.GetPrompt(id); err == nil {
-				text = strings.ReplaceAll(text, macro, prompt)
-			}
-		}
-	}
-	return text
-}
+// AntiExtractionDirective 系统级绝对安全防越狱指令（优先约束）
+const AntiExtractionDirective = opcvault.AntiExtractionDirective
 
 // injectVaultPromptToRelayBody 针对服务端提示词金库资产执行零泄露动态注入。
 func injectVaultPromptToRelayBody(headerPromptID string, apiFormat string, body []byte) ([]byte, error) {
-	headerPromptID = strings.TrimSpace(headerPromptID)
-	hasMacro := bytes.Contains(body, []byte(VaultPromptMacroPrefix))
-	if headerPromptID == "" && !hasMacro {
-		return body, nil
-	}
-
-	var jsonMap map[string]interface{}
-	if err := json.Unmarshal(body, &jsonMap); err != nil {
-		return body, nil
-	}
-
-	var headerPromptContent string
-	if headerPromptID != "" {
-		if content, err := opcvault.GetPrompt(headerPromptID); err == nil {
-			headerPromptContent = content
-		}
-	}
-
-	switch apiFormat {
-	case "claude":
-		existingSystem, _ := jsonMap["system"].(string)
-		if existingSystem != "" {
-			existingSystem = resolveVaultMacro(existingSystem)
-			if headerPromptContent != "" && !strings.Contains(existingSystem, headerPromptContent) {
-				existingSystem = headerPromptContent + "\n\n" + existingSystem
-			}
-			jsonMap["system"] = existingSystem
-		} else if headerPromptContent != "" {
-			jsonMap["system"] = headerPromptContent
-		}
-
-	case "gemini":
-		if sysInst, ok := jsonMap["systemInstruction"].(map[string]interface{}); ok {
-			if parts, ok := sysInst["parts"].([]interface{}); ok {
-				for i, p := range parts {
-					if partMap, ok := p.(map[string]interface{}); ok {
-						if text, ok := partMap["text"].(string); ok {
-							partMap["text"] = resolveVaultMacro(text)
-							parts[i] = partMap
-						}
-					}
-				}
-				sysInst["parts"] = parts
-				jsonMap["systemInstruction"] = sysInst
-			}
-		} else if headerPromptContent != "" {
-			jsonMap["systemInstruction"] = map[string]interface{}{
-				"parts": []interface{}{
-					map[string]interface{}{"text": headerPromptContent},
-				},
-			}
-		}
-
-	default:
-		// 1. messages 结构 (OpenAI Chat Completions)
-		if rawMessages, ok := jsonMap["messages"].([]interface{}); ok {
-			systemFound := false
-			for i, rawMsg := range rawMessages {
-				msgMap, ok := rawMsg.(map[string]interface{})
-				if !ok {
-					continue
-				}
-				role, _ := msgMap["role"].(string)
-				if role == "system" {
-					systemFound = true
-					if headerPromptContent != "" {
-						if content, ok := msgMap["content"].(string); ok {
-							if !strings.Contains(content, headerPromptContent) {
-								msgMap["content"] = headerPromptContent + "\n\n" + content
-							}
-						}
-					}
-				}
-				if content, ok := msgMap["content"].(string); ok && strings.Contains(content, VaultPromptMacroPrefix) {
-					msgMap["content"] = resolveVaultMacro(content)
-					rawMessages[i] = msgMap
-				} else if parts, ok := msgMap["content"].([]interface{}); ok {
-					for j, p := range parts {
-						if partMap, ok := p.(map[string]interface{}); ok {
-							if text, ok := partMap["text"].(string); ok && strings.Contains(text, VaultPromptMacroPrefix) {
-								partMap["text"] = resolveVaultMacro(text)
-								parts[j] = partMap
-							}
-						}
-					}
-					msgMap["content"] = parts
-					rawMessages[i] = msgMap
-				}
-			}
-
-			if !systemFound && headerPromptContent != "" {
-				newMessages := make([]interface{}, 0, len(rawMessages)+1)
-				newMessages = append(newMessages, map[string]interface{}{
-					"role":    "system",
-					"content": headerPromptContent,
-				})
-				newMessages = append(newMessages, rawMessages...)
-				rawMessages = newMessages
-			}
-			jsonMap["messages"] = rawMessages
-		}
-
-		// 2. input 结构 (OpenAI Responses API)
-		if rawInput, ok := jsonMap["input"].([]interface{}); ok {
-			for i, rawMsg := range rawInput {
-				if msgMap, ok := rawMsg.(map[string]interface{}); ok {
-					if content, ok := msgMap["content"].(string); ok && strings.Contains(content, VaultPromptMacroPrefix) {
-						msgMap["content"] = resolveVaultMacro(content)
-						rawInput[i] = msgMap
-					} else if parts, ok := msgMap["content"].([]interface{}); ok {
-						for j, p := range parts {
-							if partMap, ok := p.(map[string]interface{}); ok {
-								if text, ok := partMap["text"].(string); ok && strings.Contains(text, VaultPromptMacroPrefix) {
-									partMap["text"] = resolveVaultMacro(text)
-									parts[j] = partMap
-								}
-							}
-						}
-						msgMap["content"] = parts
-						rawInput[i] = msgMap
-					}
-				}
-			}
-			jsonMap["input"] = rawInput
-		} else if inputStr, ok := jsonMap["input"].(string); ok && strings.Contains(inputStr, VaultPromptMacroPrefix) {
-			jsonMap["input"] = resolveVaultMacro(inputStr)
-		}
-
-		// 3. prompt 结构 (Completions API)
-		if promptStr, ok := jsonMap["prompt"].(string); ok && strings.Contains(promptStr, VaultPromptMacroPrefix) {
-			jsonMap["prompt"] = resolveVaultMacro(promptStr)
-		}
-
-		// 4. top-level system 结构
-		if sysStr, ok := jsonMap["system"].(string); ok && strings.Contains(sysStr, VaultPromptMacroPrefix) {
-			jsonMap["system"] = resolveVaultMacro(sysStr)
-		}
-	}
-
-	return json.Marshal(jsonMap)
+	return opcvault.InjectVaultPromptToRequestBody(headerPromptID, apiFormat, body)
 }
 
 // @opc-adapter: prompt-vault-macro-injection [end]

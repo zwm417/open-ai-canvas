@@ -8,6 +8,7 @@ import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { agentCopy, DEFAULT_CANVAS_APPEARANCE } from "@/lib/canvas/agent-appearance";
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAgentLauncherPosition } from "./use-agent-launcher-position";
+import { PixiuPet, type PixiuMood } from "./pixiu-pet";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { Live2DAvatar } from "./live2d-avatar";
@@ -34,24 +35,25 @@ import type { ApprovalState } from "./canvas-cloud-agent-events";
 
 // hidden 为 true 时入口保持挂载但不显示：Live2D 模型加载开销大，面板开合不能卸载它，
 // 否则每次重新挂载都要重新下载模型并重建渲染上下文，期间只能显示默认形象。
-export function AgentLauncher({ theme, statusColor, approvalPending, reducedMotion, hidden = false, onOpen }: { theme: CanvasTheme; statusColor: string; approvalPending: boolean; reducedMotion: boolean; hidden?: boolean; onOpen: () => void }) {
+export function AgentLauncher({ theme, statusColor, approvalPending, mood = "idle", reducedMotion, hidden = false, onOpen }: { theme: CanvasTheme; statusColor: string; approvalPending: boolean; mood?: PixiuMood; reducedMotion: boolean; hidden?: boolean; onOpen: () => void }) {
     const appearance = useAppearanceStore((state) => state.appearance.canvas) || DEFAULT_CANVAS_APPEARANCE;
     const live = appearance.avatarType === "live2d" && Boolean(appearance.live2dResourceId && appearance.live2dEntry);
+    const pixiu = appearance.avatarType === "pixiu";
     const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }));
     useEffect(() => {
         const resize = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
         window.addEventListener("resize", resize);
         return () => window.removeEventListener("resize", resize);
     }, []);
-    const height = live ? Math.max(40, Math.min(appearance.avatarHeight, viewport.height - 60, (viewport.width - 40) / 0.75)) : 76;
-    const width = live ? Math.round(height * 0.75) : 76;
+    const height = live ? Math.max(40, Math.min(appearance.avatarHeight, viewport.height - 60, (viewport.width - 40) / 0.75)) : pixiu ? 68 : 76;
+    const width = live ? Math.round(height * 0.75) : pixiu ? 68 : 76;
     const { position, dragging, handlers } = useAgentLauncherPosition(onOpen, width, height);
     return (
         <motion.button
             type="button"
             aria-label={`打开${appearance.agentName}`}
             title={`${approvalPending ? "Agent 等待你的审批" : "打开 Agent 助手"} · 拖动可调整位置，聚焦后可用方向键移动`}
-            className={cn("canvas-agent-launcher fixed z-[calc(var(--z-toast)+1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/35", dragging && "is-dragging", live && "canvas-agent-launcher-live2d")}
+            className={cn("canvas-agent-launcher fixed z-[calc(var(--z-toast)+1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/35", dragging && "is-dragging", live && "canvas-agent-launcher-live2d", pixiu && "canvas-agent-launcher-pixiu")}
             style={{ ...position, width, height, color: theme.node.text, "--canvas-agent-launcher-shadow": theme.spatial.shadow, ...(hidden ? { display: "none" } : null) } as CSSProperties}
             aria-hidden={hidden || undefined}
             tabIndex={hidden ? -1 : undefined}
@@ -61,7 +63,9 @@ export function AgentLauncher({ theme, statusColor, approvalPending, reducedMoti
             whileTap={reducedMotion || dragging ? undefined : { scale: 0.96 }}
             transition={{ duration: reducedMotion ? 0 : 0.18 }}
         >
-            {live ? (
+            {pixiu ? (
+                <PixiuPet size={62} mood={mood} />
+            ) : live ? (
                 <Live2DAvatar url={live2DModelURL(appearance.live2dResourceId, appearance.live2dEntry)} width={width} height={height} reducedMotion={reducedMotion} fallback={<FluidOrb size={60} color="#7164f6" />} />
             ) : (
                 <FluidOrb size={60} color="#7164f6" />

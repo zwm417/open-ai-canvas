@@ -14,9 +14,7 @@ import { AppProviders } from "@/components/layout/app-providers";
 import { router } from "@/router";
 
 // @opc-feature: prompt-vault-client [start]
-import { prewarmPromptVault } from "@/services/api/prompt-vault";
-// 冷启动后台静默预热服务端金库提示词，确保毫秒级就绪与本地私网模型免等待
-void prewarmPromptVault();
+// 商业安全防御（正向收敛）：核心提示词全面由服务端网关与任务队列隐形注入，前端不再发起网络预热拉取
 // @opc-feature: prompt-vault-client [end]
 
 document.body.style.fontFamily = '"SF Pro Display","SF Pro Text","PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif';

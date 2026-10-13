@@ -43,6 +43,7 @@ import { extractSupportedParameterKeys, resolveCapability } from "../model-route
 import { capabilitySpecFromChannelModel } from "../../logical-models/model-routing-capabilities";
 import { COMPREHENSIVE_IMAGE_SWITCHES, COMPREHENSIVE_VIDEO_SWITCHES } from "../mock-data";
 import type { ModelChannel } from "@/stores/use-config-store";
+import { getAdminPopupContainer } from "@/extensions/admin-overlay/admin-popup-container";
 
 export function ChannelModelAcquisitionPanel() {
     const {
@@ -56,6 +57,7 @@ export function ChannelModelAcquisitionPanel() {
         loadAllData,
         setManagingChannelId,
     } = useModelRouterStore();
+    const adminPopupContainer = getAdminPopupContainer;
 
     const [selectedChannel, setSelectedChannel] = useState<string>("all");
     const [selectedCapability, setSelectedCapability] = useState<"all" | CapabilityType>("all");
@@ -1408,7 +1410,7 @@ export function ChannelModelAcquisitionPanel() {
                                             value={newModelFamily}
                                             onChange={setNewModelFamily}
                                             showSearch
-                                            getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
+                                            getPopupContainer={adminPopupContainer}
                                             options={Array.from(new Set([...families, "GPT Image 2", "字节 Seedance", "字节 Seedream", "MiniMax H3", "通义万相", "xAI Grok", "Google Omni", "其他基础模型分组"])).map((f) => ({
                                                 label: f,
                                                 value: f,
@@ -1564,7 +1566,7 @@ export function ChannelModelAcquisitionPanel() {
                                                 return String(text).toLowerCase().includes(input.toLowerCase());
                                             }}
                                             options={groupedTargetModelOptions}
-                                            getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
+                                            getPopupContainer={adminPopupContainer}
                                             placement="bottomLeft"
                                             popupMatchSelectWidth={true}
                                             virtual={false}
@@ -1666,7 +1668,7 @@ export function ChannelModelAcquisitionPanel() {
                                                     showSearch
                                                     placeholder="选择匹配的目标前台模型底座..."
                                                     options={postSaveGroupedOptions}
-                                                    getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
+                                                    getPopupContainer={adminPopupContainer}
                                                     placement="bottomLeft"
                                                     popupMatchSelectWidth={true}
                                                     virtual={false}

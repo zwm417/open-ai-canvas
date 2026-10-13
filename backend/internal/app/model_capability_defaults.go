@@ -19,7 +19,7 @@ func videoDurationSupported(value *VideoCapabilityConfig) bool {
 func DefaultImageCapabilityConfig(protocol string, modelName string) *ImageCapabilityConfig {
 	image := &ImageCapabilityConfig{
 		References:            ImageReferenceConfig{PromptMaxChars: 32000, MaxImages: 16, MaxImageBytes: 30 * 1024 * 1024, MaskSupported: true},
-		Size:                  ImageSizeConfig{Parameter: "size", Values: defaultImageSizeValues(), Default: "1:1", AllowCustom: true},
+		Size:                  ImageSizeConfig{Parameter: "size", Values: defaultImageSizeValues(), Default: "9:16", AllowCustom: true},
 		Quality:               ImageQualityConfig{Supported: true, Values: []string{"auto", "low", "medium", "high"}, Default: "auto"},
 		TransparentBackground: VideoBooleanConfig{Supported: true, Default: false},
 		ResponseFormat:        ParameterSupport{Supported: true},
@@ -31,7 +31,7 @@ func DefaultImageCapabilityConfig(protocol string, modelName string) *ImageCapab
 		image.References.MaxImages = 1
 		image.References.MaskSupported = false
 		// grok2api / xAI Imagine：size→aspect_ratio，quality→resolution(1k/2k)。
-		image.Size = ImageSizeConfig{Parameter: "aspect_ratio", Values: []string{"1:1", "3:4", "4:3", "9:16", "16:9", "2:3", "3:2"}, Default: "1:1", AllowCustom: false}
+		image.Size = ImageSizeConfig{Parameter: "aspect_ratio", Values: []string{"1:1", "3:4", "4:3", "9:16", "16:9", "2:3", "3:2"}, Default: "9:16", AllowCustom: false}
 		image.Quality = ImageQualityConfig{Supported: true, Values: []string{"1k", "2k"}, Default: "2k"}
 		image.TransparentBackground = VideoBooleanConfig{Supported: false, Default: false}
 		image.ResponseFormat = ParameterSupport{Supported: true}
@@ -53,7 +53,7 @@ func DefaultImageCapabilityConfig(protocol string, modelName string) *ImageCapab
 	case model.ChannelInterfaceGeminiImage:
 		image.References.MaskSupported = false
 		// Gemini Images uses imageConfig.aspectRatio, not the OpenAI-style pixel size field.
-		image.Size = ImageSizeConfig{Parameter: "aspect_ratio", Values: []string{"auto", "1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"}, Default: "1:1", AllowCustom: false}
+		image.Size = ImageSizeConfig{Parameter: "aspect_ratio", Values: []string{"auto", "1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"}, Default: "9:16", AllowCustom: false}
 		image.TransparentBackground.Supported = false
 		image.ResponseFormat.Supported = false
 		image.OutputFormat.Supported = false
@@ -62,7 +62,7 @@ func DefaultImageCapabilityConfig(protocol string, modelName string) *ImageCapab
 	if model.ChannelInterfaceType(protocol) != model.ChannelInterfaceGrokImage && strings.HasPrefix(strings.ToLower(strings.TrimSpace(modelName)), "grok-imagine-image") {
 		image.References.MaxImages = 0
 		image.References.MaskSupported = false
-		image.Size = ImageSizeConfig{Parameter: "aspect_ratio", Values: []string{"1:1", "3:4", "4:3", "9:16", "16:9", "2:3", "3:2"}, Default: "1:1", AllowCustom: false}
+		image.Size = ImageSizeConfig{Parameter: "aspect_ratio", Values: []string{"1:1", "3:4", "4:3", "9:16", "16:9", "2:3", "3:2"}, Default: "9:16", AllowCustom: false}
 		image.Quality = ImageQualityConfig{Supported: true, Values: []string{"1k", "2k"}, Default: "2k"}
 		image.TransparentBackground = VideoBooleanConfig{Supported: false, Default: false}
 		image.ResponseFormat = ParameterSupport{Supported: true}
@@ -98,7 +98,7 @@ func DefaultModelCapabilityConfigForModel(protocol string, modelName string) *Mo
 		References:        VideoReferenceConfig{PromptMaxChars: DefaultVideoPromptMaxChars, MinImages: 0, MaxImages: 9, MaxImageBytes: 30 * 1024 * 1024, MaxVideos: 0, MaxVideoBytes: 0, MaxVideoDuration: 0, MaxAudios: 0, MaxAudioBytes: 0, MaxAudioDuration: 0},
 		Duration:          VideoDurationConfig{Selection: "range", Min: 1, Max: 15, Step: 1, Default: 6},
 		Ratios:            []string{"16:9", "9:16", "1:1", "4:3", "3:4", "21:9"},
-		DefaultRatio:      "16:9",
+		DefaultRatio:      "9:16",
 		Resolutions:       []string{"480p", "720p", "1080p", "1440p", "2160p"},
 		DefaultResolution: "720p",
 		GenerateAudio:     VideoBooleanConfig{Supported: false, Default: false},
@@ -149,7 +149,7 @@ func DefaultModelCapabilityConfigForModel(protocol string, modelName string) *Mo
 		video.References.MaxAudioDuration = 15
 		video.Duration = VideoDurationConfig{Selection: "enum", Values: []int{4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Default: 5}
 		video.Ratios = []string{"adaptive", "21:9", "16:9", "4:3", "1:1", "3:4", "9:16"}
-		video.DefaultRatio = "16:9"
+		video.DefaultRatio = "9:16"
 		video.Resolutions = []string{"768P", "2K"}
 		video.DefaultResolution = "768P"
 		video.Watermark = VideoBooleanConfig{Supported: true, Default: false}

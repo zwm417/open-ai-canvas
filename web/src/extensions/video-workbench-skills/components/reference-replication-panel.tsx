@@ -1,42 +1,40 @@
 // @opc-feature: reference-replication-panel [start]
-import React, { useState, useRef, useCallback, useMemo } from "react";
+import React, { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import {
-    Sparkles,
     UploadCloud,
     X,
     Plus,
     Film,
     Music2,
     ImagePlus,
-    Package,
-    User,
-    Image as ImageIcon,
-    FileText,
-    BookmarkPlus,
     LoaderCircle,
-    CheckCircle2,
-    RefreshCw,
-    Trash2,
-    ClipboardPaste,
-    FolderPlus,
+    Sparkles,
 } from "lucide-react";
 import { Button, App } from "antd";
-import { Tooltip } from "@/components/ui/base/tooltip";
 import type { VideoWorkbenchSkill } from "../types/video-skill-contract";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 import { uploadImage } from "@/services/image-storage";
 import { uploadMediaFile } from "@/services/file-storage";
+import { primeResourceBlobCache } from "@/services/resource-blob-cache";
+import { peekLocalFirstMedia } from "@/services/local-first-media-resolver";
+import { resolveResourceUrl } from "@/services/api/resources";
+import { CachedResourceImage } from "@/components/cached-resource-image";
 import { nanoid } from "nanoid";
 import { useEffectiveConfig } from "@/stores/use-config-store";
+import { resolveChannelVideoModelMaxDuration } from "@/lib/model-capabilities";
 import { useDeepReplicationTaskStore } from "../stores/use-deep-replication-task-store";
 import { ReplicationPromptReviewModal } from "./replication-prompt-review-modal";
 import { captureVideoPoster } from "@/lib/video-poster";
 import { trimVideoSegment } from "@/lib/canvas/canvas-video-segment";
-import { formatDuration } from "@/lib/image-utils";
 import { CanvasPromptChipInput } from "@/components/canvas/canvas-prompt-chip-input";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import type { VideoTextReference } from "@/stores/use-video-workbench-store";
+import {
+    VideoWorkbenchSkillSlots,
+    type VideoWorkbenchSlotConfig,
+    type VideoWorkbenchSlotFile,
+} from "./video-workbench-skill-slots";
 
 interface ReferenceReplicationPanelProps {
     skill: VideoWorkbenchSkill | null;
@@ -66,18 +64,6 @@ interface ReferenceReplicationPanelProps {
     onAddFromClipboard?: () => void;
 }
 
-// 扁平展示素材项
-interface WorkbenchReferenceItem {
-    id: string;
-    name: string;
-    kind: "image" | "audio" | "video";
-    category: "product" | "model" | "scene" | "audio" | "general";
-    url?: string;
-    dataUrl?: string;
-    storageKey?: string;
-    durationMs?: number;
-}
-
 export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps> = ({
     skill,
     onExit,
@@ -100,6 +86,11 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
     const effectiveConfig = useEffectiveConfig();
     const taskStore = useDeepReplicationTaskStore();
 
+    // 动态解析当前目标视频模型最大支持秒数（严禁硬编码 15s）
+    const maxDurationSec = useMemo(() => {
+        return resolveChannelVideoModelMaxDuration(effectiveConfig, targetModel) || 15;
+    }, [effectiveConfig, targetModel]);
+
     // 提示词弹窗兼容函数
     const handleOpenPromptModal = onOpenPromptDialog || (onOpenPromptTemplate ? () => onOpenPromptTemplate("video") : undefined);
     const handleSavePromptModal = onSavePromptDialog || (onSaveAsTemplate && prompt.trim() ? () => onSaveAsTemplate(prompt.trim(), "video") : undefined);
@@ -108,7 +99,21 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
     const [productImages, setProductImages] = useState<ReferenceImage[]>(() => initialImages || []);
     const [modelImages, setModelImages] = useState<ReferenceImage[]>([]);
     const [sceneImages, setSceneImages] = useState<ReferenceImage[]>([]);
+    const [generalImages, setGeneralImages] = useState<ReferenceImage[]>([]);
     const [uploadedAudios, setUploadedAudios] = useState<ReferenceAudio[]>(() => initialAudios || []);
+
+    // 保持与外部初始资产同步（例如通过资产库选取后回填）
+    useEffect(() => {
+        if (initialImages && initialImages.length > 0) {
+            setProductImages(initialImages);
+        }
+    }, [initialImages]);
+
+    useEffect(() => {
+        if (initialAudios && initialAudios.length > 0) {
+            setUploadedAudios(initialAudios);
+        }
+    }, [initialAudios]);
 
     // 中部参考视频
     const [referenceVideo, setReferenceVideo] = useState<ReferenceVideo | null>(() => initialVideos?.[0] || null);
@@ -117,63 +122,201 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
         initialVideos?.[0]?.durationMs ? Math.round(initialVideos[0].durationMs / 1000) : 0,
     );
     const [videoFile, setVideoFile] = useState<File | null>(null);
+    const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+    const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+    const [videoUploadPhase, setVideoUploadPhase] = useState("");
 
-    // 替换目标记录
-    const replaceTargetRef = useRef<{ id: string; category: "product" | "model" | "scene" | "audio" } | null>(null);
-
-    // 隐藏的文件上传 input 引用
-    const productInputRef = useRef<HTMLInputElement>(null);
-    const modelInputRef = useRef<HTMLInputElement>(null);
-    const sceneInputRef = useRef<HTMLInputElement>(null);
-    const audioInputRef = useRef<HTMLInputElement>(null);
-    const generalInputRef = useRef<HTMLInputElement>(null);
     const videoInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (initialVideos && initialVideos.length > 0 && initialVideos[0]) {
+            setReferenceVideo(initialVideos[0]);
+            if (initialVideos[0].posterUrl) setVideoPoster(initialVideos[0].posterUrl);
+            if (initialVideos[0].durationMs) setVideoDurationSec(Math.round(initialVideos[0].durationMs / 1000));
+        }
+    }, [initialVideos]);
 
     // 实时同步所有素材到上层 Draft（确保路径 A：用户输入后直接点击“立即生成视频”时素材已全部同步）
     const syncAllToDraft = useCallback(
         (
             currentPrompt: string,
-            images: { products: ReferenceImage[]; models: ReferenceImage[]; scenes: ReferenceImage[] },
+            images: {
+                products: ReferenceImage[];
+                models: ReferenceImage[];
+                scenes: ReferenceImage[];
+                general?: ReferenceImage[];
+            },
             audios: ReferenceAudio[],
             video: ReferenceVideo | null,
             duration?: number,
             silent: boolean = true,
         ) => {
-            const combinedImages = [...images.products, ...images.models, ...images.scenes];
+            const combinedImages = [
+                ...images.products,
+                ...images.models,
+                ...images.scenes,
+                ...(images.general || []),
+            ];
             onApply(currentPrompt, {
                 images: combinedImages,
                 audios,
                 videos: video ? [video] : [],
-                durationSec: duration || 10,
+                durationSec: duration || maxDurationSec,
                 silent,
             });
         },
-        [onApply],
+        [onApply, maxDurationSec],
     );
 
-    // 辅助上传图片处理（支持新增与就地替换）
-    const handleUploadImages = async (
-        e: React.ChangeEvent<HTMLInputElement>,
-        category: "product" | "model" | "scene",
-    ) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
+    // 插槽配置列表
+    const replicationSlots: VideoWorkbenchSlotConfig[] = useMemo(
+        () => [
+            { id: "product", label: "添加商品", icon: <ImagePlus className="size-5" />, accept: "image/*", kind: "image", maxCount: 6 },
+            { id: "model", label: "添加人物", icon: <ImagePlus className="size-5" />, accept: "image/*", kind: "image", maxCount: 6 },
+            { id: "scene", label: "添加背景", icon: <ImagePlus className="size-5" />, accept: "image/*", kind: "image", maxCount: 6 },
+            { id: "audio", label: "添加声音", icon: <Music2 className="size-5" />, accept: "audio/*", kind: "audio", maxCount: 3, optional: true },
+            { id: "general", label: "添加参考", icon: <Plus className="size-5" />, accept: "image/*", kind: "image", maxCount: 6, optional: true },
+        ],
+        [],
+    );
 
-        const replaceTarget = replaceTargetRef.current;
-        replaceTargetRef.current = null;
+    // 聚合派生 slotFilesMap
+    const slotFilesMap = useMemo<Record<string, VideoWorkbenchSlotFile[]>>(() => {
+        return {
+            product: productImages.map((p) => ({
+                id: p.id,
+                name: p.name,
+                kind: "image",
+                url: p.url,
+                dataUrl: p.dataUrl,
+                storageKey: p.storageKey,
+            })),
+            model: modelImages.map((m) => ({
+                id: m.id,
+                name: m.name,
+                kind: "image",
+                url: m.url,
+                dataUrl: m.dataUrl,
+                storageKey: m.storageKey,
+            })),
+            scene: sceneImages.map((s) => ({
+                id: s.id,
+                name: s.name,
+                kind: "image",
+                url: s.url,
+                dataUrl: s.dataUrl,
+                storageKey: s.storageKey,
+            })),
+            audio: uploadedAudios.map((a) => ({
+                id: a.id,
+                name: a.name,
+                kind: "audio",
+                url: a.url,
+                storageKey: a.storageKey,
+                durationMs: a.durationMs,
+            })),
+            general: generalImages.map((g) => ({
+                id: g.id,
+                name: g.name,
+                kind: "image",
+                url: g.url,
+                dataUrl: g.dataUrl,
+                storageKey: g.storageKey,
+            })),
+        };
+    }, [productImages, modelImages, sceneImages, uploadedAudios, generalImages]);
 
-        const newImages: ReferenceImage[] = [];
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+    const totalCount = useMemo(() => {
+        return (
+            productImages.length +
+            modelImages.length +
+            sceneImages.length +
+            generalImages.length +
+            uploadedAudios.length
+        );
+    }, [productImages, modelImages, sceneImages, generalImages, uploadedAudios]);
+
+    // 批量添加素材到指定插槽（全面接入多级缓存 L1 内存 -> L2 持久化 blob -> L3 远端）
+    const handleAddSlotFiles = async (slotId: string, files: File[]) => {
+        if (!files.length) return;
+
+        if (slotId === "audio") {
+            const added: ReferenceAudio[] = [];
+            for (const file of files) {
+                const hide = message.loading(`正在上传音频 ${file.name}...`, 0);
+                try {
+                    let audioDurationMs: number | undefined;
+                    try {
+                        const tempAudio = new Audio();
+                        const aUrl = URL.createObjectURL(file);
+                        tempAudio.src = aUrl;
+                        await new Promise<void>((resolve) => {
+                            tempAudio.onloadedmetadata = () => resolve();
+                            tempAudio.onerror = () => resolve();
+                        });
+                        if (tempAudio.duration && Number.isFinite(tempAudio.duration)) {
+                            audioDurationMs = Math.round(tempAudio.duration * 1000);
+                        }
+                        URL.revokeObjectURL(aUrl);
+                    } catch {}
+
+                    if (audioDurationMs && (audioDurationMs < 2000 || audioDurationMs > maxDurationSec * 1000)) {
+                        message.warning(`音频「${file.name}」时长为 ${Math.round(audioDurationMs / 1000)}s，建议在 2~${maxDurationSec} 秒之间`);
+                    }
+
+                    const uploaded = await uploadMediaFile(file, "audio-reference");
+                    if (uploaded.storageKey) {
+                        try {
+                            await primeResourceBlobCache(uploaded.storageKey, file);
+                        } catch {}
+                    }
+                    added.push({
+                        id: nanoid(),
+                        name: file.name,
+                        type: "audio",
+                        url: uploaded.url,
+                        storageKey: uploaded.storageKey,
+                        durationMs: audioDurationMs,
+                    });
+                } catch {
+                    message.error(`音频上传失败: ${file.name}`);
+                } finally {
+                    hide();
+                }
+            }
+
+            if (added.length > 0) {
+                const nextAudios = [...uploadedAudios, ...added];
+                setUploadedAudios(nextAudios);
+                syncAllToDraft(
+                    prompt,
+                    { products: productImages, models: modelImages, scenes: sceneImages, general: generalImages },
+                    nextAudios,
+                    referenceVideo,
+                    videoDurationSec || maxDurationSec,
+                );
+                message.success(`已添加 ${added.length} 条音频素材`);
+            }
+            return;
+        }
+
+        // 图片类上传
+        const addedImages: ReferenceImage[] = [];
+        for (const file of files) {
             const hide = message.loading(`正在上传 ${file.name}...`, 0);
             try {
                 const uploaded = await uploadImage(file);
+                if (uploaded.storageKey) {
+                    try {
+                        await primeResourceBlobCache(uploaded.storageKey, file);
+                    } catch {}
+                }
                 const dataUrl = await new Promise<string>((resolve) => {
                     const reader = new FileReader();
                     reader.onloadend = () => resolve((reader.result as string) || "");
                     reader.readAsDataURL(file);
                 });
-                newImages.push({
+                addedImages.push({
                     id: nanoid(),
                     name: file.name,
                     type: "image",
@@ -181,68 +324,48 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                     url: uploaded.url,
                     storageKey: uploaded.storageKey,
                 });
-            } catch (err) {
+            } catch {
                 message.error(`上传失败: ${file.name}`);
             } finally {
                 hide();
             }
         }
 
-        if (newImages.length > 0) {
+        if (addedImages.length > 0) {
             let nextProducts = productImages;
             let nextModels = modelImages;
             let nextScenes = sceneImages;
+            let nextGeneral = generalImages;
 
-            if (replaceTarget && newImages.length === 1) {
-                // 替换模式
-                const replacement = newImages[0];
-                if (replaceTarget.category === "product") {
-                    nextProducts = productImages.map((p) => (p.id === replaceTarget.id ? replacement : p));
-                    setProductImages(nextProducts);
-                } else if (replaceTarget.category === "model") {
-                    nextModels = modelImages.map((m) => (m.id === replaceTarget.id ? replacement : m));
-                    setModelImages(nextModels);
-                } else if (replaceTarget.category === "scene") {
-                    nextScenes = sceneImages.map((s) => (s.id === replaceTarget.id ? replacement : s));
-                    setSceneImages(nextScenes);
-                }
+            if (slotId === "product") {
+                nextProducts = [...productImages, ...addedImages];
+                setProductImages(nextProducts);
+            } else if (slotId === "model") {
+                nextModels = [...modelImages, ...addedImages];
+                setModelImages(nextModels);
+            } else if (slotId === "scene") {
+                nextScenes = [...sceneImages, ...addedImages];
+                setSceneImages(nextScenes);
             } else {
-                // 追加模式
-                if (category === "product") {
-                    nextProducts = [...productImages, ...newImages];
-                    setProductImages(nextProducts);
-                } else if (category === "model") {
-                    nextModels = [...modelImages, ...newImages];
-                    setModelImages(nextModels);
-                } else if (category === "scene") {
-                    nextScenes = [...sceneImages, ...newImages];
-                    setSceneImages(nextScenes);
-                }
+                nextGeneral = [...generalImages, ...addedImages];
+                setGeneralImages(nextGeneral);
             }
 
             syncAllToDraft(
                 prompt,
-                { products: nextProducts, models: nextModels, scenes: nextScenes },
+                { products: nextProducts, models: nextModels, scenes: nextScenes, general: nextGeneral },
                 uploadedAudios,
                 referenceVideo,
-                videoDurationSec || 10,
+                videoDurationSec || maxDurationSec,
             );
+            message.success(`已添加 ${addedImages.length} 张图片素材`);
         }
-        e.target.value = "";
     };
 
-    // 辅助上传音频处理（支持新增与就地替换）
-    const handleUploadAudios = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-
-        const replaceTarget = replaceTargetRef.current;
-        replaceTargetRef.current = null;
-
-        const newAudios: ReferenceAudio[] = [];
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            const hide = message.loading(`正在上传音频 ${file.name}...`, 0);
+    // 替换指定素材
+    const handleReplaceSlotFile = async (slotId: string, fileId: string, file: File) => {
+        if (slotId === "audio") {
+            const hide = message.loading(`正在替换音频 ${file.name}...`, 0);
             try {
                 let audioDurationMs: number | undefined;
                 try {
@@ -257,60 +380,166 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                         audioDurationMs = Math.round(tempAudio.duration * 1000);
                     }
                     URL.revokeObjectURL(aUrl);
-                } catch {
-                    // ignore
-                }
-
-                if (audioDurationMs && (audioDurationMs < 2000 || audioDurationMs > 15000)) {
-                    message.warning(`音频「${file.name}」时长为 ${Math.round(audioDurationMs / 1000)}s，Seedance 规范建议在 2~15 秒之间`);
-                }
+                } catch {}
 
                 const uploaded = await uploadMediaFile(file, "audio-reference");
-                newAudios.push({
-                    id: nanoid(),
+                if (uploaded.storageKey) {
+                    try {
+                        await primeResourceBlobCache(uploaded.storageKey, file);
+                    } catch {}
+                }
+                const updatedAudio: ReferenceAudio = {
+                    id: fileId,
                     name: file.name,
                     type: "audio",
                     url: uploaded.url,
                     storageKey: uploaded.storageKey,
                     durationMs: audioDurationMs,
-                });
-            } catch (err) {
-                message.error(`音频上传失败: ${file.name}`);
+                };
+                const nextAudios = uploadedAudios.map((a) => (a.id === fileId ? updatedAudio : a));
+                setUploadedAudios(nextAudios);
+                syncAllToDraft(
+                    prompt,
+                    { products: productImages, models: modelImages, scenes: sceneImages, general: generalImages },
+                    nextAudios,
+                    referenceVideo,
+                    videoDurationSec || maxDurationSec,
+                );
+                message.success("音频已成功替换");
+            } catch {
+                message.error(`音频替换失败: ${file.name}`);
             } finally {
                 hide();
             }
+            return;
         }
 
-        if (newAudios.length > 0) {
-            let nextAudios = uploadedAudios;
-            if (replaceTarget && newAudios.length === 1) {
-                nextAudios = uploadedAudios.map((a) => (a.id === replaceTarget.id ? newAudios[0] : a));
-            } else {
-                nextAudios = [...uploadedAudios, ...newAudios];
+        // 图片类替换
+        const hide = message.loading(`正在替换 ${file.name}...`, 0);
+        try {
+            const uploaded = await uploadImage(file);
+            if (uploaded.storageKey) {
+                try {
+                    await primeResourceBlobCache(uploaded.storageKey, file);
+                } catch {}
             }
-            setUploadedAudios(nextAudios);
+            const dataUrl = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve((reader.result as string) || "");
+                reader.readAsDataURL(file);
+            });
+            const updatedImage: ReferenceImage = {
+                id: fileId,
+                name: file.name,
+                type: "image",
+                dataUrl,
+                url: uploaded.url,
+                storageKey: uploaded.storageKey,
+            };
+
+            let nextProducts = productImages;
+            let nextModels = modelImages;
+            let nextScenes = sceneImages;
+            let nextGeneral = generalImages;
+
+            if (slotId === "product") {
+                nextProducts = productImages.map((p) => (p.id === fileId ? updatedImage : p));
+                setProductImages(nextProducts);
+            } else if (slotId === "model") {
+                nextModels = modelImages.map((m) => (m.id === fileId ? updatedImage : m));
+                setModelImages(nextModels);
+            } else if (slotId === "scene") {
+                nextScenes = sceneImages.map((s) => (s.id === fileId ? updatedImage : s));
+                setSceneImages(nextScenes);
+            } else {
+                nextGeneral = generalImages.map((g) => (g.id === fileId ? updatedImage : g));
+                setGeneralImages(nextGeneral);
+            }
+
             syncAllToDraft(
                 prompt,
-                { products: productImages, models: modelImages, scenes: sceneImages },
-                nextAudios,
+                { products: nextProducts, models: nextModels, scenes: nextScenes, general: nextGeneral },
+                uploadedAudios,
                 referenceVideo,
-                videoDurationSec || 10,
+                videoDurationSec || maxDurationSec,
             );
+            message.success("素材已成功替换");
+        } catch {
+            message.error(`替换失败: ${file.name}`);
+        } finally {
+            hide();
         }
-        e.target.value = "";
     };
 
-    // 通用添加文件处理（图片或音频）
-    const handleUploadGeneral = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
+    // 移除指定素材
+    const handleRemoveSlotFile = (slotId: string, fileId: string) => {
+        let nextProducts = productImages;
+        let nextModels = modelImages;
+        let nextScenes = sceneImages;
+        let nextGeneral = generalImages;
+        let nextAudios = uploadedAudios;
 
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            if (file.type.startsWith("image/")) {
-                const hide = message.loading(`正在上传 ${file.name}...`, 0);
-                try {
+        if (slotId === "product") {
+            nextProducts = productImages.filter((p) => p.id !== fileId);
+            setProductImages(nextProducts);
+        } else if (slotId === "model") {
+            nextModels = modelImages.filter((m) => m.id !== fileId);
+            setModelImages(nextModels);
+        } else if (slotId === "scene") {
+            nextScenes = sceneImages.filter((s) => s.id !== fileId);
+            setSceneImages(nextScenes);
+        } else if (slotId === "audio") {
+            nextAudios = uploadedAudios.filter((a) => a.id !== fileId);
+            setUploadedAudios(nextAudios);
+        } else {
+            nextGeneral = generalImages.filter((g) => g.id !== fileId);
+            setGeneralImages(nextGeneral);
+        }
+
+        syncAllToDraft(
+            prompt,
+            { products: nextProducts, models: nextModels, scenes: nextScenes, general: nextGeneral },
+            nextAudios,
+            referenceVideo,
+            videoDurationSec || maxDurationSec,
+        );
+    };
+
+    // 清空全部素材
+    const handleClearAllReferences = () => {
+        setProductImages([]);
+        setModelImages([]);
+        setSceneImages([]);
+        setGeneralImages([]);
+        setUploadedAudios([]);
+        syncAllToDraft(
+            prompt,
+            { products: [], models: [], scenes: [], general: [] },
+            [],
+            referenceVideo,
+            videoDurationSec || maxDurationSec,
+        );
+    };
+
+    // 从剪切板粘贴素材
+    const handlePasteFromClipboard = async () => {
+        if (onAddFromClipboard) {
+            onAddFromClipboard();
+            return;
+        }
+        try {
+            const items = await navigator.clipboard.read();
+            for (const item of items) {
+                const type = item.types.find((t) => t.startsWith("image/"));
+                if (type) {
+                    const blob = await item.getType(type);
+                    const file = new File([blob], `clipboard-${Date.now()}.png`, { type });
                     const uploaded = await uploadImage(file);
+                    if (uploaded.storageKey) {
+                        try {
+                            await primeResourceBlobCache(uploaded.storageKey, blob);
+                        } catch {}
+                    }
                     const dataUrl = await new Promise<string>((resolve) => {
                         const reader = new FileReader();
                         reader.onloadend = () => resolve((reader.result as string) || "");
@@ -324,69 +553,42 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                         url: uploaded.url,
                         storageKey: uploaded.storageKey,
                     };
-                    setProductImages((prev) => {
-                        const next = [...prev, newImg];
-                        syncAllToDraft(
-                            prompt,
-                            { products: next, models: modelImages, scenes: sceneImages },
-                            uploadedAudios,
-                            referenceVideo,
-                            videoDurationSec || 10,
-                        );
-                        return next;
-                    });
-                } catch {
-                    message.error(`上传失败: ${file.name}`);
-                } finally {
-                    hide();
-                }
-            } else if (file.type.startsWith("audio/")) {
-                const hide = message.loading(`正在上传音频 ${file.name}...`, 0);
-                try {
-                    const uploaded = await uploadMediaFile(file, "audio-reference");
-                    const newAudio: ReferenceAudio = {
-                        id: nanoid(),
-                        name: file.name,
-                        type: "audio",
-                        url: uploaded.url,
-                        storageKey: uploaded.storageKey,
-                    };
-                    setUploadedAudios((prev) => {
-                        const next = [...prev, newAudio];
-                        syncAllToDraft(
-                            prompt,
-                            { products: productImages, models: modelImages, scenes: sceneImages },
-                            next,
-                            referenceVideo,
-                            videoDurationSec || 10,
-                        );
-                        return next;
-                    });
-                } catch {
-                    message.error(`音频上传失败: ${file.name}`);
-                } finally {
-                    hide();
+                    const nextProducts = [...productImages, newImg];
+                    setProductImages(nextProducts);
+                    syncAllToDraft(
+                        prompt,
+                        { products: nextProducts, models: modelImages, scenes: sceneImages, general: generalImages },
+                        uploadedAudios,
+                        referenceVideo,
+                        videoDurationSec || maxDurationSec,
+                    );
+                    message.success("已成功从剪切板添加素材");
+                    return;
                 }
             }
+            message.info("剪切板中未检测到图片素材");
+        } catch {
+            message.warning("无法读取剪切板，请直接点选上传");
         }
-        e.target.value = "";
     };
 
-    // 参考视频上传处理
+    // 参考视频上传处理（客户端端侧 100% 截取，严禁服务器端转码消耗）
     const handleUploadVideo = async (file: File) => {
-        const hide = message.loading(`正在解析参考视频 ${file.name}...`, 0);
+        setIsUploadingVideo(true);
+        setVideoUploadProgress(10);
+        setVideoUploadPhase("正在解析视频元数据...");
         try {
             const tempVideoUrl = URL.createObjectURL(file);
             let posterUrl = "";
+            let posterBlob: Blob | undefined;
             try {
                 const captured = await captureVideoPoster(tempVideoUrl);
                 if (captured?.poster) {
+                    posterBlob = captured.poster;
                     posterUrl = URL.createObjectURL(captured.poster);
                     setVideoPoster(posterUrl);
                 }
-            } catch {
-                // ignore
-            }
+            } catch {}
 
             const tempVideo = document.createElement("video");
             tempVideo.preload = "metadata";
@@ -406,12 +608,15 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
             let fileToUpload: File = file;
             let finalDurationSec = originalDurationSec;
 
-            if (originalDurationSec > 15) {
+            // 动态依据所选生视频模型的生成时长上限截取（零云端算力消耗，100% 端侧本地执行）
+            if (originalDurationSec > maxDurationSec) {
+                setVideoUploadProgress(25);
+                setVideoUploadPhase(`正在截取前 ${maxDurationSec} 秒动作参考片段...`);
                 try {
                     const blobUrl = URL.createObjectURL(file);
                     const trimmedBlob = await trimVideoSegment(
                         { url: blobUrl },
-                        { startMs: 0, endMs: 15000 },
+                        { startMs: 0, endMs: Math.round(maxDurationSec * 1000) },
                         Math.round(originalDurationSec * 1000),
                     );
                     URL.revokeObjectURL(blobUrl);
@@ -421,135 +626,67 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                             `seedance_ref_${file.name.replace(/\.[^/.]+$/, "")}.mp4`,
                             { type: "video/mp4" },
                         );
-                        finalDurationSec = 15;
-                        message.info("参考视频超过 15 秒，已为您自动截取前 15 秒作为 Seedance 动作参考");
+                        finalDurationSec = maxDurationSec;
+                        message.info(`参考视频超过 ${maxDurationSec} 秒，已为您自动截取前 ${maxDurationSec} 秒作为动作参考`);
                     }
                 } catch (trimErr) {
-                    console.warn("[ReferenceReplicationPanel] 端侧自动裁剪 15s 失败，保持原视频文件并交由应用层降级:", trimErr);
+                    console.warn(`[ReferenceReplicationPanel] 端侧自动裁剪 ${maxDurationSec}s 失败，保持原视频文件并交由应用层降级:`, trimErr);
                 }
             }
 
             setVideoFile(fileToUpload);
             setVideoDurationSec(finalDurationSec);
 
-            const uploaded = await uploadMediaFile(fileToUpload, "video-reference");
+            setVideoUploadProgress(35);
+            setVideoUploadPhase("正在上传视频素材...");
+            const uploaded = await uploadMediaFile(fileToUpload, "video-reference", (uploadedBytes, totalBytes) => {
+                const pct = totalBytes > 0 ? Math.min(99, Math.round((uploadedBytes / totalBytes) * 100)) : 0;
+                setVideoUploadProgress(pct);
+            });
+            if (uploaded.remoteUploadError) {
+                throw new Error(uploaded.remoteUploadError);
+            }
+
+            // 多级缓存注入：视频源与视频海报
+            if (uploaded.storageKey) {
+                try {
+                    await primeResourceBlobCache(uploaded.storageKey, fileToUpload);
+                } catch {}
+            }
+            if (uploaded.preview?.storageKey && posterBlob) {
+                try {
+                    await primeResourceBlobCache(uploaded.preview.storageKey, posterBlob);
+                } catch {}
+            }
+
             const newRefVideo: ReferenceVideo = {
                 id: nanoid(),
                 name: fileToUpload.name,
                 type: "video",
                 url: uploaded.url,
                 storageKey: uploaded.storageKey,
-                posterUrl: posterUrl || undefined,
+                posterUrl: uploaded.preview?.url || posterUrl || undefined,
+                posterStorageKey: uploaded.preview?.storageKey || undefined,
                 durationMs: Math.round(finalDurationSec * 1000) || 0,
             };
             setReferenceVideo(newRefVideo);
 
             syncAllToDraft(
                 prompt,
-                { products: productImages, models: modelImages, scenes: sceneImages },
+                { products: productImages, models: modelImages, scenes: sceneImages, general: generalImages },
                 uploadedAudios,
                 newRefVideo,
                 finalDurationSec,
             );
+            setVideoUploadProgress(100);
             message.success("参考视频已上传并完成时序提取准备");
         } catch (err) {
-            message.error("视频上传失败，请重试");
+            const errMsg = err instanceof Error ? err.message : "视频上传失败，请重试";
+            message.error(errMsg);
         } finally {
-            hide();
-        }
-    };
-
-    // 移除单个素材
-    const handleRemoveReference = (item: WorkbenchReferenceItem) => {
-        if (item.category === "product") {
-            setProductImages((prev) => {
-                const next = prev.filter((p) => p.id !== item.id);
-                syncAllToDraft(prompt, { products: next, models: modelImages, scenes: sceneImages }, uploadedAudios, referenceVideo, videoDurationSec || 10);
-                return next;
-            });
-        } else if (item.category === "model") {
-            setModelImages((prev) => {
-                const next = prev.filter((m) => m.id !== item.id);
-                syncAllToDraft(prompt, { products: productImages, models: next, scenes: sceneImages }, uploadedAudios, referenceVideo, videoDurationSec || 10);
-                return next;
-            });
-        } else if (item.category === "scene") {
-            setSceneImages((prev) => {
-                const next = prev.filter((s) => s.id !== item.id);
-                syncAllToDraft(prompt, { products: productImages, models: modelImages, scenes: next }, uploadedAudios, referenceVideo, videoDurationSec || 10);
-                return next;
-            });
-        } else if (item.category === "audio") {
-            setUploadedAudios((prev) => {
-                const next = prev.filter((a) => a.id !== item.id);
-                syncAllToDraft(prompt, { products: productImages, models: modelImages, scenes: sceneImages }, next, referenceVideo, videoDurationSec || 10);
-                return next;
-            });
-        }
-    };
-
-    // 触发替换
-    const handleTriggerReplace = (item: WorkbenchReferenceItem) => {
-        replaceTargetRef.current = { id: item.id, category: item.category as any };
-        if (item.category === "product") {
-            productInputRef.current?.click();
-        } else if (item.category === "model") {
-            modelInputRef.current?.click();
-        } else if (item.category === "scene") {
-            sceneInputRef.current?.click();
-        } else if (item.category === "audio") {
-            audioInputRef.current?.click();
-        }
-    };
-
-    // 清空全部素材
-    const handleClearAllReferences = () => {
-        setProductImages([]);
-        setModelImages([]);
-        setSceneImages([]);
-        setUploadedAudios([]);
-        syncAllToDraft(prompt, { products: [], models: [], scenes: [] }, [], referenceVideo, videoDurationSec || 10);
-    };
-
-    // 从剪切板粘贴素材
-    const handlePasteFromClipboard = async () => {
-        if (onAddFromClipboard) {
-            onAddFromClipboard();
-            return;
-        }
-        try {
-            const items = await navigator.clipboard.read();
-            for (const item of items) {
-                const type = item.types.find((t) => t.startsWith("image/"));
-                if (type) {
-                    const blob = await item.getType(type);
-                    const file = new File([blob], `clipboard-${Date.now()}.png`, { type });
-                    const uploaded = await uploadImage(file);
-                    const dataUrl = await new Promise<string>((resolve) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolve((reader.result as string) || "");
-                        reader.readAsDataURL(file);
-                    });
-                    const newImg: ReferenceImage = {
-                        id: nanoid(),
-                        name: file.name,
-                        type: "image",
-                        dataUrl,
-                        url: uploaded.url,
-                        storageKey: uploaded.storageKey,
-                    };
-                    setProductImages((prev) => {
-                        const next = [...prev, newImg];
-                        syncAllToDraft(prompt, { products: next, models: modelImages, scenes: sceneImages }, uploadedAudios, referenceVideo, videoDurationSec || 10);
-                        return next;
-                    });
-                    message.success("已成功从剪切板添加素材");
-                    return;
-                }
-            }
-            message.info("剪切板中未检测到图片素材");
-        } catch {
-            message.warning("无法读取剪切板，请直接点选上传");
+            setIsUploadingVideo(false);
+            setVideoUploadProgress(0);
+            setVideoUploadPhase("");
         }
     };
 
@@ -587,56 +724,14 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
         onPromptChange?.(editedPrompt);
         syncAllToDraft(
             editedPrompt,
-            { products: productImages, models: modelImages, scenes: sceneImages },
+            { products: productImages, models: modelImages, scenes: sceneImages, general: generalImages },
             uploadedAudios,
             referenceVideo,
-            taskStore.result?.recommendedDurationSec || videoDurationSec || 10,
+            taskStore.result?.recommendedDurationSec || videoDurationSec || maxDurationSec,
             false,
         );
         message.success("复刻提示词已成功应用到文本框，您可继续微调或直接点击【立即生成视频】");
     };
-
-    // 扁平合并所有素材项，对齐基础“生成视频工作台”
-    const allReferenceItems: WorkbenchReferenceItem[] = [
-        ...productImages.map((p) => ({
-            id: p.id,
-            name: p.name,
-            kind: "image" as const,
-            category: "product" as const,
-            dataUrl: p.dataUrl,
-            url: p.url,
-            storageKey: p.storageKey,
-        })),
-        ...modelImages.map((m) => ({
-            id: m.id,
-            name: m.name,
-            kind: "image" as const,
-            category: "model" as const,
-            dataUrl: m.dataUrl,
-            url: m.url,
-            storageKey: m.storageKey,
-        })),
-        ...sceneImages.map((s) => ({
-            id: s.id,
-            name: s.name,
-            kind: "image" as const,
-            category: "scene" as const,
-            dataUrl: s.dataUrl,
-            url: s.url,
-            storageKey: s.storageKey,
-        })),
-        ...uploadedAudios.map((a) => ({
-            id: a.id,
-            name: a.name,
-            kind: "audio" as const,
-            category: "audio" as const,
-            url: a.url,
-            storageKey: a.storageKey,
-            durationMs: a.durationMs,
-        })),
-    ];
-
-    const totalCount = allReferenceItems.length;
 
     // 构建用于 @ 触发与输入框缩略图 Chip 渲染的完整素材引用列表
     const replicationMentionReferences = useMemo<CanvasResourceReference[]>(() => {
@@ -644,28 +739,33 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
 
         // 1. 参考原片视频
         if (referenceVideo) {
+            const durLabel = videoDurationSec > 0 ? ` · ${videoDurationSec}s` : "";
+            const resolvedPoster = videoPoster || referenceVideo.posterUrl || (referenceVideo.storageKey ? (peekLocalFirstMedia(referenceVideo.storageKey) || resolveResourceUrl(referenceVideo.storageKey)) : "") || referenceVideo.url;
             list.push({
                 id: referenceVideo.id,
                 nodeId: referenceVideo.id,
                 kind: "video",
                 label: "@视频1",
-                title: `参考原片 · ${referenceVideo.name}`,
-                previewUrl: videoPoster || referenceVideo.url,
+                title: `参考原片${durLabel}`,
+                previewUrl: resolvedPoster,
+                storageKey: referenceVideo.posterStorageKey || referenceVideo.storageKey,
                 mediaUrl: referenceVideo.url,
                 active: true,
             });
         }
 
-        // 2. 商品图片（首选规范标签 @图片1（商品），同时包含通用别名 @图片1）
+        // 2. 商品图片
         productImages.forEach((img, i) => {
             const num = i + 1;
+            const pUrl = img.dataUrl || img.url || (img.storageKey ? (peekLocalFirstMedia(img.storageKey) || resolveResourceUrl(img.storageKey)) : "");
             list.push({
                 id: img.id,
                 nodeId: img.id,
                 kind: "image",
                 label: `@图片${num}（商品）`,
                 title: `商品 · ${img.name}`,
-                previewUrl: img.dataUrl || img.url,
+                previewUrl: pUrl,
+                storageKey: img.storageKey,
                 active: true,
             });
             list.push({
@@ -674,7 +774,8 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                 kind: "image",
                 label: `@图片${num}`,
                 title: `商品 · ${img.name}`,
-                previewUrl: img.dataUrl || img.url,
+                previewUrl: pUrl,
+                storageKey: img.storageKey,
                 active: true,
             });
         });
@@ -683,13 +784,15 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
         const pCount = productImages.length;
         modelImages.forEach((img, i) => {
             const num = pCount + i + 1;
+            const pUrl = img.dataUrl || img.url || (img.storageKey ? (peekLocalFirstMedia(img.storageKey) || resolveResourceUrl(img.storageKey)) : "");
             list.push({
                 id: img.id,
                 nodeId: img.id,
                 kind: "image",
                 label: `@图片${num}（人物）`,
                 title: `人物 · ${img.name}`,
-                previewUrl: img.dataUrl || img.url,
+                previewUrl: pUrl,
+                storageKey: img.storageKey,
                 active: true,
             });
             list.push({
@@ -698,7 +801,8 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                 kind: "image",
                 label: `@图片${num}`,
                 title: `人物 · ${img.name}`,
-                previewUrl: img.dataUrl || img.url,
+                previewUrl: pUrl,
+                storageKey: img.storageKey,
                 active: true,
             });
         });
@@ -707,13 +811,15 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
         const pmCount = pCount + modelImages.length;
         sceneImages.forEach((img, i) => {
             const num = pmCount + i + 1;
+            const pUrl = img.dataUrl || img.url || (img.storageKey ? (peekLocalFirstMedia(img.storageKey) || resolveResourceUrl(img.storageKey)) : "");
             list.push({
                 id: img.id,
                 nodeId: img.id,
                 kind: "image",
                 label: `@图片${num}（背景）`,
                 title: `背景 · ${img.name}`,
-                previewUrl: img.dataUrl || img.url,
+                previewUrl: pUrl,
+                storageKey: img.storageKey,
                 active: true,
             });
             list.push({
@@ -722,12 +828,30 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                 kind: "image",
                 label: `@图片${num}`,
                 title: `背景 · ${img.name}`,
-                previewUrl: img.dataUrl || img.url,
+                previewUrl: pUrl,
+                storageKey: img.storageKey,
                 active: true,
             });
         });
 
-        // 5. 参考音频
+        // 5. 参考素材
+        const pmsCount = pmCount + sceneImages.length;
+        generalImages.forEach((img, i) => {
+            const num = pmsCount + i + 1;
+            const pUrl = img.dataUrl || img.url || (img.storageKey ? (peekLocalFirstMedia(img.storageKey) || resolveResourceUrl(img.storageKey)) : "");
+            list.push({
+                id: img.id,
+                nodeId: img.id,
+                kind: "image",
+                label: `@图片${num}（参考）`,
+                title: `参考 · ${img.name}`,
+                previewUrl: pUrl,
+                storageKey: img.storageKey,
+                active: true,
+            });
+        });
+
+        // 6. 参考音频
         uploadedAudios.forEach((aud, i) => {
             list.push({
                 id: aud.id,
@@ -736,11 +860,12 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                 label: `@音频${i + 1}`,
                 title: `音频 · ${aud.name}`,
                 previewUrl: aud.url,
+                storageKey: aud.storageKey,
                 active: true,
             });
         });
 
-        // 6. 灵感文档
+        // 7. 灵感文档
         (textReferences || []).forEach((doc, i) => {
             list.push({
                 id: doc.id,
@@ -754,54 +879,14 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
         });
 
         return list;
-    }, [referenceVideo, videoPoster, productImages, modelImages, sceneImages, uploadedAudios, textReferences]);
+    }, [referenceVideo, videoPoster, videoDurationSec, productImages, modelImages, sceneImages, generalImages, uploadedAudios, textReferences]);
 
     const isAssistantRunning = taskStore.status === "running";
     const isAssistantDone = taskStore.status === "completed" && Boolean(taskStore.result);
 
     return (
         <div className="relative flex flex-col rounded-2xl border border-black/[0.08] bg-white p-3.5 shadow-sm dark:border-white/[0.08] dark:bg-[#1c1c1e] transition-all">
-            {/* 隐藏的文件输入组件 */}
-            <input
-                ref={productInputRef}
-                type="file"
-                multiple
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleUploadImages(e, "product")}
-            />
-            <input
-                ref={modelInputRef}
-                type="file"
-                multiple
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleUploadImages(e, "model")}
-            />
-            <input
-                ref={sceneInputRef}
-                type="file"
-                multiple
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleUploadImages(e, "scene")}
-            />
-            <input
-                ref={audioInputRef}
-                type="file"
-                multiple
-                accept="audio/*"
-                className="hidden"
-                onChange={handleUploadAudios}
-            />
-            <input
-                ref={generalInputRef}
-                type="file"
-                multiple
-                accept="image/*,audio/*"
-                className="hidden"
-                onChange={handleUploadGeneral}
-            />
+            {/* 隐藏的视频文件输入 */}
             <input
                 ref={videoInputRef}
                 type="file"
@@ -844,140 +929,34 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
             </div>
 
             <div className="space-y-3">
-                {/* 1. 素材卡槽区域：完全对齐基础“生成视频工作台”结构与交互 */}
-                <div className="relative min-w-0 shrink-0">
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                        <span className="text-xs font-medium text-stone-500 dark:text-stone-400">
-                            素材数量 {totalCount} / 15
-                        </span>
-                        <div className="flex items-center gap-1.5">
-                            <Tooltip title="从剪切板粘贴" placement="top" mouseEnterDelay={0.15}>
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
-                                    icon={<ClipboardPaste className="size-3.5" />}
-                                    onClick={handlePasteFromClipboard}
-                                    aria-label="从剪切板粘贴"
-                                />
-                            </Tooltip>
-                            {handleOpenPromptModal && (
-                                <Tooltip title="提示词模板" placement="top" mouseEnterDelay={0.15}>
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
-                                        icon={<Sparkles className="size-3.5 text-amber-500" />}
-                                        onClick={handleOpenPromptModal}
-                                        aria-label="提示词模板"
-                                    />
-                                </Tooltip>
-                            )}
-                            {handleSavePromptModal && (
-                                <Tooltip title="保存为模板" placement="top" mouseEnterDelay={0.15}>
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
-                                        icon={<BookmarkPlus className="size-3.5 text-amber-500" />}
-                                        onClick={handleSavePromptModal}
-                                        aria-label="保存为模板"
-                                    />
-                                </Tooltip>
-                            )}
-                            {onOpenAssetPicker && (
-                                <Tooltip title="查看我的资产" placement="top" mouseEnterDelay={0.15}>
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-stone-700 dark:hover:!text-stone-200"
-                                        icon={<FolderPlus className="size-3.5" />}
-                                        onClick={onOpenAssetPicker}
-                                        aria-label="查看我的资产"
-                                    />
-                                </Tooltip>
-                            )}
-                            {totalCount > 0 && (
-                                <Tooltip title="清空素材" placement="top" mouseEnterDelay={0.15}>
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        className="!h-7 !w-7 !p-0 !text-stone-400 hover:!text-red-500 dark:hover:!text-red-400"
-                                        icon={<Trash2 className="size-3.5" />}
-                                        onClick={handleClearAllReferences}
-                                        aria-label="清空素材"
-                                    />
-                                </Tooltip>
-                            )}
-                        </div>
-                    </div>
+                {/* 1. 素材卡槽区域：完全对齐【生图工作台】折叠/展开/放大交互与多级缓存规范 */}
+                <VideoWorkbenchSkillSlots
+                    slots={replicationSlots}
+                    slotFilesMap={slotFilesMap}
+                    onAddSlotFiles={handleAddSlotFiles}
+                    onReplaceSlotFile={handleReplaceSlotFile}
+                    onRemoveSlotFile={handleRemoveSlotFile}
+                    onClearAllSlots={handleClearAllReferences}
+                    onPasteClipboard={handlePasteFromClipboard}
+                    onOpenPromptDialog={handleOpenPromptModal}
+                    onSavePromptDialog={handleSavePromptModal}
+                    onOpenAssetPicker={onOpenAssetPicker}
+                    totalCount={totalCount}
+                    maxTotalCount={15}
+                />
 
-                    <div className="hover-scrollbar hover-scrollbar-hint min-w-0 overflow-x-auto rounded-xl border border-dashed border-stone-200 p-2.5 transition-colors dark:border-stone-800">
-                        {totalCount === 0 ? (
-                            // 空态：横向展示标准卡槽按钮序列（带竖分割线）
-                            <div className="flex min-w-max items-start gap-2">
-                                <PanelUploadSlot
-                                    icon={<ImagePlus className="size-5" />}
-                                    label="添加商品"
-                                    onClick={() => productInputRef.current?.click()}
-                                />
-                                <PanelUploadDivider />
-                                <PanelUploadSlot
-                                    icon={<ImagePlus className="size-5" />}
-                                    label="添加人物"
-                                    onClick={() => modelInputRef.current?.click()}
-                                />
-                                <PanelUploadDivider />
-                                <PanelUploadSlot
-                                    icon={<ImagePlus className="size-5" />}
-                                    label="添加背景"
-                                    onClick={() => sceneInputRef.current?.click()}
-                                />
-                                <PanelUploadDivider />
-                                <PanelUploadSlot
-                                    icon={<Music2 className="size-5" />}
-                                    label="添加声音"
-                                    onClick={() => audioInputRef.current?.click()}
-                                />
-                                <PanelUploadSlot
-                                    compact
-                                    icon={<Plus className="size-5" />}
-                                    label="添加参考"
-                                    onClick={() => generalInputRef.current?.click()}
-                                />
-                            </div>
-                        ) : (
-                            // 已有素材态：横向展示尺寸为 size-16 的 ReferenceTile 序列
-                            <div className="flex min-w-max items-center gap-2">
-                                {allReferenceItems.map((item, index) => (
-                                    <PanelReferenceTile
-                                        key={item.id}
-                                        item={item}
-                                        index={index}
-                                        onReplace={() => handleTriggerReplace(item)}
-                                        onRemove={() => handleRemoveReference(item)}
-                                    />
-                                ))}
-                                <PanelUploadSlot
-                                    compact
-                                    icon={<Plus className="size-5" />}
-                                    label="添加参考"
-                                    onClick={() => generalInputRef.current?.click()}
-                                />
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* 2. 中部参考视频区（紧凑优化高度，点击或拖拽上传，支持时长解析与封面捕获） */}
+                {/* 2. 中部参考视频区（组件内部展示进度条，多级缓存无缝对接） */}
                 <div className="relative">
-                    {referenceVideo ? (
+                    {referenceVideo && !isUploadingVideo ? (
                         <div className="group relative flex h-36 w-full flex-col items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-stone-900 dark:border-stone-800">
-                            {videoPoster ? (
-                                <img src={videoPoster} alt="视频封面" className="size-full object-contain opacity-80" />
-                            ) : (
-                                <Film className="size-8 text-stone-500" />
-                            )}
+                            <CachedResourceImage
+                                storageKey={referenceVideo.posterStorageKey || referenceVideo.storageKey}
+                                src={videoPoster || referenceVideo.posterUrl || (referenceVideo.storageKey ? (peekLocalFirstMedia(referenceVideo.storageKey) || resolveResourceUrl(referenceVideo.storageKey)) : "")}
+                                alt="视频封面"
+                                className="size-full object-contain opacity-80"
+                                loadingFallback={<div className="size-full animate-pulse bg-stone-800" />}
+                                fallback={<Film className="size-8 text-stone-500" />}
+                            />
                             <div className="absolute left-2.5 bottom-2.5 flex items-center gap-1.5 rounded-md bg-black/60 px-2 py-0.5 text-xs text-white backdrop-blur-sm">
                                 <Film className="size-3 text-amber-400" />
                                 <span className="max-w-[200px] truncate">{referenceVideo.name}</span>
@@ -1002,10 +981,10 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                                         setVideoDurationSec(0);
                                         syncAllToDraft(
                                             prompt,
-                                            { products: productImages, models: modelImages, scenes: sceneImages },
+                                            { products: productImages, models: modelImages, scenes: sceneImages, general: generalImages },
                                             uploadedAudios,
                                             null,
-                                            10,
+                                            maxDurationSec,
                                         );
                                     }}
                                 >
@@ -1015,26 +994,62 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                         </div>
                     ) : (
                         <div
-                            onClick={() => videoInputRef.current?.click()}
+                            onClick={() => {
+                                if (!isUploadingVideo) {
+                                    videoInputRef.current?.click();
+                                }
+                            }}
                             onDragOver={(e) => e.preventDefault()}
                             onDrop={(e) => {
                                 e.preventDefault();
+                                if (isUploadingVideo) return;
                                 const f = e.dataTransfer.files?.[0];
                                 if (f && f.type.startsWith("video/")) {
                                     void handleUploadVideo(f);
                                 }
                             }}
-                            className="group flex h-36 w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-stone-200 bg-stone-50/40 hover:border-amber-400 hover:bg-amber-50/20 dark:border-stone-800 dark:bg-[#1a1a1c] transition-all cursor-pointer"
+                            className={`group flex h-36 w-full flex-col items-center justify-center rounded-xl border-2 border-dashed transition-all ${
+                                isUploadingVideo
+                                    ? "border-amber-400 bg-amber-50/30 dark:border-amber-500/40 dark:bg-amber-950/20 cursor-default"
+                                    : "border-stone-200 bg-stone-50/40 hover:border-amber-400 hover:bg-amber-50/20 dark:border-stone-800 dark:bg-[#1a1a1c] cursor-pointer"
+                            }`}
                         >
-                            <div className="mb-1.5 flex size-10 items-center justify-center rounded-full bg-stone-100 text-stone-500 group-hover:bg-amber-100 group-hover:text-amber-600 dark:bg-stone-800 transition-colors">
-                                <UploadCloud className="size-5" />
-                            </div>
-                            <div className="text-xs font-semibold text-stone-800 dark:text-stone-200">
-                                添加参考视频 (必选)
-                            </div>
-                            <div className="mt-0.5 text-[10px] text-stone-400">
-                                建议 2-15 秒（自动适配 Seedance 动作参考） · 支持 MP4、MOV、WebM
-                            </div>
+                            {isUploadingVideo ? (
+                                <div className="flex flex-col items-center justify-center px-4 w-full text-center">
+                                    <div className="mb-2 flex size-10 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
+                                        <LoaderCircle className="size-5 animate-spin" />
+                                    </div>
+                                    <div className="text-xs font-semibold text-stone-800 dark:text-stone-200">
+                                        {videoUploadPhase || "正在处理视频素材..."}
+                                    </div>
+                                    <div className="mt-2.5 flex items-center gap-2 w-48 max-w-full">
+                                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700">
+                                            <div
+                                                className="h-full rounded-full bg-amber-500 transition-all duration-200"
+                                                style={{ width: `${videoUploadProgress}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-[11px] font-mono font-medium text-amber-600 dark:text-amber-400 w-8 text-right">
+                                            {videoUploadProgress}%
+                                        </span>
+                                    </div>
+                                    <div className="mt-1 text-[10px] text-stone-400">
+                                        正在就地处理，请稍候...
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="mb-1.5 flex size-10 items-center justify-center rounded-full bg-stone-100 text-stone-500 group-hover:bg-amber-100 group-hover:text-amber-600 dark:bg-stone-800 transition-colors">
+                                        <UploadCloud className="size-5" />
+                                    </div>
+                                    <div className="text-xs font-semibold text-stone-800 dark:text-stone-200">
+                                        添加参考视频 (必选)
+                                    </div>
+                                    <div className="mt-0.5 text-[10px] text-stone-400">
+                                        建议 2-{maxDurationSec} 秒（自动适配动作参考） · 支持 MP4、MOV、WebM
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )}
                 </div>
@@ -1043,24 +1058,27 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                 <div className="relative rounded-xl border border-black/[0.08] bg-stone-50/50 p-3 dark:border-white/[0.08] dark:bg-[#232326]">
                     <div className="mb-1.5 flex items-center justify-between text-xs">
                         <span className="font-semibold text-stone-700 dark:text-stone-200 flex items-center gap-1.5">
-                            <Sparkles className="size-3.5 text-amber-500" />
                             复刻要求与提示词
                         </span>
                         <div className="flex items-center gap-2">
-                            {isAssistantRunning ? (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400 animate-pulse">
-                                    <LoaderCircle className="size-3 animate-spin" />
-                                    复刻助手正在后台分析中...
-                                </span>
-                            ) : isAssistantDone ? (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                                    <CheckCircle2 className="size-3" />
-                                    已完成分析推演
-                                </span>
-                            ) : null}
-                            <span className="text-[10px] text-stone-400">
-                                {prompt.length} / 10000
-                            </span>
+                            {prompt.trim() && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        onPromptChange?.("");
+                                        syncAllToDraft(
+                                            "",
+                                            { products: productImages, models: modelImages, scenes: sceneImages, general: generalImages },
+                                            uploadedAudios,
+                                            referenceVideo,
+                                            videoDurationSec || maxDurationSec,
+                                        );
+                                    }}
+                                    className="text-[11px] text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors cursor-pointer"
+                                >
+                                    清空
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -1072,10 +1090,10 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                                 onPromptChange?.(val);
                                 syncAllToDraft(
                                     val,
-                                    { products: productImages, models: modelImages, scenes: sceneImages },
+                                    { products: productImages, models: modelImages, scenes: sceneImages, general: generalImages },
                                     uploadedAudios,
                                     referenceVideo,
-                                    videoDurationSec || 10,
+                                    videoDurationSec || maxDurationSec,
                                 );
                             }}
                             showReferenceLabels
@@ -1085,10 +1103,9 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                         />
                     </div>
 
-                    {/* 底栏控制行：左侧复刻助手；右侧清空（左下角的“@引用素材”已彻底删除） */}
+                    {/* 底栏控制行：左侧复刻助手 */}
                     <div className="mt-2 flex items-center justify-between border-t border-black/[0.04] pt-2 dark:border-white/[0.04]">
                         <div className="flex items-center gap-2">
-                            {/* 路径 B 触发按钮：复刻助手 */}
                             <button
                                 type="button"
                                 onClick={() => void handleTriggerReplicationAssistant()}
@@ -1113,152 +1130,24 @@ export const ReferenceReplicationPanel: React.FC<ReferenceReplicationPanelProps>
                                         : "复刻助手"}
                                 </span>
                             </button>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-xs text-stone-400">
-                            {prompt.length > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        onPromptChange?.("");
-                                        syncAllToDraft(
-                                            "",
-                                            { products: productImages, models: modelImages, scenes: sceneImages },
-                                            uploadedAudios,
-                                            referenceVideo,
-                                            videoDurationSec || 10,
-                                        );
-                                    }}
-                                    className="hover:text-stone-600 dark:hover:text-stone-200 transition-colors cursor-pointer"
-                                >
-                                    清空
-                                </button>
-                            )}
+                            <span className="text-[11px] text-stone-400">
+                                {isAssistantDone
+                                    ? "已完成 Seedance-2.0 专业复刻拆解"
+                                    : "端侧硬件解构时空与运镜，推演状态并对齐素材"}
+                            </span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* 复刻助手分析进度与结果一体化弹窗（不可取消，后台执行，跨页面不中断） */}
+            {/* 复刻助手分析审核弹窗 */}
             <ReplicationPromptReviewModal
                 open={taskStore.modalOpen}
-                initialPrompt={taskStore.draftPrompt || taskStore.result?.prompt || ""}
+                references={replicationMentionReferences}
                 onClose={() => taskStore.setModalOpen(false)}
                 onApply={handleApplyResultFromModal}
-                references={replicationMentionReferences}
             />
         </div>
     );
 };
-
-// 基础卡槽按钮组件（100% 对齐基础生成视频工作台 UploadSlot）
-function PanelUploadSlot({
-    icon,
-    label,
-    onClick,
-    compact = false,
-}: {
-    icon: React.ReactNode;
-    label: string;
-    onClick: () => void;
-    compact?: boolean;
-}) {
-    return (
-        <button
-            type="button"
-            className={`group flex shrink-0 flex-col items-center gap-1 text-center text-[11px] transition text-stone-600 hover:text-stone-950 dark:text-stone-300 dark:hover:text-white cursor-pointer ${
-                compact ? "w-16" : "w-[4.5rem]"
-            }`}
-            onClick={onClick}
-            title={label}
-            aria-label={label}
-        >
-            <span className="grid size-14 place-items-center rounded-lg border border-stone-200 bg-stone-100 text-stone-400 transition group-hover:-translate-y-0.5 group-hover:border-stone-300 group-hover:bg-stone-200 group-hover:text-stone-700 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-500 dark:group-hover:border-stone-500 dark:group-hover:bg-stone-700 dark:group-hover:text-stone-100">
-                {icon}
-            </span>
-            <span className="max-w-full truncate leading-4">{label}</span>
-        </button>
-    );
-}
-
-// 基础卡槽分割线组件（100% 对齐基础生成视频工作台 UploadDivider）
-function PanelUploadDivider() {
-    return <span className="mx-1 mt-1 h-14 w-px shrink-0 bg-stone-200 dark:bg-stone-700" aria-hidden="true" />;
-}
-
-// 基础已上传素材卡片组件（100% 对齐基础生成视频工作台 ReferenceTile）
-function PanelReferenceTile({
-    item,
-    index,
-    onReplace,
-    onRemove,
-}: {
-    item: WorkbenchReferenceItem;
-    index: number;
-    onReplace: () => void;
-    onRemove: () => void;
-}) {
-    return (
-        <div
-            className="group relative size-16 shrink-0 aspect-square min-w-16 min-h-16 max-w-16 max-h-16 cursor-pointer overflow-hidden rounded-xl border border-stone-200 bg-stone-100 shadow-sm transition duration-150 hover:z-20 hover:-translate-y-0.5 hover:shadow-md dark:border-stone-700 dark:bg-stone-800"
-            tabIndex={0}
-            role="button"
-            aria-label={item.name}
-        >
-            {item.kind === "image" ? (
-                <div className="relative size-full overflow-hidden rounded-xl">
-                    <img
-                        src={item.dataUrl || item.url}
-                        alt={item.name}
-                        className="size-full object-cover block"
-                    />
-                </div>
-            ) : (
-                <div className="relative flex size-full flex-col items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300">
-                    <Music2 className="size-5" />
-                    {item.durationMs ? (
-                        <span className="mt-0.5 text-[9px] font-mono opacity-80">
-                            {formatDuration(item.durationMs)}
-                        </span>
-                    ) : null}
-                </div>
-            )}
-
-            {/* 左上角序号角标 */}
-            <span className="absolute left-1 top-1 z-5 grid size-5 place-items-center rounded-full bg-black/65 text-[10px] font-semibold text-white">
-                {index + 1}
-            </span>
-
-            {/* 悬停浮层：替换与删除 */}
-            <div className="absolute inset-0 z-20 hidden items-center justify-center gap-1 rounded-xl bg-black/45 group-hover:flex group-focus:flex">
-                <Tooltip title="替换素材" placement="top" mouseEnterDelay={0.15}>
-                    <button
-                        type="button"
-                        className="grid size-7 place-items-center rounded-full bg-white/90 text-stone-800 shadow-sm transition hover:bg-white cursor-pointer"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onReplace();
-                        }}
-                        aria-label="替换素材"
-                    >
-                        <RefreshCw className="size-3.5" />
-                    </button>
-                </Tooltip>
-                <Tooltip title="移除素材" placement="top" mouseEnterDelay={0.15}>
-                    <button
-                        type="button"
-                        className="grid size-7 place-items-center rounded-full bg-white/90 text-red-600 shadow-sm transition hover:bg-white cursor-pointer"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onRemove();
-                        }}
-                        aria-label="移除素材"
-                    >
-                        <Trash2 className="size-3.5" />
-                    </button>
-                </Tooltip>
-            </div>
-        </div>
-    );
-}
 // @opc-feature: reference-replication-panel [end]

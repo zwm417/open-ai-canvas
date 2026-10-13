@@ -1,0 +1,76 @@
+﻿{
+  "id": "logo_generator",
+  "name": "Logo 设计",
+  "description": "从品牌简报生成少量高质量 Logo、字标或组合标概念，并给出矢量重建和商标检查交接。",
+  "icon": "▧",
+  "color": "#F97316",
+  "category": "Branding",
+  "scenarios": [
+    "Logo 设计",
+    "Logo 生成",
+    "logo generator",
+    "完整 Logo 系统",
+    "品牌标志"
+  ],
+  "promptTemplate": "使用 $logo-generator 完成当前任务。先执行领域工作流和必要确认，再为每个批准的生成单元输出独立、可执行的供应商提示词。\n\n用户需求：{userInput}",
+  "negativePrompt": "random logo grid, unrelated logos, inconsistent concepts, messy typography, illegible wordmark, generic clipart, overly complex mark, blurry, watermark",
+  "preferredModel": "gpt-image-2",
+  "outputType": "image",
+  "aspectRatio": "auto",
+  "analysisPrompt": "把品牌定位压缩为清晰、可缩放、可辨识的标志概念。你负责概念逻辑、形态构造和评估，不输出无关 Logo 网格，也不声称 AI 图片是最终矢量或已通过商标检索。 按以下阶段执行：压缩品牌简报与识别目标 → 检查类别惯例和避让对象 → 提出少量不同概念逻辑 → 确认深化路线 → 生成标志概念与单色测试 → 完成矢量和商标交接。",
+  "displayName": "Logo 设计",
+  "shortDescription": "从品牌策略与真实触点出发，建立可进入专业矢量生产的 Logo 概念系统。",
+  "skillIds": [
+    "logo_generator",
+    "logo-generator"
+  ],
+  "role": "Logo 概念与标志构造设计师",
+  "agentType": "logo-concept-designer",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "guided",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "压缩品牌简报与识别目标",
+      "检查类别惯例和避让对象",
+      "提出少量不同概念逻辑",
+      "确认深化路线",
+      "生成标志概念与单色测试",
+      "完成矢量和商标交接"
+    ],
+    "requiredInputs": [
+      {
+        "key": "brand_brief",
+        "label": "品牌名、行业、受众和定位",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "text"
+        ],
+        "prompt": "请提供品牌名、行业、受众、定位和应用场景。"
+      },
+      {
+        "key": "reference_direction",
+        "label": "已有视觉参考与避让对象",
+        "required": false,
+        "blocking": false,
+        "accepts": [
+          "image",
+          "images",
+          "text"
+        ]
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "image_generation",
+      "task_status",
+      "post_production_handoff"
+    ]
+  },
+  "tools": [
+    "image_generate",
+    "search_reference_images",
+    "web_search"
+  ]
+}

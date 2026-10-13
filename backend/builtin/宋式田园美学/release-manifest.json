@@ -1,0 +1,77 @@
+{
+  "name": "song-pastoral-aesthetics-prompts",
+  "version": "1.0.0",
+  "file_count": 14,
+  "files": [
+    {
+      "path": "agents/openai.yaml",
+      "bytes": 350,
+      "sha256": "93930dcfb23f525ad5ce26ef7dd0035e0ab0bbab46b7400e17c602d9b26347ef"
+    },
+    {
+      "path": "references/core-anchors.json",
+      "bytes": 12842,
+      "sha256": "b46d6028041ea8d897a6ad567f623f1a01d068c82ab3045bb674080dac310a47"
+    },
+    {
+      "path": "references/drift-matrix.md",
+      "bytes": 2799,
+      "sha256": "399e9f3d0323c1851457b3f4782c9dc59fe4aecb4cb9919e08696e0d2a274423"
+    },
+    {
+      "path": "references/expansion-lexicon.json",
+      "bytes": 85880,
+      "sha256": "6e9485157552a3c47b0121472eacf56769ffc97b140a16fc1775c3f21835f2fd"
+    },
+    {
+      "path": "references/lexicon-index.json",
+      "bytes": 1366,
+      "sha256": "77803e2f2636d699e3c94a56ebb4963954d2633344eae673b38e9aab4c9a4db0"
+    },
+    {
+      "path": "references/one-line-compiler.md",
+      "bytes": 4918,
+      "sha256": "20498f20d6fa1883e9f5c46e1d02c6b8716d0884d29360e6a8a328a79b46efdb"
+    },
+    {
+      "path": "references/reference-series-protocol.md",
+      "bytes": 2370,
+      "sha256": "035ed298f61b1a0abbab15d2901a2a8772d6ff1b10816bf4b148c10f83335495"
+    },
+    {
+      "path": "references/scene-presets.json",
+      "bytes": 41360,
+      "sha256": "fa78505c8e490d4ac25e23bc6de1e66bab5c61c82551f1dfcbc771e039e4ef52"
+    },
+    {
+      "path": "references/style-foundation.md",
+      "bytes": 3618,
+      "sha256": "957ebffee773c4b4a085abe6a0bc1a3f18e4a59fdf6cd58142e2c12be6c5e42e"
+    },
+    {
+      "path": "references/verified-lexicon.json",
+      "bytes": 41669,
+      "sha256": "16515fac2d49392650280e16a118e9b0f26e2a7506a0b7616222b337b05f5e0d"
+    },
+    {
+      "path": "scripts/audit-prompt-pair.ps1",
+      "bytes": 2672,
+      "sha256": "1e70703a9e7bd932e1f3b3bb0599ae62ea7f46c27b446881e10bb984e3f14748"
+    },
+    {
+      "path": "scripts/build-lexicons.py",
+      "bytes": 89154,
+      "sha256": "858813417664fb56c439d18e7ff2af7f204f1e1a003f36974c719232e1b36bfa"
+    },
+    {
+      "path": "scripts/validate-skill-assets.ps1",
+      "bytes": 2163,
+      "sha256": "a26e5b8cdbe6eb5797d07870d9e8e82943a92274cd7a99ffa078a8917cdbbd86"
+    },
+    {
+      "path": "SKILL.md",
+      "bytes": 7789,
+      "sha256": "69fe3e62c89ea26d644e02b5c417d4e94a66b602ef1bf645eeea9fd97c41b9e9"
+    }
+  ]
+}

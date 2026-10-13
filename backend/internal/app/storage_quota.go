@@ -156,6 +156,13 @@ func (s *Service) saveTaskCompletionWithinStorageQuota(task *model.Task, resultJ
 	completed.ResultJSON = string(resultJSON)
 	completed.InputJSON = publicInputJSON
 	completed.CompletedAt = ptr(time.Now())
+	// @opc-adapter: media-dual-track [start]
+	if task.MediaRecoveryJSON != "" || task.LocalStatus != "" {
+		if completed.LocalStatus == "" {
+			completed.LocalStatus = model.LocalStatusReady
+		}
+	}
+	// @opc-adapter: media-dual-track [end]
 	var register func(*repository.Repository) error
 	if task.MediaRecoveryJSON != "" {
 		completed.MediaStage = "completed"

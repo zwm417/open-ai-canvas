@@ -415,6 +415,91 @@ function assertResourceRequestCurrent(generation: number, scope: string) {
     }
 }
 
+// @opc-feature: resource-access-batching [start]
+export function peekResourceAccessUrl(storageKey?: string, purpose: ResourceAccessPurpose = "display", variant: ResourceAccessVariant = "original"): string {
+    const id = resourceIdFromStorageKey(storageKey);
+    if (!id) return "";
+    const scope = getActiveUserScope();
+    const key = `${scope}:${id}:${purpose}:${variant}:`;
+    const cached = accessCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) {
+        return resolveResourceAccessURL(cached.value.url);
+    }
+    return "";
+}
+
+type QueuedAccessRequest = {
+    resourceId: string;
+    purpose: ResourceAccessPurpose;
+    variant: ResourceAccessVariant;
+    downloadName: string;
+    key: string;
+    generation: number;
+    scope: string;
+    resolve: (value: ResourceAccess) => void;
+    reject: (err: unknown) => void;
+};
+
+const accessBatchQueue: QueuedAccessRequest[] = [];
+let accessBatchScheduled = false;
+
+function scheduleAccessBatchFlush() {
+    if (accessBatchScheduled) return;
+    accessBatchScheduled = true;
+    queueMicrotask(() => {
+        accessBatchScheduled = false;
+        void flushAccessBatch();
+    });
+}
+
+async function flushAccessBatch() {
+    if (accessBatchQueue.length === 0) return;
+    const batch = accessBatchQueue.splice(0, 100);
+    if (accessBatchQueue.length > 0) scheduleAccessBatchFlush();
+
+    try {
+        const payload = batch.map((item) => ({
+            resourceId: item.resourceId,
+            purpose: item.purpose,
+            variant: item.variant,
+            ...(item.downloadName ? { downloadName: item.downloadName } : {}),
+        }));
+
+        const data = await http.post<{ items: ResourceAccessBatchItem[] }>("/resources/access", payload);
+        const resultMap = new Map<string, ResourceAccessBatchItem>();
+        for (const res of data.items || []) {
+            resultMap.set(res.resourceId, res);
+        }
+
+        for (const item of batch) {
+            if (item.generation !== accessGeneration || item.scope !== getActiveUserScope()) {
+                item.reject(new DOMException("资源访问请求已因账号切换失效", "AbortError"));
+                continue;
+            }
+            const res = resultMap.get(item.resourceId);
+            if (res?.access?.url) {
+                const value = res.access;
+                const entry = { value, expiresAt: resourceAccessCacheExpiry(value) } satisfies CachedResourceAccess;
+                if (entry.expiresAt > Date.now()) {
+                    accessCache.set(item.key, entry);
+                    if (item.purpose === "display") {
+                        void persistDisplayAccess(item.scope, item.resourceId, item.variant, entry);
+                    }
+                }
+                item.resolve(value);
+            } else {
+                item.reject(new Error(res?.error?.msg || "后端未返回资源访问地址"));
+            }
+        }
+    } catch (error) {
+        const err = error instanceof ApiError ? new Error(error.message || "获取对象存储地址失败") : error;
+        for (const item of batch) {
+            item.reject(err);
+        }
+    }
+}
+// @opc-feature: resource-access-batching [end]
+
 export async function getResourceAccess(storageKey: string | undefined, purpose: ResourceAccessPurpose = "display", variant: ResourceAccessVariant = "original", downloadName = "") {
     const id = resourceIdFromStorageKey(storageKey);
     if (!id) throw new Error("当前媒体尚未上传到后端资源存储");
@@ -439,19 +524,22 @@ export async function getResourceAccess(storageKey: string | undefined, purpose:
                     return persisted.value;
                 }
             }
-            const data = await http.post<{ items: ResourceAccessBatchItem[] }>("/resources/access", [{ resourceId: id, purpose, variant, ...(downloadName ? { downloadName } : {}) }]);
-            if (generation !== accessGeneration || scope !== getActiveUserScope()) {
-                throw new DOMException("资源访问请求已因账号切换失效", "AbortError");
-            }
-            const item = data.items?.[0];
-            if (!item?.access?.url) throw new Error(item?.error?.msg || "后端未返回资源访问地址");
-            const value = item.access;
-            const entry = { value, expiresAt: resourceAccessCacheExpiry(value) } satisfies CachedResourceAccess;
-            if (entry.expiresAt > Date.now()) {
-                accessCache.set(key, entry);
-                if (purpose === "display") await persistDisplayAccess(scope, id, variant, entry);
-            }
-            return value;
+            // @opc-feature: resource-access-batching [start]
+            return await new Promise<ResourceAccess>((resolve, reject) => {
+                accessBatchQueue.push({
+                    resourceId: id,
+                    purpose,
+                    variant,
+                    downloadName,
+                    key,
+                    generation,
+                    scope,
+                    resolve,
+                    reject,
+                });
+                scheduleAccessBatchFlush();
+            });
+            // @opc-feature: resource-access-batching [end]
         } catch (error) {
             if (error instanceof ApiError) throw new Error(error.message || "获取对象存储地址失败");
             throw error;

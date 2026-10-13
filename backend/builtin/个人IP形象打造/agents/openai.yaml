@@ -1,0 +1,4 @@
+interface:
+  display_name: "个人IP生成skill"
+  short_description: "通过Plan模式逐步问答，从预设画风生成统一的个人IP与表情包"
+  default_prompt: "使用 $personal-ip-generator，通过Plan模式一次问我一个问题，选择预设风格后生成个人 IP、角色设定和 9 张表情包。"

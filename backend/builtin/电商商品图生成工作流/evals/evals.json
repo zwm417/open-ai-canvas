@@ -1,0 +1,40 @@
+{
+  "skill_name": "ecommerce-image-workflow",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "请帮我完成：商品主图。使用我提供的真实素材，并交付可检查的结果。",
+      "should_trigger": true,
+      "expected_output": "触发商品主图与套图，由商品影像导演从“确认真实商品参考图”推进到“执行商品一致性和声明检查”，使用image_generation能力并报告真实结果。",
+      "assertions": [
+        "触发商品主图与套图",
+        "确认真实商品参考图",
+        "执行商品一致性和声明检查",
+        "image_generation",
+        "不虚构完成状态"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "我需要商品套图，请遵守现有素材和明确规格，失败时只修复失败单元。",
+      "should_trigger": true,
+      "expected_output": "使用商品主图与套图的领域工作流，保留用户事实和参考素材，按真实任务状态执行并只返工失败项。",
+      "assertions": [
+        "使用商品主图与套图",
+        "保留用户事实和参考素材",
+        "按真实任务状态执行",
+        "只返工失败项"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "把这段现有录音整理成逐字稿，不需要设计、图片生成或视觉方案。",
+      "should_trigger": false,
+      "expected_output": "不触发商品主图与套图，因为请求不属于该 Skill 的领域或媒体边界。",
+      "assertions": [
+        "不触发商品主图与套图",
+        "识别领域边界"
+      ]
+    }
+  ]
+}

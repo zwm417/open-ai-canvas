@@ -29,6 +29,10 @@ export type GenerationTask = {
     stage?: string;
     mediaStage?: "download" | "upload" | "local_save" | "register" | "completed" | "checkpoint";
     canRecoverMedia?: boolean;
+    // @opc-feature: media-dual-track [start]
+    localStatus?: "pending" | "ready" | "failed" | "skipped";
+    ossSyncStatus?: "pending" | "synced" | "skipped" | "failed" | "interrupted";
+    // @opc-feature: media-dual-track [end]
     prompt: string;
     operation?: string;
     provider?: string;
@@ -303,6 +307,15 @@ export function queryFailedVideoProviderTask(id: string) {
 export function refreshGenerationTaskStatus(id: string, options?: { signal?: AbortSignal }) {
     return http.get<GenerationTask>(`/tasks/${encodeURIComponent(id)}`, { signal: options?.signal });
 }
+
+// @opc-feature: task_list_batch_id [start]
+export function listTasksForBatch(batchId: string, options?: { signal?: AbortSignal }) {
+    return http.get<GenerationTask[]>("/tasks", {
+        params: { batchId, pageSize: 100 },
+        signal: options?.signal,
+    });
+}
+// @opc-feature: task_list_batch_id [end]
 
 export function deleteGenerationTask(id: string) {
     return http.delete<void>(`/tasks/${encodeURIComponent(id)}`);

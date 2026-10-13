@@ -1,0 +1,100 @@
+﻿{
+  "id": "video-shotcraft",
+  "name": "电影感产品视频制作",
+  "description": "使用真实产品页面、镜头配方卡、Remotion 模板、2.5D 运镜、节奏卡点和声音设计，制作可验收的电影感产品宣传片或单镜头动效。",
+  "icon": "🎞️",
+  "color": "#D3923C",
+  "category": "Video",
+  "scenarios": [
+    "电影感产品宣传片",
+    "网页转产品视频",
+    "前端项目宣传片",
+    "Ink Press 模板",
+    "镜头配方卡",
+    "Remotion 产品视频",
+    "单镜头动效",
+    "video shotcraft",
+    "cinematic product video",
+    "website product promo"
+  ],
+  "promptTemplate": "使用 $video-shotcraft 完成当前任务。先读取 skill 并识别模板复刻、自主自由创作或共同创作模式；使用真实且已脱敏的产品页面素材、准确的镜头卡与 demo 实现、产品自身设计系统和确定性 Remotion 渲染完成制作与验收。任何 AI 生图或 AI 生视频素材只能通过智影 Platform Media bridge 生成，不得直连外部供应商。\n\n用户需求：{userInput}",
+  "negativePrompt": "invented product UI, fake product screenshot, unrelated promo skin, sensitive customer data, wrong logo, wrong brand text, unreadable text, random camera move, repeated animation gimmick, decorative glow spam, broken beat sync, abrupt unfinished motion, flicker, nondeterministic render, watermark, low quality",
+  "preferredModel": "auto",
+  "outputType": "video",
+  "aspectRatio": "auto",
+  "analysisPrompt": "先对产品或页面做最小只读检查，并根据用户已给出的约束识别模板复刻、自主自由创作或共同创作模式。以产品真实设计系统和页面状态为视觉事实；完整宣传片先完成产品理解、视觉方向、镜头映射和分镜，再采集脱敏素材。真实界面使用截图，镜头与成片使用 Remotion/ffmpeg 本地合成；任何 AI 生图、AI 生视频补充素材只允许通过智影 Platform Media bridge，使用系统模型配置、默认参数、积分扣费和持久化链路，不得直连供应商。使用镜头卡时必须读取准确卡片和对应 demo 源码；强节奏音乐先分析 BPM 与相位。用确定性 Remotion 工程实现、逐镜头静帧检查、整片渲染和音画回测，最后按 skill 的独立终检要求交付。",
+  "displayName": "Video Shotcraft",
+  "shortDescription": "用真实页面与镜头卡制作可验收的电影感产品宣传片。",
+  "skillIds": [
+    "video-shotcraft"
+  ],
+  "role": "电影感产品视频导演与 Remotion 制作工程师",
+  "agentType": "cinematic-product-video-director",
+  "workflowProfile": "default",
+  "workflow": {
+    "mode": "guided",
+    "confirmationPolicy": "risk_based",
+    "stages": [
+      "只读检查产品、页面状态与素材风险",
+      "识别创作模式并锁定交付规格",
+      "提取产品设计系统和功能重点",
+      "选择模板或镜头卡并完成分镜",
+      "采集和脱敏真实页面素材",
+      "实现确定性 Remotion 画面、节奏与声音",
+      "逐镜头检查并完成整片渲染回测",
+      "执行独立终检并交付成片"
+    ],
+    "requiredInputs": [
+      {
+        "key": "product_source",
+        "label": "可检查的项目路径、网页地址、录屏或页面截图",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "text",
+          "image",
+          "images",
+          "video"
+        ],
+        "prompt": "请提供项目路径、网页地址、录屏或页面截图，便于先做最小只读产品检查。"
+      },
+      {
+        "key": "creation_mode",
+        "label": "模板复刻、自主自由创作或共同创作模式",
+        "required": true,
+        "blocking": true,
+        "accepts": [
+          "choice",
+          "text"
+        ],
+        "prompt": "请确认使用 Ink Press 模板、自主自由创作还是共同创作；若需求已明确点名模式或镜头卡则直接沿用，不重复询问。"
+      },
+      {
+        "key": "delivery_spec",
+        "label": "目标平台、画幅、时长、音乐和交付版本",
+        "required": false,
+        "blocking": false,
+        "accepts": [
+          "text",
+          "choice",
+          "number"
+        ]
+      }
+    ],
+    "capabilities": [
+      "reference_analysis",
+      "web_research",
+      "image_generation",
+      "video_generation",
+      "multi_asset_planning",
+      "task_status",
+      "post_production_handoff"
+    ]
+  },
+  "tools": [
+    "image_generate",
+    "web_search",
+    "web_extract",
+    "fetch_url_context"
+  ]
+}

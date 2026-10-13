@@ -78,6 +78,9 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
     const [detectedHasAudio, setDetectedHasAudio] = useState<boolean | undefined>(undefined);
     const autoPlayAttemptedRef = useRef(false);
     const audioProbeGenerationRef = useRef(0);
+    // @opc-feature: fast-audio-track-guard [start]
+    const audioProbedRef = useRef(false);
+    // @opc-feature: fast-audio-track-guard [end]
     const mediaPlayerRef = useRef<MediaPlayerInstance>(null);
     // Match LibTV's conservative rule: only explicit/container-confirmed
     // silence mutes the player. Runtime probes are used to confirm audio and
@@ -106,6 +109,9 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
     useEffect(() => {
         setDetectedHasAudio(undefined);
         autoPlayAttemptedRef.current = false;
+        // @opc-feature: fast-audio-track-guard [start]
+        audioProbedRef.current = false;
+        // @opc-feature: fast-audio-track-guard [end]
         audioProbeGenerationRef.current += 1;
     }, [src]);
 
@@ -127,6 +133,14 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
     }, [noAudio]);
 
     const probeRemoteAudioTrack = () => {
+        // @opc-feature: fast-audio-track-guard [start]
+        // 商业化交付极致性能规范：
+        // 1. 若调用方已明确传入 hasAudio 元数据，严禁再发起 1MB-2MB 的 Range 请求进行网络嗅探，防止耗尽浏览器单域名 6 个 HTTP 连接池；
+        // 2. 本地 Blob/DataURL 或已探测过的资源只允许探测一次。
+        if (hasAudio !== undefined) return;
+        if (audioProbedRef.current) return;
+        audioProbedRef.current = true;
+        // @opc-feature: fast-audio-track-guard [end]
         const generation = audioProbeGenerationRef.current;
         void detectVideoAudioTrackFromUrl(src).then((detected) => {
             if (generation === audioProbeGenerationRef.current && detected !== undefined) setDetectedHasAudio(detected);
@@ -168,7 +182,7 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
         const media = isVideoProvider(provider) ? provider.media : undefined;
         const detected = media ? detectVideoAudioTrack(media) : undefined;
         if (detected !== undefined) setDetectedHasAudio(detected);
-        else probeRemoteAudioTrack();
+        else if (hasAudio === undefined) probeRemoteAudioTrack();
         // `canplay` may fire again after buffering or seeking. Only the first
         // event may satisfy the activation autoplay intent; later events must
         // not override a user pause.
@@ -204,14 +218,14 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
                 const media = isVideoProvider(provider) ? provider.media : undefined;
                 const detected = media ? detectVideoAudioTrack(media) : undefined;
                 if (detected !== undefined) setDetectedHasAudio(detected);
-                else probeRemoteAudioTrack();
+                else if (hasAudio === undefined) probeRemoteAudioTrack();
             }}
             onLoadedData={(event) => {
                 const provider = event.target.provider;
                 const media = isVideoProvider(provider) ? provider.media : undefined;
                 const detected = media ? detectVideoAudioTrack(media) : undefined;
                 if (detected !== undefined) setDetectedHasAudio(detected);
-                else probeRemoteAudioTrack();
+                else if (hasAudio === undefined) probeRemoteAudioTrack();
             }}
             onPointerDown={stopCanvasControlInteraction}
             onMouseDown={stopCanvasControlInteraction}

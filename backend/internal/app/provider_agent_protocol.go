@@ -7,6 +7,10 @@ import (
 	"strings"
 
 	"infinite-canvas/backend/internal/model"
+
+	// @opc-adapter: prompt-vault-app-import [start]
+	opcvault "infinite-canvas/backend/internal/custom/opc-vault"
+	// @opc-adapter: prompt-vault-app-import [end]
 )
 
 // The browser sends one protocol-neutral conversation. Only the selected
@@ -81,6 +85,23 @@ func expandCanonicalAgentRequest(source *canonicalAgentRequest, config providerC
 	default:
 		return nil, errors.New("画布 Agent 请求缺少工具选择")
 	}
+	// @opc-adapter: prompt-vault-agent-governance [start]
+	if source.SystemPrompt != "" {
+		source.SystemPrompt = opcvault.ResolvePromptMacros(source.SystemPrompt, true)
+	}
+	for _, message := range source.Messages {
+		role := stringField(message, "role")
+		if role == "system" {
+			if content, ok := message["content"].(string); ok {
+				message["content"] = opcvault.ResolvePromptMacros(content, true)
+			}
+		} else {
+			if content, ok := message["content"].(string); ok {
+				message["content"] = opcvault.NeutralizeRestrictedMacros(content)
+			}
+		}
+	}
+	// @opc-adapter: prompt-vault-agent-governance [end]
 	messages := source.Messages
 	if prompt := strings.TrimSpace(source.SystemPrompt); prompt != "" {
 		present := false

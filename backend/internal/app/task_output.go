@@ -41,6 +41,11 @@ type TaskSummary struct {
 	UpdatedAt                 time.Time                  `json:"updatedAt"`
 	Billing                   *TaskBillingSummary        `json:"billing,omitempty"`
 	ClientContext             *TaskClientContext         `json:"clientContext,omitempty"`
+	// @opc-adapter: task_summary_result_json [start]
+	InputJSON                 string                     `json:"inputJson,omitempty"`
+	ResultJSON                string                     `json:"resultJson,omitempty"`
+	ClientOperationId         string                     `json:"clientOperationId,omitempty"`
+	// @opc-adapter: task_summary_result_json [end]
 }
 
 type TaskClientContext struct {
@@ -103,6 +108,19 @@ func taskSummaryForOutput(task model.Task) TaskSummary {
 		errorCode = contentModerationErrorCode
 	}
 	previewURL, previewKind, previewPosterURL := taskMediaPreviewWithPoster(task.ResultJSON, task.Type)
+	// @opc-adapter: task_summary_result_json [start]
+	clientOpID := ""
+	if task.InputJSON != "" {
+		var in struct {
+			Metadata struct {
+				ClientOperationID string `json:"clientOperationId"`
+			} `json:"metadata"`
+		}
+		if json.Unmarshal([]byte(task.InputJSON), &in) == nil {
+			clientOpID = in.Metadata.ClientOperationID
+		}
+	}
+	// @opc-adapter: task_summary_result_json [end]
 	return TaskSummary{
 		ID:                        task.ID,
 		ProjectID:                 task.ProjectID,
@@ -132,6 +150,11 @@ func taskSummaryForOutput(task model.Task) TaskSummary {
 		CreatedAt:                 task.CreatedAt,
 		UpdatedAt:                 task.UpdatedAt,
 		ClientContext:             taskClientContext(task.InputJSON),
+		// @opc-adapter: task_summary_result_json [start]
+		InputJSON:                 publicTaskInputJSON(task.InputJSON),
+		ResultJSON:                task.ResultJSON,
+		ClientOperationId:         clientOpID,
+		// @opc-adapter: task_summary_result_json [end]
 	}
 }
 
@@ -296,6 +319,9 @@ func taskForOutput(task model.Task) *model.Task {
 	task.LogicalModelRevisionID = ""
 	task.RouteID = ""
 	task.ChannelModelID = ""
+	// @opc-adapter: media-dual-track [start]
+	task.UpstreamURL = ""
+	// @opc-adapter: media-dual-track [end]
 	return &task
 }
 

@@ -161,7 +161,8 @@ export function WorkflowGraphEditor({ workflowJson, workflowGraph, fields, onCha
                         开启全部开关
                     </Button>
                 </div>
-                <label className="workflow-graph-node-select">
+                {/* @opc-feature: fix-label-select-conflict [start] */}
+                <div className="workflow-graph-node-select">
                     <span>正在设置的节点</span>
                     <Select
                         showSearch
@@ -171,7 +172,8 @@ export function WorkflowGraphEditor({ workflowJson, workflowGraph, fields, onCha
                         options={[{ label: `全部已开启字段 · ${enabledFields.length}`, value: allEnabledFieldsNodeId }, ...graph.nodes.map((node) => ({ label: `${node.title} · #${node.id}`, value: node.id }))]}
                         onChange={setSelectedNodeId}
                     />
-                </label>
+                </div>
+                {/* @opc-feature: fix-label-select-conflict [end] */}
                 <div className="workflow-graph-selected-heading">
                     <strong>{selectedNodeId === allEnabledFieldsNodeId ? "全部已开启字段" : selectedNode?.title || "工作流字段"}</strong>
                     <span>{selectedNodeId === allEnabledFieldsNodeId ? `${enabledFields.length} 个字段` : selectedNode ? `${selectedNode.classType} · #${selectedNode.id}` : "选择右侧节点进行设置"}</span>

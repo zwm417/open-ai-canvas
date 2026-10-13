@@ -11,7 +11,7 @@ export function numberValue(value: unknown) {
     return Number.isFinite(number) && number > 0 ? number : undefined;
 }
 
-export const LOCAL_STORAGE_KEY_PATTERN = /^(image|video|audio|file|video-reference|audio-reference):/;
+export const LOCAL_STORAGE_KEY_PATTERN = /^(image|video|audio|file|video-reference|audio-reference|generation-image|generation-video|generation-audio):/;
 
 export function collectLocalMediaKeys(value: unknown, set = new Set<string>()): string[] {
     if (!value || typeof value !== "object") return [...set];
@@ -106,7 +106,8 @@ export async function inlineMediaUploadIdentity(dataUrl: string) {
 }
 
 export async function uploadLocalStorageKey(storageKey: string, payload: Record<string, unknown>) {
-    const blob = storageKey.startsWith("image:") ? await getImageBlob(storageKey) : await getMediaBlob(storageKey);
+    const isImage = storageKey.startsWith("image:") || storageKey.startsWith("generation-image:");
+    const blob = isImage ? await getImageBlob(storageKey) : await getMediaBlob(storageKey);
     if (!blob) throw new Error(`本地媒体不存在，无法同步：${storageKey}`);
     const kind = blob.type.startsWith("image/") ? "image" : blob.type.startsWith("video/") ? "video" : blob.type.startsWith("audio/") ? "audio" : "file";
     const resource = await uploadResourceFile(blob, kind, {

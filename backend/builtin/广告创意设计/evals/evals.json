@@ -1,0 +1,36 @@
+{
+  "skill_name": "ad-creative",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "给一款记账 App 做 6 张 Meta 获客广告，分别测试省时间、避免漏账和月度洞察。",
+      "should_trigger": true,
+      "expected_output": "输出三个可解释角度；六张资产分别有独立提示词；不虚构用户数据",
+      "assertions": [
+        "输出三个可解释角度",
+        "六张资产分别有独立提示词",
+        "不虚构用户数据"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "帮我做一套完整 VI 和品牌手册。",
+      "should_trigger": false,
+      "expected_output": "应路由到 logo-brand",
+      "assertions": [
+        "应路由到 logo-brand"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "这是过去 30 天的 CTR 和转化率，请基于赢家继续迭代，但别直接出图。",
+      "should_trigger": true,
+      "expected_output": "先分析表现数据；不调用生成工具；提出下一轮测试矩阵",
+      "assertions": [
+        "先分析表现数据",
+        "不调用生成工具",
+        "提出下一轮测试矩阵"
+      ]
+    }
+  ]
+}

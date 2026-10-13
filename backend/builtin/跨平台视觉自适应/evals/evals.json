@@ -1,0 +1,35 @@
+{
+  "skill_name": "cross-platform-adapter",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "把这张 16:9 发布海报适配成 IG 4:5、Story 9:16 和 LinkedIn 1.91:1。",
+      "should_trigger": true,
+      "expected_output": "先分析源图；三版独立重排；保留核心信息",
+      "assertions": [
+        "先分析源图",
+        "三版独立重排",
+        "保留核心信息"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "没有源图，帮我想一个新 Campaign。",
+      "should_trigger": false,
+      "expected_output": "应路由到 brand-extension",
+      "assertions": [
+        "应路由到 brand-extension"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "源图价格过期，适配时顺便改成 99 元。",
+      "should_trigger": true,
+      "expected_output": "必须确认价格事实；不能静默改文案",
+      "assertions": [
+        "必须确认价格事实",
+        "不能静默改文案"
+      ]
+    }
+  ]
+}

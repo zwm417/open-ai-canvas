@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"strings"
 	"time"
 
@@ -99,15 +100,30 @@ func (s *Service) AdminChannelModels(actor *model.User, channelID string) ([]mod
 		return nil, err
 	}
 	for index := range items {
-		if strings.TrimSpace(items[index].CapabilityConfigJSON) == "" {
+		rawJSON := strings.TrimSpace(items[index].CapabilityConfigJSON)
+		if rawJSON == "" {
 			continue
 		}
-		config, decodeErr := DecodeModelCapabilityConfig(items[index].CapabilityConfigJSON)
+		config, decodeErr := DecodeModelCapabilityConfig(rawJSON)
 		if decodeErr != nil || config == nil {
+			// @opc-adapter: model-pricing-and-capability-governance [start]
+			log.Printf("[ChannelModel] 解码能力配置失败，降级为原始JSON解析: channel_id=%s model_id=%s model_key=%s err=%v", channelID, items[index].ID, items[index].ModelKey, decodeErr)
+			var fallbackMap map[string]any
+			if json.Unmarshal([]byte(rawJSON), &fallbackMap) == nil && len(fallbackMap) > 0 {
+				items[index].CapabilityConfig = fallbackMap
+			}
+			// @opc-adapter: model-pricing-and-capability-governance [end]
 			continue
 		}
 		normalized, normalizeErr := NormalizeModelCapabilityConfigForModel(items[index].Capability, string(items[index].Protocol), firstNonEmpty(items[index].ProviderModelKey, items[index].ModelKey), config)
 		if normalizeErr != nil || normalized == nil {
+			// @opc-adapter: model-pricing-and-capability-governance [start]
+			log.Printf("[ChannelModel] 归一化能力配置警告: channel_id=%s model_id=%s model_key=%s err=%v", channelID, items[index].ID, items[index].ModelKey, normalizeErr)
+			var fallbackMap map[string]any
+			if json.Unmarshal([]byte(rawJSON), &fallbackMap) == nil && len(fallbackMap) > 0 {
+				items[index].CapabilityConfig = fallbackMap
+			}
+			// @opc-adapter: model-pricing-and-capability-governance [end]
 			continue
 		}
 		encoded, encodeErr := json.Marshal(normalized)
@@ -170,29 +186,64 @@ func (s *Service) SaveAdminChannelModel(actor *model.User, channelID string, id 
 	if conflict != nil && conflict.ID != strings.TrimSpace(id) {
 		return nil, BadAuthRequest("该渠道已存在模型 " + modelKey + "，请直接编辑已有模型")
 	}
-	if capability == "text" || capability == "image" || capability == "video" {
+	if (capability == "text" || capability == "image" || capability == "video") && (req.CapabilityConfig != nil || id == "") {
 		if _, err := NormalizeModelCapabilityConfigForModel(capability, string(protocol), providerModelKey, req.CapabilityConfig); err != nil {
 			return nil, err
 		}
 	}
-	tiers, err := s.normalizeChannelModelPriceTiers(req, capability, protocol, providerModelKey)
-	if err != nil {
-		return nil, err
-	}
-	modelID, err := s.repo.NextPrefixedID("MODEL")
-	if err != nil {
-		return nil, err
-	}
-	item := &model.ChannelModel{ID: modelID, ChannelID: channelID, Enabled: true, PriceVersion: 1}
+	// @opc-adapter: model-pricing-and-capability-governance [start]
+	var item *model.ChannelModel
 	previousProviderModelKey := ""
 	if id != "" {
-		item, err = s.repo.ChannelModelByID(channelID, id)
+		existingItem, err := s.repo.ChannelModelByID(channelID, id)
 		if err != nil {
 			return nil, err
 		}
+		item = existingItem
 		previousProviderModelKey = strings.TrimPrefix(strings.TrimSpace(item.ProviderModelKey), "models/")
 		item.PriceVersion++
+	} else {
+		modelID, err := s.repo.NextPrefixedID("MODEL")
+		if err != nil {
+			return nil, err
+		}
+		item = &model.ChannelModel{ID: modelID, ChannelID: channelID, Enabled: true, PriceVersion: 1}
 	}
+
+	var tiers []model.ChannelModelPriceTier
+	if req.PriceTiers != nil {
+		// 客户端显式传递了 priceTiers（包括空数组表示重设价格档）
+		normalizedTiers, err := s.normalizeChannelModelPriceTiers(req, capability, protocol, providerModelKey)
+		if err != nil {
+			return nil, err
+		}
+		tiers = normalizedTiers
+	} else if item != nil && len(item.PriceTiers) > 0 {
+		// 客户端未传递 priceTiers 字段（部分更新/仅改展示名、渠道展示名、描述或开关状态等元数据）：
+		// 遵循商业系统无损更新契约，严禁删除或压缩已存在的规格价格档！
+		tiers = item.PriceTiers
+		// 若现有仅为单一通配档，且本次请求传递了标量计费模式或单价，则安全更新该单档单价
+		if len(tiers) == 1 && tiers[0].Resolution == "*" && tiers[0].VideoSeconds == 0 {
+			if strings.TrimSpace(req.BillingMode) != "" {
+				tiers[0].BillingMode = strings.TrimSpace(req.BillingMode)
+			}
+			if req.UnitPriceMicrocredits > 0 || req.PriceConfigured {
+				tiers[0].UnitPriceMicrocredits = req.UnitPriceMicrocredits
+				tiers[0].InputTokenPriceMicrocredits = req.InputTokenPriceMicrocredits
+				tiers[0].OutputTokenPriceMicrocredits = req.OutputTokenPriceMicrocredits
+				tiers[0].CachedTokenPriceMicrocredits = req.CachedTokenPriceMicrocredits
+				tiers[0].PriceConfigured = req.PriceConfigured
+			}
+		}
+	} else {
+		// 新建模型或库中尚无价格档，按标量默认值生成基准通配档
+		normalizedTiers, err := s.normalizeChannelModelPriceTiers(req, capability, protocol, providerModelKey)
+		if err != nil {
+			return nil, err
+		}
+		tiers = normalizedTiers
+	}
+	// @opc-adapter: model-pricing-and-capability-governance [end]
 	// 模型级上游键重命名时，与旧值相同的档位键属于“跟随模型默认”的隐式固化，必须级联跟随；
 	// 否则任务请求会继续把旧上游键发给供应商。管理员显式配置的其他上游 SKU 不受影响。
 	if previousProviderModelKey != "" && providerModelKey != previousProviderModelKey {
@@ -211,27 +262,40 @@ func (s *Service) SaveAdminChannelModel(actor *model.User, channelID string, id 
 	if item.DisplayName == "" {
 		item.DisplayName = modelKey
 	}
-	item.Icon = strings.TrimSpace(req.Icon)
+	item.Icon = normalizeChannelModelIcon(req.Icon, item.ModelKey, item.ProviderModelKey, item.DisplayName, item.Protocol)
 	item.Capability = capability
 	item.Protocol = protocol
 	s.applyChannelModelPriceTierSummary(item, tiers)
+	// @opc-adapter: model-pricing-and-capability-governance [start]
 	if capability == "text" || capability == "image" || capability == "video" {
-		capabilityConfig, normalizeErr := NormalizeModelCapabilityConfigForModel(capability, string(protocol), providerModelKey, req.CapabilityConfig)
-		if normalizeErr != nil {
-			return nil, normalizeErr
+		if req.CapabilityConfig != nil {
+			capabilityConfig, normalizeErr := NormalizeModelCapabilityConfigForModel(capability, string(protocol), providerModelKey, req.CapabilityConfig)
+			if normalizeErr != nil {
+				return nil, normalizeErr
+			}
+			encoded, encodeErr := json.Marshal(capabilityConfig)
+			if encodeErr != nil {
+				return nil, encodeErr
+			}
+			if item.CapabilityConfigJSON != string(encoded) {
+				item.CapabilityVersion++
+			}
+			item.CapabilityConfigJSON = string(encoded)
+		} else if strings.TrimSpace(item.CapabilityConfigJSON) == "" {
+			switch capability {
+			case "text":
+				return nil, BadAuthRequest("请配置文本模型能力参数")
+			case "image":
+				return nil, BadAuthRequest("请配置图片模型能力参数")
+			default:
+				return nil, BadAuthRequest("请配置视频模型能力参数")
+			}
 		}
-		encoded, encodeErr := json.Marshal(capabilityConfig)
-		if encodeErr != nil {
-			return nil, encodeErr
-		}
-		if item.CapabilityConfigJSON != string(encoded) {
-			item.CapabilityVersion++
-		}
-		item.CapabilityConfigJSON = string(encoded)
 	} else {
 		item.CapabilityConfigJSON = ""
 		item.CapabilityVersion = 0
 	}
+	// @opc-adapter: model-pricing-and-capability-governance [end]
 	if req.Enabled != nil {
 		item.Enabled = *req.Enabled
 	}
@@ -454,3 +518,46 @@ func protocolCapabilityFromMetadata(metadata protocol.Metadata) string {
 	}
 	return string(metadata.Categories[0])
 }
+
+// @opc-adapter: seedance-jimeng-icon-governance [start]
+func isSeedanceModelIdentifier(modelKey, providerModelKey, displayName, protocol string) bool {
+	text := strings.ToLower(modelKey + " " + providerModelKey + " " + displayName + " " + protocol)
+	if strings.TrimSpace(text) == "" {
+		return false
+	}
+	if strings.Contains(text, "seedance") || strings.Contains(text, "doubao-seedance") || strings.Contains(text, "即梦") || strings.Contains(text, "jimeng") {
+		return true
+	}
+	p := strings.ToLower(protocol)
+	if strings.Contains(p, "seedance") || strings.Contains(p, "sd-video") || strings.Contains(p, "sd-mini") || strings.Contains(p, "seedance-hc") {
+		return true
+	}
+	isSdKey := func(k string) bool {
+		lower := strings.ToLower(k)
+		return strings.HasPrefix(lower, "sd-") || strings.HasPrefix(lower, "sd2") ||
+			strings.Contains(lower, "-sd-") || strings.Contains(lower, "-sd2") ||
+			strings.Contains(lower, "video-ultra") || strings.Contains(lower, "dola-720p")
+	}
+	if isSdKey(modelKey) || isSdKey(providerModelKey) {
+		return true
+	}
+	if strings.Contains(strings.ToLower(displayName), "seedance") {
+		return true
+	}
+	return false
+}
+
+func normalizeChannelModelIcon(icon, modelKey, providerModelKey, displayName string, protocol model.ChannelInterfaceType) string {
+	raw := strings.TrimSpace(icon)
+	if raw == "Jimeng" || raw == "ByteDance" {
+		return "Jimeng"
+	}
+	if isSeedanceModelIdentifier(modelKey, providerModelKey, displayName, string(protocol)) {
+		if raw == "" || raw == "ByteDance" {
+			return "Jimeng"
+		}
+	}
+	return raw
+}
+// @opc-adapter: seedance-jimeng-icon-governance [end]
+

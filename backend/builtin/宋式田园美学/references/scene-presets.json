@@ -1,0 +1,1225 @@
+{
+  "name": "One-line Song pastoral scene presets",
+  "preset_count": 38,
+  "rule": "Explicit user details override every preset field.",
+  "presets": [
+    {
+      "id": "kitchen-stir-fry",
+      "triggers": [
+        "炒菜",
+        "炒青菜",
+        "灶台做饭",
+        "stir fry",
+        "cooking greens"
+      ],
+      "people": "1",
+      "setting": "带开放木窗的泥砖灶间",
+      "shot": {
+        "zh": "平视中景，人物位于右侧三分区",
+        "en": "eye-level medium shot, figure on the right third",
+        "lens": "50mm f/2"
+      },
+      "default_time": "清晨窗光或日落前侧光",
+      "relation": {
+        "zh": "右手木铲翻动铁锅青菜，左手稳定锅柄",
+        "en": "right hand turns greens with a wooden spatula while the left steadies the wok handle"
+      },
+      "motion": {
+        "zh": "菜叶沿木铲短暂抬起，蒸汽从锅上方扩散",
+        "en": "greens lift along the spatula and steam diffuses above the wok"
+      },
+      "foreground": "少量柔焦蔬菜或门框",
+      "negative_risks": [
+        "现代厨房",
+        "燃气灶",
+        "不锈钢厨具",
+        "过量浓烟"
+      ]
+    },
+    {
+      "id": "kitchen-congee",
+      "triggers": [
+        "煮粥",
+        "熬粥",
+        "煲汤",
+        "cook congee",
+        "simmer soup"
+      ],
+      "people": "1",
+      "setting": "低矮泥砖灶与粗陶锅",
+      "shot": {
+        "zh": "灶台高度中景，人物侧面",
+        "en": "stove-height medium shot in profile",
+        "lens": "50mm f/2.2"
+      },
+      "default_time": "安静清晨",
+      "relation": {
+        "zh": "一手揭开陶锅盖，一手扶住锅沿",
+        "en": "one hand lifts the clay lid while the other steadies the pot rim"
+      },
+      "motion": {
+        "zh": "锅盖开启方向带出一束柔软蒸汽",
+        "en": "a soft plume of steam follows the opening lid"
+      },
+      "foreground": "虚化灶边木勺与柴火",
+      "negative_risks": [
+        "现代炊具",
+        "金属高压锅",
+        "夸张火焰"
+      ]
+    },
+    {
+      "id": "window-tea",
+      "triggers": [
+        "窗边喝茶",
+        "窗边倒茶",
+        "独自煮茶",
+        "pour tea by window"
+      ],
+      "people": "1",
+      "setting": "白墙乡居的深色木窗旁",
+      "shot": {
+        "zh": "人物偏右的中近景，左侧窗格前景",
+        "en": "medium-close frame with the figure right of center and lattice foreground on the left",
+        "lens": "85mm f/1.8"
+      },
+      "default_time": "夏日午后",
+      "relation": {
+        "zh": "双手在膝前稳稳托住粗陶茶壶",
+        "en": "both hands balance a rough earthenware teapot near the lap"
+      },
+      "motion": {
+        "zh": "茶汽上升，碎发和袖缘被横向微风轻轻带起",
+        "en": "tea steam rises while loose hair and sleeve edges follow a mild cross breeze"
+      },
+      "foreground": "柔焦木格与绿叶",
+      "negative_risks": [
+        "精致宫廷茶具",
+        "现代杯具",
+        "影楼摆拍"
+      ]
+    },
+    {
+      "id": "courtyard-tea-talk",
+      "triggers": [
+        "院中喝茶",
+        "喝茶闲谈",
+        "邻家姑娘喝茶",
+        "courtyard tea conversation"
+      ],
+      "people": "4",
+      "setting": "老树遮阴的白墙院落",
+      "shot": {
+        "zh": "隔着枝叶观察的宽幅群像",
+        "en": "wide group view observed through layered leaves",
+        "lens": "50mm f/2.8"
+      },
+      "default_time": "温暖午后",
+      "relation": {
+        "zh": "一人倒茶，两人举杯回应，一人侧身倾听",
+        "en": "one pours tea, two answer with cups, and one turns to listen"
+      },
+      "motion": {
+        "zh": "细茶汽、轻微手势与树叶微动共同维持安静节奏",
+        "en": "fine tea steam, small gestures, and leaf movement share a quiet rhythm"
+      },
+      "foreground": "画框边缘柔焦叶片",
+      "negative_risks": [
+        "人数超过四人",
+        "所有人看镜头",
+        "对称排队",
+        "宫廷茶会"
+      ]
+    },
+    {
+      "id": "water-flowers",
+      "triggers": [
+        "浇花",
+        "浇灌花草",
+        "water flowers",
+        "watering plants"
+      ],
+      "people": "1",
+      "setting": "白墙与花圃相接的院角",
+      "shot": {
+        "zh": "正面平视胸像特写",
+        "en": "frontal eye-level chest-up close view",
+        "lens": "85mm f/1.4"
+      },
+      "default_time": "清晨或傍晚柔光",
+      "relation": {
+        "zh": "双手倾斜粗陶水罐，视线落向壶口与花草",
+        "en": "both hands tilt a rough clay water jar while her gaze follows the spout toward the flowers"
+      },
+      "motion": {
+        "zh": "连续水流穿过下方前景，在花叶处形成细小飞溅",
+        "en": "a continuous stream crosses the lower foreground and breaks into small splashes on the leaves"
+      },
+      "foreground": "少量柔焦花朵，不遮挡脸和水流",
+      "negative_risks": [
+        "水罐遮住面部",
+        "花朵完全消失",
+        "现代浇水壶",
+        "景别过远"
+      ]
+    },
+    {
+      "id": "hang-laundry",
+      "triggers": [
+        "晾衣",
+        "晒衣服",
+        "挂布",
+        "hang laundry",
+        "drying cloth"
+      ],
+      "people": "1",
+      "setting": "长白墙旁的竹竿晾晒处",
+      "shot": {
+        "zh": "四分之三侧后方全身镜头",
+        "en": "three-quarter rear full-body environmental shot",
+        "lens": "50mm f/2.8"
+      },
+      "default_time": "午后侧逆光",
+      "relation": {
+        "zh": "双臂抬起把湿润素布搭上竹竿",
+        "en": "both arms lift damp plain cloth over a bamboo pole"
+      },
+      "motion": {
+        "zh": "湿布先下坠再被微风轻推，水滴从最低褶皱落下",
+        "en": "damp cloth hangs with weight before the breeze moves it, droplets falling from the lowest folds"
+      },
+      "foreground": "一片柔焦白布从画面侧缘进入",
+      "negative_risks": [
+        "现代晾衣架",
+        "塑料衣架",
+        "苔绿色完全消失",
+        "礼服式衣装"
+      ]
+    },
+    {
+      "id": "stream-wash-greens",
+      "triggers": [
+        "溪边洗菜",
+        "洗青菜",
+        "洗蔬菜",
+        "wash greens in stream"
+      ],
+      "people": "2",
+      "setting": "村屋下方的浅溪与踏石",
+      "shot": {
+        "zh": "水面高度的双人环境镜头",
+        "en": "water-level two-person environmental shot",
+        "lens": "40mm f/2.8"
+      },
+      "default_time": "清晨或傍晚",
+      "relation": {
+        "zh": "前景女子双手漂洗菜叶，后方女子提起滴水菜束放入竹篮",
+        "en": "the foreground woman rinses leaves with both hands while the rear woman lifts dripping greens into a basket"
+      },
+      "motion": {
+        "zh": "水滴从叶尖落下并在浅溪形成同心涟漪",
+        "en": "droplets fall from leaf tips into concentric ripples"
+      },
+      "foreground": "溪边柔焦草叶与石块",
+      "negative_risks": [
+        "人物动作重复",
+        "现代塑料盆",
+        "浑浊脏水",
+        "全员看镜头"
+      ]
+    },
+    {
+      "id": "stream-wash-cloth",
+      "triggers": [
+        "溪边洗衣",
+        "浣衣",
+        "漂洗布匹",
+        "wash clothes by stream"
+      ],
+      "people": "2",
+      "setting": "树荫下的溪边石台",
+      "shot": {
+        "zh": "平视中远景，湿布形成对角线",
+        "en": "eye-level medium-wide shot with damp cloth forming a diagonal",
+        "lens": "50mm f/2.8"
+      },
+      "default_time": "树荫清晨",
+      "relation": {
+        "zh": "一人在石台漂洗，另一人反向拧出长布水分",
+        "en": "one rinses cloth at the stone ledge while the other twists the long fabric in the opposite direction"
+      },
+      "motion": {
+        "zh": "湿布下坠，成股水线沿最低褶皱落入溪中",
+        "en": "heavy damp cloth sags as narrow streams fall from its lowest folds"
+      },
+      "foreground": "柔焦柳枝或芦苇",
+      "negative_risks": [
+        "现代洗涤用品",
+        "塑料桶",
+        "衣料悬浮",
+        "人物手臂融合"
+      ]
+    },
+    {
+      "id": "rice-transplanting",
+      "triggers": [
+        "插秧",
+        "水田插秧",
+        "种秧",
+        "transplant rice"
+      ],
+      "people": "3",
+      "setting": "浅水稻田与弯曲田埂",
+      "shot": {
+        "zh": "宽幅环境群像，低视点贴近水面",
+        "en": "wide environmental group shot from a low viewpoint near the water",
+        "lens": "35mm f/3.2"
+      },
+      "default_time": "薄雾清晨",
+      "relation": {
+        "zh": "前景女子分秧并插入水田，两位同伴沿不同田行继续劳作",
+        "en": "the foreground woman divides and plants seedlings while two companions work along separate rows"
+      },
+      "motion": {
+        "zh": "手指入水产生小涟漪，湿裙边贴近小腿",
+        "en": "fingers entering the water create small ripples while damp hems cling near the calves"
+      },
+      "foreground": "柔焦秧苗与水面反射",
+      "negative_risks": [
+        "现代农机",
+        "人物站直摆拍",
+        "人数错误",
+        "仙境雾效"
+      ]
+    },
+    {
+      "id": "grain-harvest",
+      "triggers": [
+        "收割",
+        "割稻",
+        "割麦",
+        "harvest grain"
+      ],
+      "people": "2",
+      "setting": "成熟作物围绕的田地",
+      "shot": {
+        "zh": "透过作物前景的低位宽景",
+        "en": "low wide shot through softly blurred crop foreground",
+        "lens": "35mm f/2.8"
+      },
+      "default_time": "傍晚斜光",
+      "relation": {
+        "zh": "一人用镰刀割取禾秆，另一人把收下的禾束捆紧",
+        "en": "one cuts stalks with a sickle while the other binds the gathered sheaves"
+      },
+      "motion": {
+        "zh": "割下作物沿镰刀方向倒伏，发丝和稻叶同向移动",
+        "en": "cut stalks fall along the sickle path while hair and leaves share one breeze"
+      },
+      "foreground": "暖色柔焦稻穗或麦穗",
+      "negative_risks": [
+        "绿色未熟作物",
+        "现代收割机",
+        "镰刀方向错误",
+        "时装姿势"
+      ]
+    },
+    {
+      "id": "dry-grain",
+      "triggers": [
+        "晒谷",
+        "扬谷",
+        "翻晒粮食",
+        "dry grain",
+        "winnow grain"
+      ],
+      "people": "3",
+      "setting": "白墙围合的开阔晒场",
+      "shot": {
+        "zh": "低机位宽景，谷粒占据下方前景",
+        "en": "low wide shot with grain filling the lower foreground",
+        "lens": "35mm f/4"
+      },
+      "default_time": "干燥秋日下午",
+      "relation": {
+        "zh": "前景女子用木耙翻谷，中景女子倾倒竹筛，后景女子整理晒席",
+        "en": "the foreground woman rakes grain, the middle woman pours from a bamboo sieve, and the rear woman straightens the drying mat"
+      },
+      "motion": {
+        "zh": "较重谷粒近处落下，细壳与谷尘在逆光中稍远飘散",
+        "en": "heavier grain falls nearby while light chaff and dust drift farther in backlight"
+      },
+      "foreground": "清晰谷粒与浅景深过渡",
+      "negative_risks": [
+        "人数错误",
+        "工具融合",
+        "夸张沙尘暴",
+        "现代水泥广场"
+      ]
+    },
+    {
+      "id": "tea-picking",
+      "triggers": [
+        "采茶",
+        "摘茶叶",
+        "茶山劳作",
+        "pick tea"
+      ],
+      "people": "4",
+      "setting": "沿山坡弯曲延伸的茶垄",
+      "shot": {
+        "zh": "宽幅环境群像，前景人物侧面中景",
+        "en": "wide environmental group with a profile picker in the near middle plane",
+        "lens": "35mm f/2.8"
+      },
+      "default_time": "薄雾晨光",
+      "relation": {
+        "zh": "前景女子指腹轻摘嫩芽，三位同伴沿不同茶垄向远处递进",
+        "en": "the foreground woman pinches a tender bud while three companions recede along separate tea rows"
+      },
+      "motion": {
+        "zh": "茶叶露珠轻闪，背篓随身体前倾产生重量感",
+        "en": "dew glints on tea leaves while the back basket carries the weight of her forward lean"
+      },
+      "foreground": "柔焦茶叶占据画框一侧",
+      "negative_risks": [
+        "人数超过四人",
+        "现代采茶服",
+        "旅游摆拍",
+        "茶垄失去层次"
+      ]
+    },
+    {
+      "id": "mulberry-picking",
+      "triggers": [
+        "采桑",
+        "摘桑叶",
+        "桑树林",
+        "pick mulberry leaves"
+      ],
+      "people": "3",
+      "setting": "层叠桑叶围合的林间小路",
+      "shot": {
+        "zh": "叶隙间的平视中宽景",
+        "en": "eye-level medium-wide view through layered mulberry leaves",
+        "lens": "50mm f/2.5"
+      },
+      "default_time": "晨间侧光",
+      "relation": {
+        "zh": "中央女子托住桑枝挑选嫩叶，两位同伴分处前后景采摘",
+        "en": "the central woman supports a branch to select young leaves while two companions pick in separate depth planes"
+      },
+      "motion": {
+        "zh": "枝条松开后缓慢回弹，近景叶片随微风轻动",
+        "en": "released branches return slowly while near leaves move in a mild breeze"
+      },
+      "foreground": "上下两层柔焦桑叶",
+      "negative_risks": [
+        "人数增加",
+        "脸部被叶片遮住",
+        "采茶篮误替代桑叶筐",
+        "过饱和绿"
+      ]
+    },
+    {
+      "id": "feed-silkworms",
+      "triggers": [
+        "喂蚕",
+        "养蚕",
+        "铺桑叶",
+        "feed silkworms"
+      ],
+      "people": "2",
+      "setting": "竹匾层叠的通风养蚕房",
+      "shot": {
+        "zh": "桌面高度双人中景",
+        "en": "table-height two-person medium shot",
+        "lens": "50mm f/2.2"
+      },
+      "default_time": "柔和晨光",
+      "relation": {
+        "zh": "一人把桑叶铺入竹匾，另一人轻轻整理蚕匾边缘",
+        "en": "one spreads mulberry leaves across a bamboo tray while the other gently arranges the tray edge"
+      },
+      "motion": {
+        "zh": "叶片落下并自然重叠，衣袖在竹匾上方保持轻柔",
+        "en": "leaves settle into natural overlaps while sleeves move gently above the tray"
+      },
+      "foreground": "虚化竹匾边缘",
+      "negative_risks": [
+        "昆虫夸张特写",
+        "现代养殖架",
+        "洁净实验室",
+        "华丽服饰"
+      ]
+    },
+    {
+      "id": "bean-picking",
+      "triggers": [
+        "摘豆角",
+        "采豆",
+        "豆架",
+        "pick beans"
+      ],
+      "people": "1",
+      "setting": "白墙旁的竹豆架",
+      "shot": {
+        "zh": "平视中全景，保留篮筐与抬手动作",
+        "en": "eye-level medium-full shot retaining the basket and raised hand",
+        "lens": "50mm f/2"
+      },
+      "default_time": "上午筛光",
+      "relation": {
+        "zh": "一手扶住藤蔓，另一手摘下豆荚，竹篮贴近腰侧",
+        "en": "one hand steadies the vine while the other picks a bean pod, with the basket held near the waist"
+      },
+      "motion": {
+        "zh": "藤蔓受力轻弯，豆荚落入篮中",
+        "en": "the vine bends slightly under contact as the pod drops into the basket"
+      },
+      "foreground": "少量柔焦豆叶",
+      "negative_risks": [
+        "裁掉篮筐",
+        "手臂超出画面",
+        "现代菜园设施",
+        "人物直视镜头"
+      ]
+    },
+    {
+      "id": "gourd-harvest",
+      "triggers": [
+        "摘葫芦",
+        "葫芦架",
+        "收葫芦",
+        "harvest gourds"
+      ],
+      "people": "2",
+      "setting": "密叶覆盖的竹葫芦架",
+      "shot": {
+        "zh": "从藤架下方轻微仰拍的双人中景",
+        "en": "gently low two-person medium shot beneath the trellis",
+        "lens": "50mm f/2"
+      },
+      "default_time": "温暖傍晚",
+      "relation": {
+        "zh": "前景女子双手托住葫芦，另一女子扶篮并抬头观察藤蒂",
+        "en": "the foreground woman supports the gourd with both hands while her companion holds the basket and watches the stem"
+      },
+      "motion": {
+        "zh": "葫芦保持重量，藤蔓与叶片随手部受力轻动",
+        "en": "the gourd retains weight as the vine and leaves respond to the hands"
+      },
+      "foreground": "上缘和侧缘柔焦藤叶",
+      "negative_risks": [
+        "葫芦脱离藤蔓",
+        "手部归属混乱",
+        "人物数量错误",
+        "奇幻巨果"
+      ]
+    },
+    {
+      "id": "lotus-gathering",
+      "triggers": [
+        "采莲",
+        "摘莲蓬",
+        "荷塘小舟",
+        "gather lotus pods"
+      ],
+      "people": "2",
+      "setting": "荷叶密集的安静水塘",
+      "shot": {
+        "zh": "水面低机位，小舟沿对角线延伸",
+        "en": "water-level view with the skiff running diagonally",
+        "lens": "40mm f/2.8"
+      },
+      "default_time": "清晨或傍晚",
+      "relation": {
+        "zh": "前景女子折取莲蓬，后方女子用长篙稳定小舟",
+        "en": "the foreground woman gathers a lotus pod while the rear woman steadies the skiff with a long pole"
+      },
+      "motion": {
+        "zh": "折断荷梗滴水，船篙推水产生与舟身一致的波纹",
+        "en": "the broken stem drips while the pole creates ripples aligned with the skiff"
+      },
+      "foreground": "大块柔焦荷叶遮挡画框下缘",
+      "negative_risks": [
+        "人物漂浮水上",
+        "小舟结构混乱",
+        "荷叶遮住面部",
+        "仙侠雾气"
+      ]
+    },
+    {
+      "id": "field-lunch",
+      "triggers": [
+        "田间送饭",
+        "田埂送饭",
+        "提篮归田",
+        "carry lunch to fields"
+      ],
+      "people": "1",
+      "setting": "水渠旁狭窄田埂",
+      "shot": {
+        "zh": "轻微仰拍的全身环境镜头",
+        "en": "gently low full-body environmental shot",
+        "lens": "35mm f/3.2"
+      },
+      "default_time": "傍晚前",
+      "relation": {
+        "zh": "一手提装饭竹篮，另一手提小口陶壶，脚步沿田埂前行",
+        "en": "one hand carries a meal basket and the other a narrow clay flask as she walks the ridge"
+      },
+      "motion": {
+        "zh": "篮筐随步伐轻摆，发丝与裙摆沿同一风向滞后",
+        "en": "the basket swings with her steps while hair and skirt trail in one breeze"
+      },
+      "foreground": "田边草叶与水面反光",
+      "negative_risks": [
+        "田埂过宽",
+        "现代饭盒",
+        "篮筐无重量",
+        "人物漂浮"
+      ]
+    },
+    {
+      "id": "stone-mill",
+      "triggers": [
+        "推石磨",
+        "磨豆浆",
+        "石磨",
+        "work a stone mill"
+      ],
+      "people": "2",
+      "setting": "遮阴木棚下的石磨工作台",
+      "shot": {
+        "zh": "桌面高度双人中景",
+        "en": "table-height two-person medium shot",
+        "lens": "50mm f/2.2"
+      },
+      "default_time": "上午斜光",
+      "relation": {
+        "zh": "一人双手推动磨杆，另一人向磨眼加豆并扶住接浆陶碗",
+        "en": "one pushes the mill handle with both hands while the other feeds beans and steadies the catching bowl"
+      },
+      "motion": {
+        "zh": "上盘随磨杆旋转，豆浆从石槽连续流入陶碗",
+        "en": "the upper stone turns with the handle as soy milk runs continuously into the clay bowl"
+      },
+      "foreground": "柔焦黄豆与陶碗边缘",
+      "negative_risks": [
+        "磨杆穿过身体",
+        "手部归属混乱",
+        "现代机器",
+        "豆浆流向错误"
+      ]
+    },
+    {
+      "id": "pound-rice",
+      "triggers": [
+        "舂米",
+        "石臼舂米",
+        "捣谷",
+        "pound rice"
+      ],
+      "people": "2",
+      "setting": "通风院廊下的石臼",
+      "shot": {
+        "zh": "侧面中宽景，保留木杵完整行程",
+        "en": "profile medium-wide shot retaining the full pestle movement",
+        "lens": "50mm f/2.8"
+      },
+      "default_time": "秋日清晨",
+      "relation": {
+        "zh": "一人垂直抬落木杵，另一人跪坐在安全距离整理谷物",
+        "en": "one raises and lowers the pestle vertically while the other sorts grain from a safe distance"
+      },
+      "motion": {
+        "zh": "木杵沿垂直线起落，细粉只在石臼口附近扬起",
+        "en": "the pestle travels vertically while fine dust rises only near the mortar mouth"
+      },
+      "foreground": "少量柔焦谷壳",
+      "negative_risks": [
+        "木杵撞向同伴",
+        "工具比例错误",
+        "现代设备",
+        "夸张粉尘"
+      ]
+    },
+    {
+      "id": "weave-cloth",
+      "triggers": [
+        "织布",
+        "织机",
+        "穿梭织布",
+        "weave cloth"
+      ],
+      "people": "1",
+      "setting": "木窗旁的朴素织布间",
+      "shot": {
+        "zh": "斜侧面中景，手、木梭和经线清楚",
+        "en": "oblique medium shot with hands, shuttle, and warp clearly visible",
+        "lens": "50mm f/2"
+      },
+      "default_time": "柔和午后窗光",
+      "relation": {
+        "zh": "一手送出木梭，另一手整理绷紧经线",
+        "en": "one hand passes the shuttle while the other arranges the taut warp"
+      },
+      "motion": {
+        "zh": "木梭横向穿行，经线产生细微连续震动",
+        "en": "the shuttle crosses laterally and the warp threads vibrate faintly"
+      },
+      "foreground": "虚化线轴或织物边缘",
+      "negative_risks": [
+        "现代缝纫机",
+        "织机结构消失",
+        "华丽锦缎",
+        "手指与经线融合"
+      ]
+    },
+    {
+      "id": "dye-cloth",
+      "triggers": [
+        "染布",
+        "草木染",
+        "漂洗染布",
+        "plant dye cloth"
+      ],
+      "people": "2",
+      "setting": "院中陶染缸与竹晾杆",
+      "shot": {
+        "zh": "平视中宽景，人物分处染缸两侧",
+        "en": "eye-level medium-wide shot with figures on opposite sides of the dye vat",
+        "lens": "50mm f/2.8"
+      },
+      "default_time": "阴天柔光",
+      "relation": {
+        "zh": "两人分别托住长布两端，将湿布从陶缸中提起",
+        "en": "the two women hold opposite ends of a long cloth and lift it from the clay vat"
+      },
+      "motion": {
+        "zh": "湿布带重量下垂，染液从最低折痕滴回缸中",
+        "en": "the heavy wet cloth sags as dye drips from its lowest folds back into the vat"
+      },
+      "foreground": "少量柔焦竹夹与布边",
+      "negative_risks": [
+        "化工桶",
+        "现代手套",
+        "荧光染色",
+        "布料悬浮"
+      ]
+    },
+    {
+      "id": "weave-basket",
+      "triggers": [
+        "编竹篮",
+        "竹编",
+        "修篮子",
+        "weave bamboo basket"
+      ],
+      "people": "1",
+      "setting": "竹林边或木廊下",
+      "shot": {
+        "zh": "俯视感轻微的手部中近景",
+        "en": "slightly elevated medium-close view centered on the hands",
+        "lens": "85mm f/2"
+      },
+      "default_time": "午后散射光",
+      "relation": {
+        "zh": "双手把细竹篾交错压入篮壁",
+        "en": "both hands press thin bamboo strips into the interlaced basket wall"
+      },
+      "motion": {
+        "zh": "竹篾在指尖受力弯曲并恢复弧度",
+        "en": "bamboo strips bend under fingertip pressure and settle into a curve"
+      },
+      "foreground": "柔焦竹篾端部",
+      "negative_risks": [
+        "塑料藤条",
+        "现代工具",
+        "竹篾刺穿手部",
+        "过度工艺展示"
+      ]
+    },
+    {
+      "id": "mend-net",
+      "triggers": [
+        "补渔网",
+        "修渔网",
+        "织网",
+        "mend fishing net"
+      ],
+      "people": "1",
+      "setting": "临水木廊或渡口",
+      "shot": {
+        "zh": "侧面中景，网线在双手之间清楚展开",
+        "en": "profile medium shot with net cord clearly spread between both hands",
+        "lens": "50mm f/2.2"
+      },
+      "default_time": "清晨柔光",
+      "relation": {
+        "zh": "一手拉紧网目，另一手把麻线穿过破口打结",
+        "en": "one hand tensions the mesh while the other threads hemp cord through the tear"
+      },
+      "motion": {
+        "zh": "网面随拉力形成明确张力线，水面在背景轻微晃动",
+        "en": "the net forms clear tension lines while background water moves softly"
+      },
+      "foreground": "柔焦网绳与木柱",
+      "negative_risks": [
+        "尼龙网",
+        "金属鱼钩混乱",
+        "网线遮脸",
+        "现代码头"
+      ]
+    },
+    {
+      "id": "gather-firewood",
+      "triggers": [
+        "捡柴",
+        "背柴",
+        "收集柴火",
+        "gather firewood"
+      ],
+      "people": "1",
+      "setting": "竹林与村屋之间的土路",
+      "shot": {
+        "zh": "侧后方全身环境镜头",
+        "en": "three-quarter rear full-body environmental shot",
+        "lens": "35mm f/3.2"
+      },
+      "default_time": "冬日午后",
+      "relation": {
+        "zh": "双手整理背篓中的短柴并沿土路归家",
+        "en": "both hands steady short firewood in a back basket while she walks home"
+      },
+      "motion": {
+        "zh": "背篓贴合肩背，步伐带动衣摆轻微滞后",
+        "en": "the loaded basket rests against the shoulders while the hem trails behind each step"
+      },
+      "foreground": "干草与竹叶柔焦",
+      "negative_risks": [
+        "巨大木桩",
+        "背篓无重量",
+        "现代登山装",
+        "奇幻雪景"
+      ]
+    },
+    {
+      "id": "dig-bamboo-shoots",
+      "triggers": [
+        "挖笋",
+        "采竹笋",
+        "竹林挖笋",
+        "dig bamboo shoots"
+      ],
+      "people": "2",
+      "setting": "雨后湿润竹林坡地",
+      "shot": {
+        "zh": "低位中宽景，竹竿形成竖向框架",
+        "en": "low medium-wide view with bamboo trunks forming vertical framing",
+        "lens": "35mm f/2.8"
+      },
+      "default_time": "早春雨后",
+      "relation": {
+        "zh": "前景女子用窄锄松土，后方同伴把挖出的春笋放入竹篮",
+        "en": "the foreground woman loosens soil with a narrow hoe while her companion places shoots into a basket"
+      },
+      "motion": {
+        "zh": "湿土沿锄刃散开，竹叶滴水但不形成浓雾",
+        "en": "damp soil parts along the hoe blade while bamboo leaves drip without heavy mist"
+      },
+      "foreground": "柔焦竹叶与湿土",
+      "negative_risks": [
+        "现代铁锹",
+        "干燥沙土",
+        "过量雾气",
+        "竹笋比例夸张"
+      ]
+    },
+    {
+      "id": "dry-persimmons",
+      "triggers": [
+        "晒柿子",
+        "挂柿子",
+        "整理柿饼",
+        "dry persimmons"
+      ],
+      "people": "2",
+      "setting": "果树投影覆盖的白墙院落",
+      "shot": {
+        "zh": "平视宽景，晾架与竹匾形成前后关系",
+        "en": "eye-level wide shot with drying rack and bamboo trays in separate planes",
+        "lens": "50mm f/2.8"
+      },
+      "default_time": "深秋傍晚",
+      "relation": {
+        "zh": "一人跪坐排列竹匾柿子，另一人把成串柿子挂上竹架",
+        "en": "one kneels to arrange persimmons on trays while the other hangs fruit strings from a bamboo rack"
+      },
+      "motion": {
+        "zh": "果串随手部抬起轻摆，落叶只在地面附近移动",
+        "en": "fruit strings sway as they are lifted while fallen leaves move close to the ground"
+      },
+      "foreground": "柔焦橙红果实作为克制暖点",
+      "negative_risks": [
+        "过度鲜艳橙色",
+        "现代晾晒网",
+        "人数错误",
+        "节庆宫廷装饰"
+      ]
+    },
+    {
+      "id": "herb-garden",
+      "triggers": [
+        "采药草",
+        "整理香草",
+        "菜园采摘",
+        "gather herbs"
+      ],
+      "people": "1",
+      "setting": "厨房旁的竹篱香草圃",
+      "shot": {
+        "zh": "平视中近景，人物蹲在菜畦边",
+        "en": "eye-level medium-close shot with the figure crouched beside the herb bed",
+        "lens": "50mm f/2"
+      },
+      "default_time": "雨后清晨",
+      "relation": {
+        "zh": "一手托住香草茎，另一手用小刀剪取嫩枝",
+        "en": "one hand supports the herb stems while the other cuts tender sprigs with a small knife"
+      },
+      "motion": {
+        "zh": "湿叶轻触衣袖，露珠从剪下枝叶落入篮中",
+        "en": "wet leaves brush the sleeve and dew falls from cut sprigs into the basket"
+      },
+      "foreground": "柔焦香草叶",
+      "negative_risks": [
+        "现代园艺剪",
+        "塑料花盆",
+        "奇幻药草光效",
+        "人物看镜头"
+      ]
+    },
+    {
+      "id": "repair-eaves",
+      "triggers": [
+        "修屋檐",
+        "补屋顶",
+        "整理瓦片",
+        "repair roof tiles"
+      ],
+      "people": "2",
+      "setting": "低矮乡居屋檐与木梯",
+      "shot": {
+        "zh": "庭院宽景，人物位于上下两个层次",
+        "en": "courtyard wide shot with the figures on two vertical levels",
+        "lens": "35mm f/3.5"
+      },
+      "default_time": "雨后放晴",
+      "relation": {
+        "zh": "上方女子扶稳低梯整理松动瓦片，下方同伴双手递上备用瓦",
+        "en": "the upper woman steadies herself on a low ladder to reset a tile while her companion passes a replacement from below"
+      },
+      "motion": {
+        "zh": "檐滴仍在落下，递瓦动作保持清楚安全的距离",
+        "en": "eave droplets still fall while the tile handoff keeps a clear safe distance"
+      },
+      "foreground": "湿润枝叶与院墙",
+      "negative_risks": [
+        "高空危险姿势",
+        "现代铝梯",
+        "宫殿屋顶",
+        "瓦片漂浮"
+      ]
+    },
+    {
+      "id": "herd-ducks",
+      "triggers": [
+        "赶鸭",
+        "放鸭",
+        "鸭群回家",
+        "herd ducks"
+      ],
+      "people": "1",
+      "setting": "村溪与低矮石桥之间",
+      "shot": {
+        "zh": "宽幅环境镜头，人物与鸭群沿溪岸行进",
+        "en": "wide environmental shot with the figure and ducks moving along the bank",
+        "lens": "35mm f/3.5"
+      },
+      "default_time": "日落前",
+      "relation": {
+        "zh": "女子持细竹竿在鸭群后方缓慢引导",
+        "en": "the woman carries a slender bamboo stick and guides the flock from behind"
+      },
+      "motion": {
+        "zh": "鸭群留下连续水纹，人物衣摆沿相同方向移动",
+        "en": "the flock leaves continuous ripples while her hem follows the same travel direction"
+      },
+      "foreground": "溪边芦苇柔焦",
+      "negative_risks": [
+        "鸭群过度密集",
+        "人物站在水中漂浮",
+        "现代养殖设施",
+        "动物抢占主体"
+      ]
+    },
+    {
+      "id": "catch-loach",
+      "triggers": [
+        "捉泥鳅",
+        "稻田摸鱼",
+        "水沟捞鱼",
+        "catch loaches"
+      ],
+      "people": "2",
+      "setting": "稻田边浅水沟",
+      "shot": {
+        "zh": "水面低位双人中宽景",
+        "en": "low two-person medium-wide view near the water",
+        "lens": "40mm f/2.8"
+      },
+      "default_time": "夏日清晨",
+      "relation": {
+        "zh": "前景女子双手探入浅水，另一人扶住半浸水的竹鱼篮",
+        "en": "the foreground woman searches the shallow water with both hands while her companion steadies a half-submerged fish basket"
+      },
+      "motion": {
+        "zh": "手部搅起小片浑水和细密涟漪，篮筐承接水流",
+        "en": "the hands stir a small cloud of silt and fine ripples while the basket catches the flow"
+      },
+      "foreground": "柔焦稻叶与水草",
+      "negative_risks": [
+        "大鱼奇观",
+        "现代渔具",
+        "浑水遮住手部",
+        "嬉水写真"
+      ]
+    },
+    {
+      "id": "night-spinning",
+      "triggers": [
+        "夜里纺线",
+        "油灯纺线",
+        "冬夜做针线",
+        "spin thread at night"
+      ],
+      "people": "1",
+      "setting": "木窗紧闭的冬夜起居间",
+      "shot": {
+        "zh": "桌边中近景，油灯与双手形成视觉三角",
+        "en": "table-side medium-close view with oil lamp and hands forming a visual triangle",
+        "lens": "50mm f/1.8"
+      },
+      "default_time": "冬夜",
+      "relation": {
+        "zh": "一手转动木纺锤，另一手控制纤维张力",
+        "en": "one hand turns the wooden spindle while the other controls fiber tension"
+      },
+      "motion": {
+        "zh": "纺锤平稳旋转，灯焰轻颤，背景保持安静深蓝灰",
+        "en": "the spindle turns steadily, the lamp flame trembles lightly, and the background remains quiet blue gray"
+      },
+      "foreground": "虚化线团与木桌边缘",
+      "negative_risks": [
+        "电灯",
+        "过度烛光浪漫化",
+        "华丽闺房",
+        "奇幻发光丝线"
+      ]
+    },
+    {
+      "id": "well-fetch-water",
+      "triggers": [
+        "井边打水",
+        "提水",
+        "井台取水",
+        "draw water from well"
+      ],
+      "people": "1",
+      "setting": "青石井台与旧木辘轳",
+      "shot": {
+        "zh": "侧面全身中宽景",
+        "en": "profile medium-wide full-body shot",
+        "lens": "50mm f/2.8"
+      },
+      "default_time": "清晨",
+      "relation": {
+        "zh": "双手拉动粗绳，让木桶从井口上升",
+        "en": "both hands pull the coarse rope as the wooden bucket rises from the well"
+      },
+      "motion": {
+        "zh": "绳索绷紧，桶沿滴水，人物身体后倾形成可信受力",
+        "en": "the rope pulls taut, the bucket drips, and her body leans back under believable load"
+      },
+      "foreground": "柔焦井沿苔痕与草叶",
+      "negative_risks": [
+        "现代水泵",
+        "塑料桶",
+        "绳索穿过身体",
+        "无重量姿势"
+      ]
+    },
+    {
+      "id": "spring-sowing",
+      "triggers": [
+        "春耕播种",
+        "撒种",
+        "播谷种",
+        "sow seed"
+      ],
+      "people": "2",
+      "setting": "刚整平的湿润田地",
+      "shot": {
+        "zh": "宽幅侧面环境镜头",
+        "en": "wide profile environmental shot",
+        "lens": "35mm f/3.5"
+      },
+      "default_time": "早春薄雾清晨",
+      "relation": {
+        "zh": "前景女子从布袋均匀撒种，后方同伴用木耙轻覆田土",
+        "en": "the foreground woman broadcasts seed from a cloth bag while her companion covers the soil lightly with a wooden rake"
+      },
+      "motion": {
+        "zh": "种子形成克制弧线，耙齿只扰动表层湿土",
+        "en": "seed forms a restrained arc while rake tines disturb only the top layer of damp soil"
+      },
+      "foreground": "湿土与新草柔焦",
+      "negative_risks": [
+        "现代播种机",
+        "夸张抛撒",
+        "金黄秋收色",
+        "宫廷服装"
+      ]
+    },
+    {
+      "id": "shell-beans",
+      "triggers": [
+        "剥豆",
+        "择豆",
+        "院中剥豆",
+        "shell beans"
+      ],
+      "people": "3",
+      "setting": "树荫下的低木桌旁",
+      "shot": {
+        "zh": "桌面高度三人中景",
+        "en": "table-height three-person medium shot",
+        "lens": "50mm f/2.5"
+      },
+      "default_time": "夏日午后",
+      "relation": {
+        "zh": "三人分别剥豆、接豆与整理豆荚，动作互不重复",
+        "en": "the three women shell pods, catch beans, and sort husks in distinct gestures"
+      },
+      "motion": {
+        "zh": "豆粒落入陶碗，空豆荚堆在竹匾一侧",
+        "en": "beans fall into a clay bowl while empty pods gather on one side of a bamboo tray"
+      },
+      "foreground": "柔焦豆藤与桌角",
+      "negative_risks": [
+        "人物超过三人",
+        "相同手势",
+        "所有人看镜头",
+        "现代零食包装"
+      ]
+    },
+    {
+      "id": "make-tofu",
+      "triggers": [
+        "做豆腐",
+        "压豆腐",
+        "过滤豆浆",
+        "make tofu"
+      ],
+      "people": "2",
+      "setting": "木棚下的石磨与压豆腐木案",
+      "shot": {
+        "zh": "中宽景，石磨与木案分居前后层",
+        "en": "medium-wide shot with millstone and pressing table on separate depth planes",
+        "lens": "50mm f/2.8"
+      },
+      "default_time": "上午",
+      "relation": {
+        "zh": "前景女子收拢滤布，后方女子把石块稳放在压板中央",
+        "en": "the foreground woman gathers the filter cloth while her companion centers a stone weight on the pressing board"
+      },
+      "motion": {
+        "zh": "豆浆从布边缓慢滴落，木板在石块重量下轻微下压",
+        "en": "soy milk drips slowly from the cloth as the board settles beneath the stone weight"
+      },
+      "foreground": "柔焦黄豆与陶碗",
+      "negative_risks": [
+        "现代模具",
+        "乳白液体溅满画面",
+        "手部融合",
+        "机器化作坊"
+      ]
+    },
+    {
+      "id": "rainy-eave-rest",
+      "triggers": [
+        "屋檐下避雨",
+        "雨天歇息",
+        "雨中喝茶",
+        "rest beneath eaves in rain"
+      ],
+      "people": "2",
+      "setting": "面向湿润庭院的狭长屋檐",
+      "shot": {
+        "zh": "从室内阴影向外看的双人中宽景",
+        "en": "medium-wide two-person view from interior shadow toward the wet courtyard",
+        "lens": "50mm f/2.5"
+      },
+      "default_time": "春日细雨",
+      "relation": {
+        "zh": "两人并坐，一人递出热茶，另一人双手接杯看向雨幕",
+        "en": "the two sit side by side as one offers hot tea and the other receives the cup while watching the rain"
+      },
+      "motion": {
+        "zh": "檐滴连续落下，茶汽在冷湿空气中短暂可见",
+        "en": "eave drops fall continuously while tea steam appears briefly in the cool damp air"
+      },
+      "foreground": "虚化门框与檐滴",
+      "negative_risks": [
+        "暴雨灾害",
+        "现代雨具",
+        "浪漫婚纱姿态",
+        "奇幻蓝光"
+      ]
+    },
+    {
+      "id": "autumn-homecoming",
+      "triggers": [
+        "秋收归家",
+        "背篓回村",
+        "傍晚回家",
+        "return home after harvest"
+      ],
+      "people": "2",
+      "setting": "田野通往柴门的村路",
+      "shot": {
+        "zh": "侧后方宽幅全身镜头",
+        "en": "wide three-quarter rear full-body shot",
+        "lens": "35mm f/3.5"
+      },
+      "default_time": "深秋日落前",
+      "relation": {
+        "zh": "前方女子背着装满作物的竹篓，后方同伴提着小篮沿路交谈",
+        "en": "the leading woman carries a full back basket while her companion follows with a smaller basket in quiet conversation"
+      },
+      "motion": {
+        "zh": "沉重背篓稳定贴背，步伐让衣摆和碎发轻微滞后",
+        "en": "the loaded basket stays firm against the back while hems and loose hair trail behind the steps"
+      },
+      "foreground": "柔焦田草与路边作物",
+      "negative_risks": [
+        "空背篓",
+        "现代村路",
+        "人物回头摆拍",
+        "夸张夕阳"
+      ]
+    }
+  ]
+}

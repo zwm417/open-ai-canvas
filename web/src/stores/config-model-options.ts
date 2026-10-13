@@ -1,6 +1,9 @@
 // 渠道模型选项的编码、解析与展示：channelId + 模型名组合成选择值，按能力过滤可选模型。
 
 import { type AiConfig, type ModelChannel, resolveModelChannel } from "./use-config-store";
+// @opc-feature: seedance-jimeng-icon-governance [start]
+import { resolveModelIcon } from "@/lib/seedance-video";
+// @opc-feature: seedance-jimeng-icon-governance [end]
 
 export const CHANNEL_MODEL_SEPARATOR = "::";
 
@@ -49,7 +52,8 @@ export function modelDisplayName(config: AiConfig, value: string) {
 
 export function modelIcon(config: AiConfig, value: string) {
     const model = modelOptionName(value);
-    return resolveModelChannel(config, value).modelCosts?.find((item) => item.model === model)?.icon || "";
+    const item = resolveModelChannel(config, value).modelCosts?.find((item) => item.model === model);
+    return resolveModelIcon(item?.icon, model, item?.protocol, item?.displayName);
 }
 
 export function modelOptionLabel(config: AiConfig, value: string) {

@@ -21,7 +21,7 @@ import { type CanvasTheme } from "@/lib/canvas-theme";
 import { fitNodeSize } from "@/lib/canvas/canvas-node-size";
 import { getActiveUserScope } from "@/lib/user-scope";
 import { prepareCanvasImage } from "@/services/canvas-image-loader";
-import { getResourceAccess, resolveResourceAccessURL } from "@/services/api/resources";
+import { getResourceAccess, resolveResourceAccessURL, peekResourceAccessUrl } from "@/services/api/resources";
 // @opc-feature: zero-overhead-local-cache [start]
 import { peekLocalFirstMedia } from "@/services/local-first-media-resolver";
 import { peekCachedResourceObjectUrl } from "@/services/resource-blob-cache";
@@ -551,6 +551,10 @@ export function RetainedCanvasImage({
     const currentRef = useRef({ identity, src, storageKey, fallbackSrc, originalSize, fitToImage });
     currentRef.current = { identity, src, storageKey, fallbackSrc, originalSize, fitToImage };
     const currentDisplayedSrc = displayed?.identity === identity ? displayed.src : "";
+    // @opc-feature: canvas-image-progressive-stream [start]
+    // 商业化流畅浏览规范：优先使用当前已解码的高清图，若无则首帧直接挂载 src 进行原生流式光栅化，杜绝纯白遮罩与盲等转圈
+    const effectiveSrc = currentDisplayedSrc || src;
+    // @opc-feature: canvas-image-progressive-stream [end]
 
     useEffect(() => {
         const controller = new AbortController();
@@ -595,15 +599,15 @@ export function RetainedCanvasImage({
     return (
         <>
             <img
-                src={currentDisplayedSrc || undefined}
+                src={effectiveSrc || undefined}
                 alt={alt || ""}
                 decoding="async"
                 draggable={false}
                 onDragStart={(event) => event.preventDefault()}
                 className={`absolute inset-0 ${className}`}
-                style={{ visibility: currentDisplayedSrc ? "visible" : "hidden" }}
+                style={{ visibility: effectiveSrc ? "visible" : "hidden" }}
             />
-            {!currentDisplayedSrc ? (
+            {!effectiveSrc ? (
                 <div className="absolute inset-0 grid place-items-center" style={{ color: theme.node.muted }}>
                     {loading || preparing ? <LoaderCircle className="size-5 animate-spin" /> : <ImageIcon className="size-5 opacity-45" />}
                 </div>
@@ -630,11 +634,19 @@ export function useNodeResourceUrl(node: CanvasNodeData, eager: boolean, variant
     // resources; otherwise DOM virtualization does not reduce image work.
     const isLazyVisual = node.type === CanvasNodeType.Image;
     const isHttpUrl = Boolean(fallback && !fallback.startsWith("data:"));
-    const initialUrl = eager && !isRemoteResource && isLazyVisual && isHttpUrl ? fallback : isRemoteResource || isLazyVisual ? "" : fallback;
+
+    // 0ms 同步内存探测：优先直读 L1 本地媒体 / IDB 对象 URL / 内存凭证池
+    const peekedUrl = storageKey ? (peekLocalFirstMedia(storageKey, fallback) || peekCachedResourceObjectUrl(storageKey) || peekResourceAccessUrl(storageKey, "display", variant)) : "";
+    const initialUrl = peekedUrl || (eager && !isRemoteResource && isLazyVisual && isHttpUrl ? fallback : isRemoteResource || isLazyVisual ? "" : fallback);
+
     const scope = getActiveUserScope();
     const identity = `${scope}:${node.id}:${storageKey || fallback}`;
-    const [resolved, setResolved] = useState<{ identity: string; url: string; loading: boolean; originalWidth?: number; originalHeight?: number }>(() => ({ identity, url: initialUrl, loading: !initialUrl && isRemoteResource && eager }));
-    const current = resolved.identity === identity ? resolved : { identity, url: initialUrl, loading: isRemoteResource && eager };
+    const [resolved, setResolved] = useState<{ identity: string; url: string; loading: boolean; originalWidth?: number; originalHeight?: number }>(() => ({
+        identity,
+        url: initialUrl,
+        loading: !initialUrl && isRemoteResource && eager,
+    }));
+    const current = resolved.identity === identity ? resolved : { identity, url: initialUrl, loading: isRemoteResource && eager && !initialUrl };
 
     useEffect(() => {
         if (!isRemoteResource) {
@@ -646,7 +658,10 @@ export function useNodeResourceUrl(node: CanvasNodeData, eager: boolean, variant
             return;
         }
         let cancelled = false;
-        setResolved({ identity, url: "", loading: true });
+        // 如果当前已有 0ms 探针获得的有效地址，保持展示，不闪烁白屏
+        if (!current.url) {
+            setResolved((prev) => (prev.identity === identity ? { ...prev, loading: true } : { identity, url: "", loading: true }));
+        }
         void getResourceAccess(storageKey, "display", variant)
             .then((access) => {
                 if (!cancelled) setResolved({ identity, url: resolveResourceAccessURL(access.url), loading: false, originalWidth: access.originalWidth, originalHeight: access.originalHeight });

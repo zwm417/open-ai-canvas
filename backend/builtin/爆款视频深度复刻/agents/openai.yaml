@@ -1,0 +1,4 @@
+interface:
+  display_name: "视频复刻"
+  short_description: "逐镜解析授权原片，用参考图重建关键帧并合成完整复刻视频。"
+  default_prompt: "使用 $video-replication，解析这支授权视频的每秒帧、分镜和 BGM，用我上传的参考图重建关键帧，再逐镜生成并合成验收成片。"
